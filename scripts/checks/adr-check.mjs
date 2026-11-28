@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // adr-check — the "adr-check" family of Salih's docs-consistency gate (register-check's
-// sibling; see docs/adr/0021-controls-are-proven-by-breaking-them.md and the follow-up on
+// sibling; see docs/adr/0021-controls-are-proven-by-breaking-them.html and the follow-up on
 // register-check's own PR). One check:
 //
-//   6. ADR numbers are unique, every ADR file has a matching docs/adr/index.md row, and
+//   6. ADR numbers are unique, every ADR file has a matching docs/adr/index.html row, and
 //      every `ADR-NNNN` reference under docs/ resolves to a real file.
 //
 // Why this is its own job/script rather than a sixth register-check rule: it has nothing to
@@ -23,7 +23,7 @@
 //
 // (a) That mechanism only reaches the *auto-mergeable* half of the collision space. GitHub
 //     only publishes `refs/pull/N/merge` when the PR is cleanly mergeable — and two branches
-//     that both append a row to docs/adr/index.md (the shape #239/#251 actually hit) are
+//     that both append a row to docs/adr/index.html (the shape #239/#251 actually hit) are
 //     exactly the ones likely to conflict on that file first, before the two ADR numbers are
 //     ever compared. A conflicting PR has no fresh merge ref for `actions/checkout` to
 //     resolve, so this script never sees the union at all in that case — it has to be
@@ -48,14 +48,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Findings } from './lib/findings.mjs'
+import { markdownLinesOfHtml } from './lib/html-doc.mjs'
 import { walk } from './lib/paths.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
 const ADR_DIR = path.join(REPO_ROOT, 'docs/adr')
-const INDEX_PATH = path.join(ADR_DIR, 'index.md')
+const INDEX_PATH = path.join(ADR_DIR, 'index.html')
 // Musti's F2 review on #252: scoped to docs/ only, this used to flag the *prose describing*
-// a known dangling reference (docs/adr/index.md's own "Known inconsistency" note) while
+// a known dangling reference (docs/adr/index.html's own "Known inconsistency" note) while
 // missing the actual broken link at k8s/README.md:7 — a false-positive class in the very
 // check meant to have none. Widened to the whole tree (walk() already excludes
 // node_modules/.git/dist/coverage/.turbo/.expo/generated) and to every extension this repo's
@@ -72,11 +73,11 @@ const IGNORE_MARKER = 'adr-check-ignore'
 function main() {
   const findings = new Findings()
 
-  // --- ADR decision files (the .md documents only — .puml/.svg diagrams legitimately share
+  // --- ADR decision files (the .html pages only, ADR-0116 — .puml/.svg diagrams legitimately share
   // their parent decision's number, e.g. 0012/0013, and are not "another ADR-0012") --------
   const adrFiles = fs
     .readdirSync(ADR_DIR)
-    .filter((f) => f.endsWith('.md') && f !== 'index.md' && f !== 'tech-radar.md')
+    .filter((f) => f.endsWith('.html') && f !== 'index.html' && f !== 'tech-radar.html')
   /** @type {Map<string, string[]>} 4-digit number -> filenames carrying it */
   const byNumber = new Map()
   for (const f of adrFiles) {
@@ -95,21 +96,20 @@ function main() {
     }
   }
 
-  // --- Every ADR file has exactly one docs/adr/index.md row, and vice versa ---------------
-  const indexText = fs.readFileSync(INDEX_PATH, 'utf8')
+  // --- Every ADR file has exactly one docs/adr/index.html row, and vice versa ---------------
   const indexNumbers = new Set()
-  for (const line of indexText.split('\n')) {
+  for (const line of markdownLinesOfHtml(fs.readFileSync(INDEX_PATH, 'utf8'))) {
     const m = line.match(/^\|\s*(\d{4})\s*\|/)
     if (m) indexNumbers.add(m[1])
   }
   for (const num of byNumber.keys()) {
     if (!indexNumbers.has(num)) {
-      findings.add('6-adr-index', `ADR-${num} (${byNumber.get(num).join(', ')}) has no row in docs/adr/index.md.`)
+      findings.add('6-adr-index', `ADR-${num} (${byNumber.get(num).join(', ')}) has no row in docs/adr/index.html.`)
     }
   }
   for (const num of indexNumbers) {
     if (!byNumber.has(num)) {
-      findings.add('6-adr-index', `docs/adr/index.md has a row for ADR-${num}, but no docs/adr/${num}-*.md file exists.`)
+      findings.add('6-adr-index', `docs/adr/index.html has a row for ADR-${num}, but no docs/adr/${num}-*.html file exists.`)
     }
   }
 
@@ -126,7 +126,7 @@ function main() {
       for (const m of line.matchAll(/ADR-(\d{4})\b/g)) {
         const num = m[1]
         if (!byNumber.has(num)) {
-          findings.add('6-adr-reference-resolves', `${relPath}:${i + 1} references ADR-${num}, which has no docs/adr/${num}-*.md file.`)
+          findings.add('6-adr-reference-resolves', `${relPath}:${i + 1} references ADR-${num}, which has no docs/adr/${num}-*.html file.`)
         }
       }
     }

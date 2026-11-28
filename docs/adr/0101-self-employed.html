@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0101 — Self-employed: EÜR, bookkeeping, balance sheet, VAT and trade tax — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0101</p>
+        <h1>Self-employed: EÜR, bookkeeping, balance sheet, VAT and trade tax <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-19</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> new core under <code>packages/core/src/domains/business/*</code> (tax rules) and <code>packages/core/src/domains/ledger/*</code> (bookkeeping), <code>apps/api/src/business/*</code>, <code>apps/api/prisma/schema.prisma</code>, <code>apps/mobile-web/src/screens/business/*</code>, owl tools, enablement</li>
+<li><strong>Builds on:</strong> ADR-0050 (paper route; changed here for the self-employed), REQ-015 (business gate; placed behind a switch here), ADR-0097 (one document pipeline), ADR-0066 (the owl fills drafts, zero-write), ADR-0008 (field encryption), ADR-0007 (user-bound)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Until now the interview caught the self-employed with the business gate (REQ-015): „Selbstständige brauchen EÜR, Anlage G/S und Umsatzsteuer — das kann SteuerEule in Version 1 nicht.“ (&quot;The self-employed need an EÜR, Anlage G/S and VAT — SteuerEule cannot do that in version 1.&quot;). The persona Maximiliane Koch (<code>docs/use-cases.html</code>) ended there. The Product Owner set the scope in a grilling round with 27 decisions.</p>
+<p>One legal requirement determines the filing route: anyone with profit income must in principle file the income tax return electronically (§ 25 Abs. 4 EStG), likewise the EÜR (Einnahmenüberschussrechnung, cash-basis profit statement) (§ 60 Abs. 4 EStDV), and the balance sheet as an E-Bilanz (electronic balance sheet) (§ 5b EStG). There are exceptions for hardship cases (§ 150 Abs. 8 AO) and for profits up to €410 alongside a wage. The app has so far filed on paper (ADR-0050).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>Everything in one pull request, without a mock, in the app&#39;s patterns.</p>
+<h3 id="scope"><a class="anchor" href="#scope" aria-hidden="true" tabindex="-1">#</a>Scope</h3>
+<ol>
+<li><strong>All self-employed</strong>, freelancers (Anlage S) and businesses (Anlage G), full-time and part-time.</li>
+<li><strong>Freelance or business:</strong> the app suggests one based on questions about the profession (§ 18 EStG, catalog and similar professions) and says why; the user confirms. In case of doubt, what the Finanzamt (tax office) has assessed so far counts.</li>
+<li><strong>Sole proprietors in full.</strong> Shares in a partnership only as an amount taken over from its Feststellungsbescheid (notice of separate determination); the app does not do the partnership&#39;s declaration of separate determination.</li>
+<li><strong>Tax years 2022 to 2026</strong>, all years the app offers. Form lines, thresholds and E-Bilanz taxonomy per year.</li>
+</ol>
+<h3 id="profit-and-tax-returns"><a class="anchor" href="#profit-and-tax-returns" aria-hidden="true" tabindex="-1">#</a>Profit and tax returns</h3>
+<ol start="5">
+<li><strong>Profit determination:</strong> EÜR (§ 4 Abs. 3 EStG) for everyone allowed to use it; balance sheet (§ 4 Abs. 1, § 5 EStG) for everyone who must (§ 140, § 141 AO) or wants to draw one up.</li>
+<li><strong>Capture:</strong> totals per EÜR line as the quick route, or individual documents via the one document pipeline (ADR-0097). Both end up in the ledger (point 10).</li>
+<li><strong>Depreciation:</strong> low-value assets up to €800 immediately, linear AfA according to the official table, collective item (€250 to €1,000), declining-balance AfA where permitted, investment deduction and special AfA (§ 7g EStG).</li>
+<li><strong>VAT:</strong> small-business check (§ 19 UStG) and standard taxation with the annual VAT return. <del>Advance VAT returns remain outside the app; the user enters the advance payments made as a total.</del> Changed by §22: the app calculates the advance VAT returns and the EC Sales List (Zusammenfassende Meldung); the total of the advance payments comes from them if the user does not enter their own.</li>
+<li><strong>Trade tax:</strong> trade tax return, allowance €24,500, municipal multiplier from the official municipality table (the user can correct it), credit against income tax (§ 35 EStG).</li>
+<li><strong>Losses:</strong> take over and offset the loss carryforward from the last Feststellungsbescheid, report a new loss, calculate the carryback into the two previous years and offer to waive it (§ 10d EStG; since 2022 only all or nothing).</li>
+</ol>
+<h3 id="bookkeeping"><a class="anchor" href="#bookkeeping" aria-hidden="true" tabindex="-1">#</a>Bookkeeping</h3>
+<ol start="11">
+<li><strong>One ledger for all self-employed.</strong> EÜR, balance sheet, VAT and trade tax are derived from it; the totals per line from point 6 are bookings like any other.</li>
+<li><strong>Chart of accounts SKR03 and SKR04</strong> to choose from.</li>
+<li><strong>GoBD:</strong> posting lock, immutable log of every booking, retention per § 147 AO (books and procedural documentation ten years, booking documents eight years since 2025, Art. 97 § 19a EGAO), data export for the tax audit, procedural documentation. There is no third-party certification; the app therefore never calls itself „GoBD-zertifiziert“ (&quot;GoBD certified&quot;).</li>
+<li><strong>Bank:</strong> bank statements as a file (CSV, CAMT.053); the app suggests bookings. No bank credentials in the app.</li>
+<li><strong>Balance sheet in the app:</strong> double-entry bookkeeping, annual financial statements with balance sheet and profit and loss statement (GuV), E-Bilanz data set.</li>
+</ol>
+<h3 id="filing"><a class="anchor" href="#filing" aria-hidden="true" tabindex="-1">#</a>Filing</h3>
+<ol start="16">
+<li><strong>Filling aid for Mein ELSTER:</strong> the app calculates everything and shows, per form line, what the user enters in Mein ELSTER, for the main form, Anlage S/G, EÜR, VAT and trade tax returns. This changes ADR-0050 for the self-employed: no paper, no printout as the filing. It shows the rest of the income tax return (main form, Anlage N, N-Gre, R, KAP, V, Kind, Vorsorgeaufwand, Sonderausgaben, AV, household-related expenses, extraordinary burdens) with the same values that the form printout would print, per copy (person, child, property), line and code number from the measured Vordrucke (official forms) of the year (<code>felder-&lt;jahr&gt;.zeilen.json</code>, also for 2022 and 2023, which are not printed); for a year without published Vordrucke it names the values without lines and says so.</li>
+<li><strong>E-Bilanz waits for ELSTER:</strong> balance-sheet filers can book and close the year; submitting the E-Bilanz comes with ELSTER transmission. Until then the app says so openly. Supplemented by §22: the transmission is built up to the edge and is switched on with ERiC and the operator&#39;s certificate.</li>
+</ol>
+<h3 id="the-owl"><a class="anchor" href="#the-owl" aria-hidden="true" tabindex="-1">#</a>The owl</h3>
+<ol start="18">
+<li><strong>The owl assigns accounts as a draft:</strong> for documents and bank transactions it suggests account, tax rate and depreciation; nothing is booked until the user accepts (zero-write, ADR-0066). It explains items.</li>
+</ol>
+<h3 id="verification-enablement-price"><a class="anchor" href="#verification-enablement-price" aria-hidden="true" tabindex="-1">#</a>Verification, enablement, price</h3>
+<ol start="19">
+<li><strong>Verification:</strong> golden test cases from official examples and worked cases, per tax year. No external audit.</li>
+<li><strong>Switch:</strong> the business gate stays on for users until the Product Owner has reviewed the results and flipped the switch. The code is there from the merge.<ul>
+<li><strong>Flipped on 20.11.2026:</strong> the Product Owner decided that the self-employed area is on by default. <code>SELBSTSTAENDIGE_ENABLED</code> unset now means on; only an explicit off (<code>false</code>, <code>0</code>, <code>no</code>, <code>nein</code>, <code>off</code>) brings back the business gate from REQ-015. The test suites and the E2E stacks that check the path with the gate (scenario 09) set the off themselves; scenario 09b needs a stack with it on.</li>
+</ul>
+</li>
+<li><strong>Price:</strong> a separate, higher tier per tax year for years with self-employment, via a second Stripe price ID. The Product Owner sets the amount in Stripe; bookkeeping, VAT and trade tax are included in it.</li>
+</ol>
+<h3 id="addendum-of-21112026-the-gaps-after-the-first-version"><a class="anchor" href="#addendum-of-21112026-the-gaps-after-the-first-version" aria-hidden="true" tabindex="-1">#</a>Addendum of 21.11.2026: the gaps after the first version</h3>
+<ol start="22">
+<li>A review of the state after the merge found wrong calculations, groups that did not get through, and limitations. The Product Owner decided to fix all of them in one pull request. For external dependencies the app builds up to the edge. It calculates the advance VAT returns and shows them as a filling aid. For wages it books the values from the payroll program and calculates mini-jobs itself. Legal values are listed with sources in <code>docs/research/self-employed-extension.html</code>.<ul>
+<li><strong>Provision without a wage:</strong> health insurance (KV), long-term care insurance (PV) and sickness benefit count as entered. The 4 % reduction applies once and only to KV. New are own retirement provision (statutory pension insurance (RV), professional pension scheme, Rürup) and further insurances; for KSK members the limit of €1,900 applies.</li>
+<li><strong>Groups that now get through:</strong> pensioners with a side business (question <code>rente-selbststaendig</code>). Self-employed with a midi-job or side job as their only wage. Several businesses per person (column <code>betrieb</code>). VAT is calculated across all businesses of a person, because there is one entrepreneur with one enterprise; Anlage EÜR, S/G and GewSt exist per business.</li>
+<li><strong>Small business:</strong> in the founding year €25,000 (from 2025, actual turnover) or €22,000 (until 2024, extrapolated) apply. The app reconciles the checkbox in the profile with the ledger. § 20 UStG measures against the previous year.</li>
+<li><strong>EÜR:</strong> non-deductible bookings no longer reduce the profit. The ten-day rule (§ 11 EStG) applies across the ledger boundary.</li>
+<li><strong>New:</strong> company car (1 % rule with EV/hybrid fractions, logbook, cost cap, trips home–business, VAT on private use). Advance VAT returns, intra-Community acquisition and EC Sales List (VAT ID on the booking). E-invoices (XRechnung UBL/CII, ZUGFeRD; XML stored as the original, delivered only as a download in a sandbox). § 16/§ 34 and § 34a. Wages with mini-job levies and wage tax return (Lohnsteuer-Anmeldung), without social security notifications.</li>
+<li><strong>E-Bilanz:</strong> the element names follow the official taxonomy 6.9; the fixed-asset schedule is built dimensionally. Transmission goes via an ERiC sidecar run by the operator (<code>ELSTER_TRANSMISSION_ENABLED</code>, <code>ELSTER_ERIC_CLI</code>, <code>ELSTER_CERT_PATH</code>, <code>ELSTER_CERT_PIN</code>, <code>ELSTER_HERSTELLER_ID</code>). The XBRL file goes over stdin, the PIN only into the sidecar&#39;s environment. The ERiC license and certificate are the operator&#39;s responsibility.</li>
+<li><strong>Anlage S/G:</strong> the lines come from a verified file that the operator reads off Mein ELSTER (<code>apps/api/assets/elster-lines/</code>). Without the file the app shows amounts without lines.</li>
+<li><strong>Rechecked on 20.11.2026</strong> (research §12): code numbers of the advance VAT return 2022–2025 (Kz 87 from 2023, Kz 70 from 2025), mini-job levies, maximum amount 2026, § 19 extrapolation until 2024, § 34a trade tax only from 2024, § 47 UStDV.</li>
+<li><strong>Remains open and is said openly:</strong> the 2026 Vordrucke (main form, Anlage Sonstiges, GewSt) have yet to be published. The app does not carry Kz 70 (date of the change from § 19). Quick-capture totals at 19 %/7 % carry no tax rate. Owl drafts outside documents book into the first business. Open from the review: if the previous year has no own advance VAT returns in the app, the special advance payment is measured against its annual tax instead of the total of the advance payments. Church tax other than ev/rk appears only in the total amount (Kz 83). Under a joint assessment only one profit per year gets the reduced rate. The app does not do the E-Bilanz correction (second submission).</li>
+</ul>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>REQ-015 changes: the gate stays server-side but can be switched off; for „Beides“ (&quot;Both&quot;) the route after flipping leads into the employee part and the self-employed part.</li>
+<li>The persona Maximiliane Koch gets an end-to-end E2E route instead of the gate.</li>
+<li>New facts are field-encrypted like their neighbors (ADR-0008); bookings and log are append-only, never changeable.</li>
+<li>Filing for the self-employed depends for now on the user entering it in Mein ELSTER; the E-Bilanz on the ELSTER certificate.</li>
+<li>Five year versions per tax return mean five sets of form lines and test cases; the app states a missing version (such as a form not yet published) openly instead of guessing.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0100-owl-guard-alongside-the-model-and-timings.html"><span class="eyebrow">Previous</span><span>ADR-0100</span></a><a class="step step-next" href="0102-ports-and-adapters-enforced-by-architecture-tests.html"><span class="eyebrow">Next</span><span>ADR-0102</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

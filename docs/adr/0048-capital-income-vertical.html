@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0048 — Capital vertical: depot classification, capital income form, § 32d Günstigerprüfung (bounded comparison) (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0048</p>
+        <h1>Capital vertical: depot classification, capital income form, § 32d Günstigerprüfung (bounded comparison) (Draft) <span class="status status-open">Draft</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Draft — promotion needs Musti review (ticket 10.5 review)</li>
+<li><strong>Date:</strong> 2026-10-25</li>
+<li><strong>Deciders:</strong> Suhay (agent, ticket 10.5) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-032 (capital income in 1.0, crypto stays 2.0), product ADR-010
+(income type <code>Kapital</code>), product ADR-030 (freely combinable), product ADR-032 (no fabricated
+zero)</li>
+<li><strong>Builds on</strong> ADR-0037 (income-type set), ADR-0038 (<code>berechne</code>/<code>Posten</code>/<code>Quelle</code>), ADR-0034
+(bounded comparison, Günstigerprüfung name reservation), ADR-0040 (document type vocabulary),
+ADR-0043 (Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt)</li>
+<li><strong>Context tags:</strong> architecture, kapital, anlage-kap, guenstigerpruefung, determinism boundary,
+honesty principle, security</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In 1.0 capital income becomes a full income type (product ADR-032): German depots
+(Abgeltungsteuer (flat-rate withholding tax), Sparerpauschbetrag (saver&#39;s lump-sum allowance), <strong>Günstigerprüfung (most-favorable check) § 32d Abs. 6</strong>) plus foreign brokers
+(IBKR, Revolut — no tax withheld → Anlage KAP (capital income form) obligation; exactly the young target group). Crypto stays
+2.0 (private sale transaction, holding periods, its own sourcing logic — an honest gate).
+The interview answer <code>kap-depot</code> (Deutscher Broker / Ausländischer Broker / Krypto) already exists
+in the segment 2 graph (interview.ts <code>KAP_DEPOT_VALUES</code>) and <code>gatedEinkunftsarten</code> already gates
+<code>Kapital</code> for the crypto answer — what is missing is the item/Anlage KAP build-out: the
+guided data interface for the Jahressteuerbescheinigung (annual bank tax certificate), the depot classification, and the
+§ 32d Günstigerprüfung as a bounded comparison following the ADR-0034 pattern.</p>
+<p>Naming discipline (ADR-0034 §1): <strong>this</strong> ticket carries the name &quot;Günstigerprüfung&quot; (§ 32d
+Abs. 6 EStG) — the Veranlagungsartenvergleich (comparison of assessment types, 10.2) is not called that, and vice versa. Two
+different comparisons, two names, never again one.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>A pure, UI-free module <code>packages/core/src/capital.ts</code>, a second one
+<code>packages/core/src/most-favourable-check.ts</code> (ADR-0004, no I/O), plus a document type extension,
+plus the usual API/screen build-out:</p>
+<ol>
+<li><p><strong>Depot classification (<code>ordneKapDepotEin</code>)</strong> — the <code>kap-depot</code> answer is mapped to
+what it MEANS for the tax return: <code>deutscher-broker</code> (Abgeltungsteuer withheld —
+the Günstigerprüfung is the applicable question here), <code>auslaendischer-broker</code> (no German
+tax withheld → mandatory assessment Anlage KAP, taxation at the standard tariff — the KAP obligation
+is named honestly, a flat-rate withholding is never invented), <code>krypto</code> (gated, ADR-032 §2),
+<code>unbekannt</code> (never guessed). The classification is a pure derivation from the ONE source
+(interview answer) — no denormalized column that can drift.</p>
+</li>
+<li><p><strong>Guided data interface (<code>KapitalDaten</code>)</strong> — one captured fact: the capital income
+(income from capital assets, whole euros), <code>erfasst</code>/<code>offen</code>/<code>unklar</code> (the same
+honesty state machine as lstb.ts/rente.ts). Serialization in ONE place
+(ADR-0033 one-rule instinct). Folding: <code>kapitalAlsKernposten</code> → <code>Posten</code> of income type
+<code>Kapital</code> with <code>Quelle: { art: &#39;eingabe&#39; }</code> (the guided form is a transcription; the
+document/AI-suggestion provenance is already carried by the <code>Quelle</code> contract — it is the
+assignment slice, a named follow-up, not a half feature here); <code>kapitalStand</code> folds
+via <code>berechne</code> and passes <code>gegated</code> through unchanged — a crypto investor reads open with a
+named gate.</p>
+</li>
+<li><p><strong><code>guenstigerpruefung.ts</code> — § 32d Abs. 6 EStG as a bounded comparison (ADR-0034 pattern):</strong></p>
+<ul>
+<li><code>abgeltung</code>: 25 % on (capital income − Sparerpauschbetrag § 20 Abs. 9: €1,000 single /
+€2,000 joint) + Soli (§ 4 SolZG) + KiSt with the § 32d Abs. 1 Satz 4 reduction (the
+Abgeltungsteuer is reduced by 25 % of the church tax attributable to it). All rates cited, no
+invented constant.</li>
+<li><code>persoenlich</code>: the tariff tax on the capital income share = § 32a tariff on
+(remaining zvE + capital income) − tariff on remaining zvE, plus the Soli difference (the
+exemption limit makes the Soli non-linear — a difference, never a surcharge on the difference) and
+the KiSt; Zusammenveranlagung (joint assessment) = splitting (§ 32a Abs. 5) on the combined basis.</li>
+<li>The result is the ADR-0034 union: <code>aussage</code> <code>eindeutig</code> (with <code>empfehlung</code>) / <code>zu-knapp</code> /
+<code>unbestimmt</code> — <code>empfehlung</code> exists ONLY on <code>eindeutig</code>, the compiler refuses the
+shortcut. <code>unschaerfe</code> is the ONE bound definition from the Veranlagungsartenvergleich
+(<code>progressionsvorbehaltSchranke</code>, exported for this): the Progressionsvorbehalt (§ 32b) is
+the only excluded factor that can tip the result. <code>eindeutig</code> only if the
+bound is determined AND |delta| exceeds it. Level 3 stays open: <code>uebrigesZvE</code> is
+an income basis (not a real zvE), and <code>herkunft</code> honestly carries that along.</li>
+</ul>
+</li>
+<li><p><strong><code>Steuerbescheinigung</code> as a document type</strong> — the <code>Belegart</code> union (ADR-0040) grows by one value
+(the bank&#39;s annual tax certificate), no rename, no change in semantics of existing
+values.</p>
+</li>
+<li><p><strong>API (<code>Kapital</code> module) + screen</strong> — <code>GET</code>/<code>PUT /v1/steuerjahre/{jahr}/kapital[/ {feld}]</code>, one row per <code>(userId, steuerjahr)</code>, <code>kapitalertraege</code> field-encrypted at rest
+(ADR-0008). <code>GET .../kapital/guenstigerpruefung</code> computes ONLY via @steuereule/core and
+names the honest gates (<code>nicht-anwendbar</code>): foreign broker
+(<code>keine-abgeltung-einbehalten</code>), crypto (<code>krypto-gegated</code>), unanswered kap-depot
+(<code>kap-depot-nicht-beantwortet</code>), missing capital income (<code>keine-kapitalertraege</code>) — never an
+invented comparison. The screen shows the depot classification, the field, the item with
+provenance and the Günstigerprüfung with <code>aussage</code> first.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>M1 limits, named once:</strong> <code>uebrigesZvE</code> of the Günstigerprüfung is the LStB income
+basis of the same tax year (as the Veranlagungsartenvergleich 10.2 uses it) — pension/
+rental income/CH are not yet folded in (level 3 open, carries <code>herkunft</code>). Zusammenveranlagung
+is computed by the core, the API serves M1 single (partner figures are never invented — a named
+follow-up). KiSt is a query input (M1 does not collect it yet, default 0).</li>
+<li><strong>Honest limit, named once:</strong> loss offsetting, crediting of foreign Quellensteuer (withholding tax)
+(§ 32d Abs. 5), § 32d Abs. 2 cases (shareholdings) and the KiSt cap are NOT here —
+named follow-ups, no silent approximation.</li>
+<li><strong>Crypto stays 2.0:</strong> the gate is the honest statement (screen + <code>gatedEinkunftsarten</code>),
+not a half feature (ADR-032 §2).</li>
+<li><strong>Security posture:</strong> <code>kapitalertraege</code> is field-encrypted at rest (ADR-0008) — actual
+capital assets are among the most sensitive facts, joinable to the Steuer-ID; the depot classification
+is NOT its own column, but the (likewise encrypted) interview answer <code>kap-depot</code>;
+WRITE/READ audited (REQ-004). No performance axis.</li>
+<li><strong>Register:</strong> REQ-025; the neighboring tickets occupy 022/023/024 — check for collisions
+on merge (10.6 takes 026).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Abgeltungsteuer without Sparerpauschbetrag.</strong> Rejected: § 20 Abs. 9 EStG is citable and
+changes the assessment basis considerably — leaving it out would be a silent falsification, not a
+simplification.</li>
+<li><strong>KiSt as an uncertainty bound instead of folded in.</strong> Rejected: the § 32d Abs. 1 Satz 4 reduction
+is citable; once folded in, the uncertainty remains exclusively the Progressionsvorbehalt —
+the same shape as the Veranlagungsartenvergleich (ADR-0043), one bound definition for both.</li>
+<li><strong>Depot type as its own Prisma column.</strong> Rejected: a denormalized copy of the
+interview answer can drift (ADR-0033 defect class); the derivation from the one source is
+pure and testable.</li>
+<li><strong>&quot;Make up&quot; a Günstigerprüfung for foreign brokers as well.</strong> Rejected: there,
+Abgeltungsteuer was never withheld, the comparison is moot — the honest
+<code>nicht-anwendbar</code> answer is itself the naming of the KAP obligation (ADR-032).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0047-deadline-warning-mode.html"><span class="eyebrow">Previous</span><span>ADR-0047</span></a><a class="step step-next" href="0049-year-carry-over-m1.html"><span class="eyebrow">Next</span><span>ADR-0049</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

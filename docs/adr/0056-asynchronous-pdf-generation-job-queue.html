@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0056 — Asynchronous PDF generation &amp; job decoupling (fault isolation) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0056</p>
+        <h1>Asynchronous PDF generation &amp; job decoupling (fault isolation) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#addendum-2026-11-22-implementation-status">Addendum 2026-11-22: implementation status</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-08</li>
+<li><strong>Deciders:</strong> Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/printout/</code>, Google Cloud Run worker pool</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Exporting the official BMF tax Vordrucke (forms) requires filling in up to 8 PDF forms and rendering via headless Chromium through Playwright. This process is CPU- and memory-intensive (~300–800 MB RAM per Chromium instance, 1–3 seconds of compute time).</p>
+<p>If this operation runs synchronously in the HTTP request lifecycle (<code>GET /v1/steuerjahre/:jahr/ausdruck</code>), load peaks (e.g. at the 31 July filing deadline) lead to:</p>
+<ol>
+<li><strong>Event loop blocking:</strong> High CPU load slows down time-critical REST endpoints (login, cockpit, interview).</li>
+<li><strong>Container crashes due to OOM:</strong> Simultaneous Chromium starts exceed the container&#39;s memory quota.</li>
+<li><strong>HTTP timeouts:</strong> Proxies and load balancers hard-abort slow requests after 30–60 seconds.</li>
+</ol>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>We decouple the compute-intensive PDF generation through an <strong>asynchronous job pattern (fault isolation)</strong>:</p>
+<ol>
+<li><strong>Job creation:</strong><ul>
+<li>The client initiates the export via <code>POST /v1/steuerjahre/:jahr/ausdruck/async</code>.</li>
+<li>The API responds immediately with <strong><code>202 Accepted</code></strong> and a <code>PrintoutJobDto</code> (<code>{ jobId, status: &#39;queued&#39;, statusUrl: &#39;...&#39; }</code>).</li>
+</ul>
+</li>
+<li><strong>Decoupled background processing:</strong><ul>
+<li>The job is processed in a background queue (in-memory with a worker pool, extensible to Redis/BullMQ or GCP Cloud Tasks).</li>
+<li>Status transitions: <code>queued</code> $\rightarrow$ <code>processing</code> $\rightarrow$ <code>completed</code> | <code>failed</code>.</li>
+</ul>
+</li>
+<li><strong>Status query &amp; download:</strong><ul>
+<li>The client polls <code>GET /v1/steuerjahre/:jahr/ausdruck/jobs/:jobId</code>.</li>
+<li>Once <code>completed</code>, the status returns the secure download URL.</li>
+</ul>
+</li>
+<li><strong>Backward compatibility:</strong><ul>
+<li>The existing synchronous endpoint <code>GET /v1/steuerjahre/:jahr/ausdruck</code> remains unchanged for simple individual cases and automated E2E tests.</li>
+</ul>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Advantages:</strong><ul>
+<li><strong>Fault isolation:</strong> PDF rendering can never crash the main API server.</li>
+<li><strong>No HTTP timeouts:</strong> The request is answered in $&lt; 50,\text{ms}$ with <code>202 Accepted</code>.</li>
+<li><strong>Scalability:</strong> Workers can be scaled horizontally and independently on dedicated serverless containers.</li>
+</ul>
+</li>
+<li><strong>Disadvantages:</strong><ul>
+<li>The client needs a two-step query logic (trigger $\rightarrow$ polling/event).</li>
+</ul>
+</li>
+</ul>
+<h2 id="addendum-2026-11-22-implementation-status"><a class="anchor" href="#addendum-2026-11-22-implementation-status" aria-hidden="true" tabindex="-1">#</a>Addendum 2026-11-22: implementation status</h2>
+<p>The decision is not built the way it is described here. <code>apps/api/src/printout/printout-job.service.ts</code> keeps the jobs in a <code>Map</code> in process memory and starts them with <code>setImmediate</code>. There is no worker pool, no limit on concurrent jobs and no persistent storage. The printout of the Vordrucke renders with <code>pdf-lib</code>, not with headless Chromium; only the DSGVO (GDPR) export uses Chromium. On Cloud Run with up to ten instances, a status query therefore finds the job only by chance. The web app does not currently call the asynchronous routes. The finding is recorded as debt in <a href="../11-risks-and-technical-debt.html#11-risks-and-technical-debt"><code>docs/index.html</code> §11</a>.</p>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0055-zero-downtime-database-migrations-expand-contract.html"><span class="eyebrow">Previous</span><span>ADR-0055</span></a><a class="step step-next" href="0058-lstb-text-fallback-allowlist.html"><span class="eyebrow">Next</span><span>ADR-0058</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

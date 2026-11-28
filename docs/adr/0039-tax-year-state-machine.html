@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0039 — Steuerjahr-Zustandsmaschine (Entwurf) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0039</p>
+        <h1>Steuerjahr-Zustandsmaschine (Entwurf) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Robin (backend, Ticket 04) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> Produkt-ADR-018 (Zustandsmaschine: vier Randzustände, zwei davon echte Zustände)</li>
+<li><strong>Context tags:</strong> architecture, state machine, honesty principle</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Produkt-ADR-018 fixed the Steuerjahr lifecycle: the happy path is Entwurf → Prüfung → Eingereicht →
+Bescheid da → Abgeschlossen, and of four edge cases exactly <strong>two</strong> become real states — &quot;Rückfrage&quot;
+(Finanzamt requests documents) and &quot;Extern erledigt&quot; (user files directly via ELSTER) — while two
+deliberately do <strong>not</strong>: a technical submission failure (stays <code>pruefung</code> + a toast, a technical
+error must never look like a tax status) and a missed deadline (stays <code>entwurf</code> + a warning banner).</p>
+<p>The state machine needs to live in the shared core so the API can validate every transition
+server-side and web/mobile render the same statuses — the same instinct as ADR-0033 for the
+interview graph.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong><code>steuerjahr-status.ts</code></strong> — a pure transition table:</p>
+<ul>
+<li><code>SteuerjahrStatus</code> = <code>entwurf | pruefung | eingereicht | rueckfrage | bescheid | abgeschlossen | extern-erledigt</code>.</li>
+<li><code>istUebergangErlaubt(von, nach)</code> and <code>naechsteZustaende(von)</code> over a closed transition map:
+<code>entwurf → pruefung|extern-erledigt</code>, <code>pruefung → eingereicht|entwurf|extern-erledigt</code>,
+<code>eingereicht → rueckfrage|bescheid</code>, <code>rueckfrage → eingereicht|bescheid</code>,
+<code>bescheid → abgeschlossen</code>; <code>abgeschlossen</code> and <code>extern-erledigt</code> are terminal.</li>
+</ul>
+<p>The two non-states (technical failure, missed deadline) are enforced by <strong>absence</strong>: there is no
+<code>failed</code> and no <code>verspätet</code> status, so neither can be reached — the same &quot;unrepresentable to
+violate&quot; instinct as ADR-0031 §4.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>The API can validate a status write against <code>istUebergangErlaubt</code> before persisting; web/mobile
+derive the same legal-next-states for their UI.</li>
+<li><strong>Open for promotion review (the honest caveat):</strong> ADR-018 names the states and the main flow
+but not the full transition matrix. The exact edges above — in particular <code>pruefung → entwurf</code>
+(reopen to edit), and <code>extern-erledigt</code> being reachable only from <code>entwurf</code>/<code>pruefung</code> (never
+after <code>eingereicht</code>) — are this slice&#39;s interpretation and need product confirmation before
+promotion.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Model the four edge cases as four statuses.</strong> Rejected: ADR-018 explicitly ruled two of them
+are NOT states; encoding a <code>failed</code>/<code>verspätet</code> state would make a technical failure look like a
+tax status, the exact defect ADR-018 names.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0038-calculation-core-and-ai-port.html"><span class="eyebrow">Previous</span><span>ADR-0038</span></a><a class="step step-next" href="0040-document-inbox.html"><span class="eyebrow">Next</span><span>ADR-0040</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

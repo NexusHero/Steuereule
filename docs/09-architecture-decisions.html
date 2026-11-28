@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Architecture decisions — SteuerEule</title>
+  <link rel="icon" href="../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item is-active" href="09-architecture-decisions.html" aria-current="page"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 9 of 12</p>
+        <h1 id="9-architecture-decisions">Architecture decisions</h1>
+        
+      </header>
+      <article class="prose">
+<p>The index <a href="adr/index.html"><code>docs/adr/index.html</code></a> lists every decision (101 files as of 2026-11-22). These carry the structure:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">ADR</th>
+<th align="left">Decision</th>
+<th align="left">Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><a href="adr/0008-profile-persistence-encryption.html">0008</a></td>
+<td align="left">Profile on the server, sensitive fields encrypted</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0009-better-auth-as-auth-server.html">0009</a></td>
+<td align="left">better-auth as the auth server</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0012-session-guard-coexistence-and-guest-upgrade.html">0012</a></td>
+<td align="left">A guard for guest or session; guest data moves to the account in one transaction</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0013-dsgvo-export-and-account-deletion.html">0013</a></td>
+<td align="left">GDPR export and account deletion; the access log is anonymised and kept</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0019-oxlint-replaces-eslint.html">0019</a></td>
+<td align="left">oxlint as the lint gate</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0021-controls-are-proven-by-breaking-them.html">0021</a></td>
+<td align="left">A control is proven by breaking it</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.html">0034</a></td>
+<td align="left">The filing-type comparison returns a bounded comparison, not a verdict</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0038-calculation-core-and-ai-port.html">0038</a></td>
+<td align="left">Deterministic calculation core, AI behind a port</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0045-value-first-funnel.html">0045</a></td>
+<td align="left">Guests may answer the first questions; the account takes them over</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0050-paper-filing-instead-of-elster-in-1-0.html">0050</a></td>
+<td align="left">Filing on paper, paid per tax year at print time</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0052-agent-access-mcp.html">0052</a></td>
+<td align="left">Access for the user&#39;s own assistant through MCP and OAuth</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0053-beta-hosting-cloud-run.html">0053</a></td>
+<td align="left">Hosting on Cloud Run and Cloud SQL</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0055-zero-downtime-database-migrations-expand-contract.html">0055</a></td>
+<td align="left">Migrations by expand and contract</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0059-document-keystore-crypto-shredding.html">0059</a></td>
+<td align="left">A separate keystore for receipt keys</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0064-owl-chat-answer-runs-and-resumption.html">0064</a></td>
+<td align="left">The owl&#39;s answer runs, detached from the connection</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0066-owl-field-catalog-and-one-write-path.html">0066</a></td>
+<td align="left">One field catalogue, one write path, draft before entry</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0101-self-employed.html">0101</a></td>
+<td align="left">Self-employment: cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax</td>
+<td align="left">Accepted</td>
+</tr>
+<tr>
+<td align="left"><a href="adr/0102-ports-and-adapters-enforced-by-architecture-tests.html">0102</a></td>
+<td align="left">Ports &amp; Adapters, enforced by two architecture tests</td>
+<td align="left">Accepted</td>
+</tr>
+</tbody></table></div>
+<p>The decisions on rental, capital income and the year takeover (0046, 0048, 0049) still have the status <em>Draft</em> although their code ships (§11).</p>
+<hr>
+
+      </article>
+      
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="08-cross-cutting-concepts.html"><span class="eyebrow">Previous</span><span>Cross-cutting concepts</span></a><a class="step step-next" href="10-quality-and-tests.html"><span class="eyebrow">Next</span><span>Quality and tests</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>SteuerEule — Architecture (arc42) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">arc42</p>
+        <h1>SteuerEule — Architecture (arc42)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#diagrams--how-theyre-maintained">Diagrams — how they&#39;re maintained</a></li><li><a class="chip" href="#5-building-block-view">5. Building block view</a></li><li><a class="chip" href="#51-data-model-data-view">5.1 Data model (data view)</a></li><li><a class="chip" href="#8-crosscutting-concepts--the-build--quality-toolchain">8. Crosscutting concepts — the build &amp; quality toolchain</a></li><li><a class="chip" href="#81-boot-ordering--a-structural-invariant-in-appsapisrcmaints">8.1 Boot ordering — a structural invariant in <code>apps/api/src/main.ts</code></a></li></ul>
+      </header>
+      <article class="prose">
+<blockquote>
+<p><strong>Which document is authoritative.</strong> The system overview is <a href="../index.html"><code>docs/index.html</code></a>:
+context, building blocks, runtime, deployment, concepts, risks. This document keeps what that one
+does not go into: the build and quality toolchain (§8) and the boot-ordering invariant (§8.1).
+<strong>§5 and §5.1 below describe the system as it stood at REQ-014</strong> (nine tables, a handful of
+modules). They are kept as a record of that slice and are not maintained against today&#39;s code;
+for the current structure read <code>index.html</code> §5 and
+<a href="../subsystems.html"><code>subsystems.html</code></a>.</p>
+</blockquote>
+<p>The living architecture document for the SteuerEule engineering build, kept as
+docs-as-code alongside the <a href="../adr/index.html">engineering ADR log</a>. It is <strong>as important as
+the software</strong>: a stale arc42 is treated the way we treat a failing test, and every
+completed task that moves the architecture moves this document (text <strong>and</strong> diagrams) in
+the same breath.</p>
+<p>This is a <strong>proportionate</strong> arc42 — it covers the views the system actually needs today,
+done well and extensible later, rather than a hollow 12-section skeleton. Sections are
+added when a change first touches them; the <a href="arc42-template.html">full arc42 template</a>
+remains the reference for the sections not yet populated.</p>
+<p>Decisions live in the ADRs (this document <strong>shows the structure</strong>; the ADRs <strong>justify
+it</strong> and are the source of record). Product/design decisions are cross-referenced into the
+<a href="../../finanzo-funke-design-system/project/research/adr">product ADR log</a> rather than
+duplicated.</p>
+<h2 id="diagrams--how-theyre-maintained"><a class="anchor" href="#diagrams--how-theyre-maintained" aria-hidden="true" tabindex="-1">#</a>Diagrams — how they&#39;re maintained</h2>
+<p>Every diagram is authored as <strong>PlantUML</strong> and the <code>.puml</code> <strong>text source is committed</strong>
+(diffable, reviewable) next to the doc; the exported <strong><code>.svg</code> is committed too</strong> and the
+prose references the SVG so it renders everywhere. Regenerate after any edit:</p>
+<pre><code class="language-sh">./scripts/docs/render-diagrams.sh   # needs `plantuml` and Graphviz (`dot`) on the PATH
+</code></pre>
+<p>The script renders every <code>.puml</code> under <code>docs/arc42/</code>, <code>docs/adr/</code> and <code>docs/diagrams/</code> twice: <code>&lt;name&gt;.svg</code> in the
+light theme and <code>&lt;name&gt;.dark.svg</code> in the app&#39;s dark theme. Every source includes
+<a href="../diagram-style.puml"><code>../diagram-style.puml</code></a>, which sets fonts, lines and colours from the app&#39;s design tokens
+(<code>packages/tokens/dist/tokens.css</code>). The documents embed both files in a <code>&lt;picture&gt;</code> element, so a reader sees
+the one that fits their light or dark setting. The Ports &amp; Adapters picture (<code>images/architecture-hexagon.svg</code>)
+is drawn by hand with the same tokens and carries both themes in one file.</p>
+<p><strong>The pages themselves.</strong> The documentation is the HTML pages under <code>docs/</code>, edited by hand
+(<a href="../adr/0116-documentation-is-html-pages.html">ADR-0116</a>): the architecture as <code>docs/index.html</code> and one page per
+chapter, each ADR and each other document as one page. <code>docs/assets/site.css</code> carries the look; its first
+block is a copy of <code>packages/tokens/dist/tokens.css</code>. The pages follow the reader&#39;s light or dark setting and
+need no server. <code>adr-check</code> and <code>register-check</code> read the pages through
+<code>scripts/checks/lib/html-doc.mjs</code>.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>View</th>
+<th>Source</th>
+<th>Rendered</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>§5 Building block view</td>
+<td><a href="building-block-view.puml"><code>building-block-view.puml</code></a></td>
+<td><a href="building-block-view.svg"><code>building-block-view.svg</code></a></td>
+</tr>
+<tr>
+<td>§5 Data model (data view)</td>
+<td><a href="data-model.puml"><code>data-model.puml</code></a></td>
+<td><a href="data-model.svg"><code>data-model.svg</code></a></td>
+</tr>
+<tr>
+<td>§8.1 Boot ordering</td>
+<td><a href="../adr/0028-boot-env-snapshot-ordering.puml"><code>../adr/0028-boot-env-snapshot-ordering.puml</code></a></td>
+<td><a href="../adr/0028-boot-env-snapshot-ordering.svg"><code>../adr/0028-boot-env-snapshot-ordering.svg</code></a></td>
+</tr>
+</tbody></table></div>
+<p><strong>§8&#39;s toolchain half is prose-only by design:</strong> it describes a toolchain, not a structure, and a
+diagram of &quot;which tools run in which order&quot; would only restate the CI workflow file that already says
+it. That sentence used to cover all of §8; <strong>§8.1 is the exception it now takes</strong>, because boot
+ordering <em>is</em> a structure — an invariant about which module is evaluated before which — and it is
+exactly the kind of thing prose describes badly. The diagram lives with ADR-0028 rather than being
+duplicated here, and is referenced from both.</p>
+<hr>
+<h2 id="5-building-block-view"><a class="anchor" href="#5-building-block-view" aria-hidden="true" tabindex="-1">#</a>5. Building block view</h2>
+<p>Level-1 whitebox of the running system: the two apps, the shared monorepo packages, the
+API&#39;s internal modules, and the EU Postgres database. Green blocks were added <strong>since this
+view&#39;s previous revision</strong> (Slice 2&#39;s auth stack and REQ-011&#39;s DSGVO export/deletion):
+REQ-014&#39;s QR device authorization (ADR-0024) and the app&#39;s <strong>first real router</strong> (ADR-0023).</p>
+<p><strong>Dashed blocks are in review on <code>steuereule#239</code> and are not yet on <code>main</code>.</strong> The same marker
+carried <code>DatenschutzScreen</code> through <code>steuereule#153</code> and came off when that slice merged — the
+map may show what is coming, but only for as long as it says so. When #239 merges, the dashes
+come off these five blocks.</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="building-block-view.dark.svg">
+  <img src="building-block-view.svg" alt="Building block view">
+</picture><p><strong>Frontend — <code>apps/mobile-web</code></strong> (Expo / React-Native-Web). Screen-by-screen takeover
+(ADR-0005, walking skeleton), now: Splash → Login/Registrierung → Onboarding → the tabbed
+shell (Cockpit, Profil), with Datenschutz as a drill-down reached from Profil.</p>
+<ul>
+<li><strong><code>App.tsx</code> — the composition root, and now the app&#39;s first real router</strong> (ADR-0023):
+<code>@react-navigation/native</code> + native-stack with a <code>linking</code> config, replacing what was a
+<code>useState&lt;Stage&gt;</code> union. <strong>It is the one file permitted to import <code>@react-navigation/*</code>.</strong>
+Screens stay prop-driven — a screen never imports the router, never calls a navigation hook,
+never imports a navigation type. That constraint is not stylistic: it is what holds the test
+blast radius at 1 file instead of 15, and it is enforced at review.</li>
+<li><strong><code>GeraetefreigabeScreen</code> — the QR approval surface</strong> (REQ-014). It does not ask &quot;Approve?&quot;;
+it asks whether the code shown is the one on your screen, next to the requesting browser, OS,
+region and time, and carries a standing statement that a code received by message is never
+approved here. That statement is a <strong>control</strong>, not reassurance: approving a code someone else
+claimed installs <em>their</em> session on <em>your</em> desktop — session fixation, not account takeover.</li>
+<li><code>LoginScreen</code> additionally carries the <strong>open QR column</strong> (<code>QrMark</code>, the brand mark static
+inside the QR pattern&#39;s own centre, per the Funke DS&#39;s dedicated reference — #283 dropped the
+earlier animated <code>OwlMark</code> entrance once that reference existed); the code is minted on page
+load, which is a deliberate trade recorded in ADR-0024. Its own mint/poll failures classify as
+<code>unreachable</code>/<code>server</code>/<code>rate-limited</code> and drive a bounded, backing-off auto-retry — never on
+the rate-limited case, which is ADR-0024&#39;s own brake, not a bug to route around.</li>
+<li><code>ProfilScreen</code> additionally carries the <strong>device list</strong> with per-entry revocation, and is the
+second consumer of the resolved region.</li>
+<li><code>CockpitScreen</code> — hero refund-estimate card plus honest loading/empty/error states; reads
+the generated hook and formats the range with <code>@steuereule/core</code>.</li>
+<li><code>ProfilScreen</code> — the stored profile, viewed and edited against the live <code>GET</code>/<code>PUT /v1/profile</code> (REQ-013). <strong>Nothing sensitive is written to client storage</strong> (ADR-0008).</li>
+<li><code>DatenschutzScreen</code> — the user-facing half of REQ-011: DSGVO export (JSON + PDF) and
+account deletion with the pre-delete export offer, the Löschschutz warning, and fresh-auth
+re-verification (400/401/429/403 each a distinct, honest state) as real UI paths. On a
+successful deletion it clears both caches that could outlive the account — TanStack Query&#39;s,
+and better-auth&#39;s own session atom — so &quot;signed out&quot; is a state the code produces, not one
+that happens to follow.</li>
+<li><code>exportDownload.ts</code> — the <strong>one</strong> sanctioned egress outside the generated client, drawn on
+the map rather than left inside the screen. See the api-client bullet below for why it
+exists; it is on the diagram because an undrawn second egress is how &quot;one call site&quot; quietly
+stops being true.</li>
+<li><code>AuthClientProvider</code> — the <strong>one</strong> better-auth client construction site (mirrors the
+api-client&#39;s &quot;one fetch call site&quot; rule): session reads, sign-in/up/out, guest upgrade.
+A screen asking &quot;is this a guest or an account?&quot; asks <em>this</em>, so the answer is the same
+one the server would give.</li>
+</ul>
+<p><strong>Shared packages.</strong></p>
+<ul>
+<li><code>@steuereule/core</code> — the <strong>deterministic domain</strong>: the single home of the shape
+validators (<code>isValidSteuerId</code> / <code>isValidSteuernummer</code>) and the Cockpit range rule
+(<code>cockpitRange</code>). Imported by <strong>both</strong> frontend and API; there is no second copy of these
+rules (the determinism boundary, ADR-014/048).</li>
+<li><code>@steuereule/api-client</code> — the orval-generated typed client + TanStack Query hooks,
+generated from <code>apps/api/openapi.json</code> (ADR-0001). Four generated targets: profile, cockpit,
+auth (capabilities) and account (export/deletion). The <strong>one</strong> fetch call site is its
+<code>httpClient</code> mutator, with exactly <strong>one</strong> documented exception: the export download
+(<code>exportDownload.ts</code>). The export body is a <code>Content-Disposition: attachment</code> — JSON <em>or</em> PDF
+bytes — and the mutator unconditionally <code>JSON.parse</code>s, which throws on a PDF; a query hook&#39;s
+cache semantics are also the wrong shape for a one-off download. The exception reuses the same
+configured origin and the same <code>credentials: &#39;include&#39;</code> discipline, so what it bypasses is the
+JSON envelope, not the transport policy.</li>
+<li><code>@steuereule/ui</code> / <code>@steuereule/tokens</code> — the Funke design system and its design tokens.</li>
+</ul>
+<p><strong>Backend — <code>apps/api</code></strong> (NestJS on Fastify).</p>
+<ul>
+<li><strong>better-auth</strong> (ADR-0009, supersedes ADR-0007&#39;s Keycloak) — mounted as a Fastify
+catch-all on <code>/api/auth/*</code>, <strong>outside</strong> Nest but <strong>behind</strong> the same trust seam: it is the
+auth <em>server</em>, not a second identity authority.</li>
+<li><code>UserContextGuard</code> — still the <strong>one</strong> place a request&#39;s <code>userId</code> is established (ADR-0007,
+refined by ADR-0012): a verified better-auth session <strong>or</strong> an HMAC-signed guest cookie,
+never a client-supplied identity. Every <code>/v1</code> module scopes through it.</li>
+<li><code>AuthModule</code> — capabilities endpoint (is Google actually configured?), the atomic
+guest→account upgrade (ADR-0012 §4), the <code>FreshAuthChecker</code> used by destructive actions,
+the breached-password check (REQ-010), and the <code>EmailSender</code> seam.</li>
+<li><strong><code>DeviceModule</code> (new)</strong> — <code>/v1/device/{code,pending,approve,token}</code> (ADR-0024). better-auth&#39;s
+<code>device-authorization</code> plugin implements RFC 8628, but its <strong>HTTP routes are switched off</strong>
+(<code>disabledPaths</code>) and only server-side <code>auth.api.*</code> calls reach it. Two of its behaviours force
+that seam: <code>/device/token</code> returns a Bearer token in JSON and never sets a cookie (ADR-0008/0012
+forbid holding one in JS-reachable storage), and <code>GET /device</code> claims a code for the caller&#39;s
+account while the origin check skips <strong>all</strong> <code>GET</code>s — reachable cross-site under our
+<code>SameSite=None</code> cookie. <strong>Same shape as the <code>UserContextGuard</code> seam: better-auth is the
+mechanism, our API owns the surface.</strong> Because <code>/device/token</code> sets no cookie, a better-auth
+plugin (<code>device-session-cookie.ts</code>) adds an <code>after</code>-hook that calls better-auth&#39;s own
+<code>setSessionCookie</code> — no re-implemented signed-cookie format — and the acceptance test
+round-trips the result through a real better-auth instance.</li>
+<li><strong><code>RegionResolver</code> (new)</strong> — country-level geo-IP (ADR-0024), self-hosted in our EU deployment,
+fetched at build time and pinned by checksum; <strong>no user IP ever leaves our infrastructure</strong>.
+It <strong>never guesses</strong>: a private/unroutable address, an unlisted block, or a database past its
+refresh interval all resolve to <code>unknown</code>, rendered as &quot;Region unbekannt&quot;. One resolver, <strong>two
+consumers</strong> — the approval screen and the device list — so the fallback cannot come to mean two
+different things on two screens. Country granularity is deliberate data minimisation
+(Art. 5(1)(c)).</li>
+<li><code>ProfileModule</code> — <code>GET</code>/<code>PUT /v1/profile</code>.</li>
+<li><code>CockpitModule</code> — <code>GET /v1/steuerjahre/{jahr}/cockpit</code>. Controller (guarded, <code>jahr</code>
+bounds-validated) → <code>CockpitService</code> → <code>TaxYearRepository</code> seam. The service reads the raw
+<code>TaxYear</code> inputs and computes the estimate range via <code>@steuereule/core</code>&#39;s <code>cockpitRange()</code>
+— <strong>the range is never recomputed locally or persisted</strong>.</li>
+<li><strong><code>AccountModule</code> (new)</strong> — the DSGVO surface (ADR-0013): <code>GET /v1/account/export</code>
+assembles the export <strong>once</strong> and renders it two ways (Art. 20 JSON, human-readable
+PDF-Bericht through the <code>PdfRenderer</code> seam), reusing <code>ProfileRepository</code> so there is one
+decrypt path; <code>DELETE /v1/account</code> runs the teardown as a <strong>single Prisma
+<code>$transaction</code></strong> — hard-delete <code>Profile</code>, anonymise the audit rows to an irreversible
+tombstone, delete the better-auth <code>User</code> (Session/Account cascade), exempting anything
+under an active <code>LegalHold</code>. All-or-nothing: no partial teardown is ever observable.</li>
+<li><code>AuditModule</code> — the append-only <code>TaxDataAccessLog</code> (DSGVO Art. 30; the audited surface is
+identifier-class access, not read-of-own-estimate — see §Data model).</li>
+<li><code>PrismaModule</code> — the shared, field-encryption-extended Prisma client (ADR-0008).</li>
+<li><strong>Cross-cutting</strong> — the fail-closed CORS origin allowlist (ADR-0011; never <code>*</code>, credentialed
+cross-origin with <code>SameSite=None; Secure</code>), <code>helmet</code>/CSP, and rate limiting (<code>@nestjs/throttler</code>
+for the device/verify-password routes, better-auth&#39;s built-in limiter for its own). Both key on the
+client address Fastify resolves from the socket peer and <code>TRUSTED_PROXIES</code>, which the server writes
+into an internal header before any route runs; a client-supplied <code>X-Forwarded-For</code> no longer buys a
+fresh bucket (ADR-0106 D3, closing <a href="https://github.com/NexusHero/Steuereule/issues/241">#241</a>&#39;s
+single-value bypass in code). Sign-in is also limited per account, and guest writes per address
+(ADR-0106 D8/D9). The limiter storage is in-memory per pod, or Redis with <code>REDIS_URL</code> (ADR-0035).</li>
+</ul>
+<p><strong>Persistence — Postgres (EU)</strong>, expand-only versioned migrations (ADR-047). Nine tables:
+four <code>userId</code>-scoped domain tables, the four better-auth identity tables, and
+<code>DeviceCode</code> (see the data model).</p>
+<h3 id="which-decisions-these-blocks-trace-to"><a class="anchor" href="#which-decisions-these-blocks-trace-to" aria-hidden="true" tabindex="-1">#</a>Which decisions these blocks trace to</h3>
+<p>REQ-001 (Cockpit) introduced <strong>no new ADR-level decision</strong> — it was a straight application of
+already-adopted patterns, and that remains true. The blocks added since then are not: they
+implement decisions that were escalated and recorded first — <strong>ADR-0009</strong> (better-auth as the
+auth server), <strong>ADR-0012</strong> (guard/guest coexistence and the atomic upgrade), <strong>ADR-0011</strong>
+(credentialed cross-origin), <strong>ADR-0010</strong> (CI as the real gate), and <strong>ADR-0013</strong> (DSGVO
+export/deletion, including the two stakeholder rulings: anonymise-and-retain over hard-deleting
+the audit log, and JSON <em>and</em> PDF rather than either alone). This view <strong>shows</strong> the structure;
+those ADRs <strong>justify</strong> it and stay the source of record.</p>
+<hr>
+<h2 id="51-data-model-data-view"><a class="anchor" href="#51-data-model-data-view" aria-hidden="true" tabindex="-1">#</a>5.1 Data model (data view)</h2>
+<p>The persisted schema (<code>apps/api/prisma/schema.prisma</code>). Green = added since the REQ-001
+revision: the better-auth identity tables (Slice 2) and <code>LegalHold</code>
+(REQ-011&#39;s Löschschutz seam).</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="data-model.dark.svg">
+  <img src="data-model.svg" alt="Data model">
+</picture><ul>
+<li><strong><code>userId</code> is a logical scoping key on the domain tables, not a DB foreign key</strong>
+(ADR-0007). <code>Profile</code> / <code>TaxDataAccessLog</code> / <code>TaxYear</code> / <code>LegalHold</code> carry <strong>no FK</strong> to
+<code>User</code>: the same column holds either a verified better-auth user id or an HMAC-signed guest
+id, and only the <code>UserContextGuard</code> decides which. Every row is read scoped to a single
+<code>userId</code>; there are no cross-user joins.
+<strong>Correction (this revision):</strong> the previous text said &quot;there is no <code>User</code> table&quot;. That
+stopped being true when better-auth landed (ADR-0009/0012) — there <em>is</em> one, with real FKs
+among the identity tables. What survived the change is the <em>absence of a foreign key from
+the domain tables to it</em>, which is the property the guest/account seam actually depends on.</li>
+<li><strong><code>Profile</code></strong> — plain onboarding facts; <code>steuerId</code> / <code>steuernummer</code> are <strong>field-encrypted
+at rest</strong> (ADR-0008, AES-256-GCM, per-write nonce, <code>mode=strict</code>). <strong>Hard-deleted</strong> on
+account deletion (ADR-0013 §2): the app-wide encryption key makes per-user crypto-shredding
+impossible, so hard-delete is what makes erasure genuine.</li>
+<li><strong><code>TaxDataAccessLog</code></strong> — append-only who/what/when trail, no value column (ADR-0008 /
+REQ-004). On account deletion the rows are <strong>anonymised, not deleted</strong> (ADR-0013 §1): the
+<code>userId</code> is re-keyed to an irreversible tombstone, keeping the Art. 30 processing record
+while severing the person-link (Recital 26). That UPDATE is the <strong>second</strong> sanctioned
+structural exception to app-layer append-only, after ADR-0012 §4&#39;s guest re-key — any future
+DB-level append-only enforcement must whitelist both.</li>
+<li><strong><code>LegalHold</code></strong> — the minimal Löschschutz seam (ADR-0013 §5): while <code>holdUntil</code> is in the
+future, the deletion transaction <strong>exempts</strong> that <code>(userId, resource)</code> and retains it under
+legal obligation. The exempt set is vacuous in real use today (no filing model persists yet),
+but the mechanism is real and acceptance-tested on both branches — which is what makes the
+UI&#39;s retention wording an honest statement rather than a hypothetical.</li>
+<li><strong><code>User</code> / <code>Session</code> / <code>Account</code> / <code>Verification</code></strong> — better-auth&#39;s own schema (ADR-0009),
+the only place with real foreign keys (<code>Session</code>/<code>Account</code> cascade off <code>User</code>). <code>Account</code>
+holds the scrypt password hash and any social-provider tokens and is <strong>never exported</strong>: the
+DSGVO export carries account <em>identity</em> only — email, name, <code>emailVerified</code>, providers — and
+no secret of any kind (ADR-0013 §4).</li>
+<li><strong><code>RateLimit</code></strong> — DB-backed on purpose (REQ-010 / ADR-0012 §5): an in-memory counter resets
+per pod and is trivially bypassed once the API scales horizontally. Reused, not re-invented,
+by the deletion path&#39;s password re-verification limit.</li>
+<li><strong><code>TaxYear</code></strong> — <strong>raw inputs only</strong> (<code>baseEstimate</code> / <code>openItems</code> / <code>openConflicts</code>),
+unique per <code>(userId, steuerjahr)</code>. The refund-estimate range is <strong>never persisted</strong> —
+recomputed per read via <code>cockpitRange()</code>, so there is no second place to drift.
+<strong>No <code>@encrypted</code> field</strong>: ruled out of ADR-0008 scope in review — it holds no tax
+identifier, only a rounded estimate and two counts. Revisit if assessed amounts or income
+figures ever land on this entity.</li>
+</ul>
+<hr>
+<h2 id="8-crosscutting-concepts--the-build--quality-toolchain"><a class="anchor" href="#8-crosscutting-concepts--the-build--quality-toolchain" aria-hidden="true" tabindex="-1">#</a>8. Crosscutting concepts — the build &amp; quality toolchain</h2>
+<p>Added because ADR-0019 is the first change to touch this layer. It records what the tools <em>are</em>
+and what each one is trusted to prove; the <strong>human</strong> gates (refinement, review, risk-tiered test)
+live in <a href="../process/delivery-pipeline.html"><code>docs/process/delivery-pipeline.html</code></a> and are deliberately
+not duplicated here.</p>
+<p>The governing principle is ADR-0010&#39;s: <strong>a gate counts only when it runs in CI against the real
+thing.</strong> A check that runs only on a developer&#39;s machine is evidence, not a guarantee.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Tool</th>
+<th>What it is trusted to prove</th>
+<th>Where it is real</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Types</td>
+<td><code>tsc --noEmit</code>, TS <strong>7.0.2</strong>, <code>strict</code> + <code>noUncheckedIndexedAccess</code> + <code>exactOptionalPropertyTypes</code></td>
+<td>Type correctness across the workspace. Carries the <strong>type-aware</strong> load that the linter deliberately does not (ADR-0019 §4).</td>
+<td>CI <code>test</code> job</td>
+</tr>
+<tr>
+<td>Static lint</td>
+<td><strong>oxlint</strong> (ADR-0019)</td>
+<td>Syntactic/semantic defect classes <code>tsc</code> does not cover — notably unused bindings (<code>noUnusedLocals</code> is <strong>not</strong> enabled) and shadowing across the Playwright <code>page.evaluate</code> serialisation boundary.</td>
+<td>CI <code>lint</code> job</td>
+</tr>
+<tr>
+<td>Architecture boundaries</td>
+<td>Vitest: <code>apps/api/test/architecture.test.ts</code>, <code>packages/core/src/architecture.test.ts</code> (ADR-0102)</td>
+<td>Ports &amp; Adapters: the database client and each external SDK are imported only by the files named for them; the set of module → module imports matches a baseline; the core has no new import direction and no value-import cycle between files. The proof that the check can fail is inside the test: twelve constructed violations.</td>
+<td>CI <code>test</code> job</td>
+</tr>
+<tr>
+<td>Unit / pure logic</td>
+<td>Vitest</td>
+<td>Behaviour of pure logic, no DB.</td>
+<td>CI <code>test</code> job</td>
+</tr>
+<tr>
+<td>Compliance</td>
+<td>Vitest against <strong>real Postgres</strong></td>
+<td>REQ-003 field encryption at rest, REQ-004 append-only audit, REQ-005/006/009/010/011 acceptance. Never a mock (ADR-0010).</td>
+<td>CI <code>integration</code> job</td>
+</tr>
+<tr>
+<td>Boot</td>
+<td>compiled <code>dist/</code> over real HTTP</td>
+<td>Wiring bugs that <code>.inject()</code> is structurally blind to.</td>
+<td>CI <code>smoke</code> job</td>
+</tr>
+<tr>
+<td>Browser CORS</td>
+<td>headless Chromium, two real origins</td>
+<td>Credentialed cross-origin behaviour no <code>curl</code> or Node <code>fetch()</code> can enforce.</td>
+<td>CI <code>e2e: gates — account-and-session</code></td>
+</tr>
+<tr>
+<td>Real-browser layout</td>
+<td>headless Chromium, real viewports (s/m/l)</td>
+<td>ADR-0014 breakpoint <code>maxWidth</code> resolution and the DS&#39;s <code>.fk-btn { width: 100% }</code> contract — jsdom performs no layout, so this is unprovable at the unit layer.</td>
+<td>CI <code>e2e: gates — account-and-session</code></td>
+</tr>
+</tbody></table></div>
+<p>The jobs live in two workflows: <code>lint</code>, <code>test</code> and <code>integration</code> in <em>Quality</em> (<code>quality.yml</code>), <code>smoke</code> and the browser gate groups (<code>e2e: gates — &lt;group&gt;</code>, listed in <code>e2e/gates.json</code>, ADR-0112) in <em>Build &amp; E2E</em> (<code>ci.yml</code>).</p>
+<h3 id="why-the-linter-has-its-own-parser"><a class="anchor" href="#why-the-linter-has-its-own-parser" aria-hidden="true" tabindex="-1">#</a>Why the linter has its own parser</h3>
+<p><code>typescript-eslint</code> is coupled to the TypeScript <strong>compiler API</strong>, which made the linter a hostage
+to this repo&#39;s deliberate TS 7 pin — it threw at module load and the repo went its whole life
+without a working static-lint gate. oxlint carries its own parser, so the same coupling cannot
+recur. The lesson generalises: when a tool conflicts with the language version, <strong>decouple the tool
+from the compiler API rather than downgrade the language</strong> (ADR-0019, <em>Alternatives</em>).</p>
+<p>Type-aware linting is <strong>deferred, not surrendered</strong> — <code>oxlint-tsgolint</code> is built on typescript-go
+(TS 7&#39;s own engine) and was proven to work here; it is a separate cost decision (ADR-0019 §4).</p>
+<h3 id="a-gate-must-be-provably-real"><a class="anchor" href="#a-gate-must-be-provably-real" aria-hidden="true" tabindex="-1">#</a>A gate must be provably real</h3>
+<p>The <code>lint</code> job was, until ADR-0019, wired into <code>needs: [lint, test, integration]</code> while running
+<code>echo &quot;TODO&quot;</code> — it blocked the pipeline while checking nothing and passed in ~3s on every run. A
+gate carrying authority without content is worse than no gate, because it reports a safety it never
+established.</p>
+<p>The standing consequence: <strong>every gate here must be demonstrated failing.</strong> The evidence for a gate
+is a link to a CI run that went red on a deliberately introduced defect and skipped its dependants
+— not a green run, and not a local one.</p>
+<p>The <code>lint</code> job is real: <code>quality.yml</code> runs <code>pnpm lint</code>, which is <code>oxlint --deny-warnings</code>.</p>
+<h2 id="81-boot-ordering--a-structural-invariant-in-appsapisrcmaints"><a class="anchor" href="#81-boot-ordering--a-structural-invariant-in-appsapisrcmaints" aria-hidden="true" tabindex="-1">#</a>8.1 Boot ordering — a structural invariant in <code>apps/api/src/main.ts</code></h2>
+<p>Added because <a href="../adr/0028-check-the-effect-not-the-mechanism.html">ADR-0028</a> is the first decision to
+make module-evaluation order load-bearing. This is the one place in the system where <strong>the order of
+two import statements is an architectural constraint</strong>, so it belongs on the map rather than only in
+the file that happens to contain it.</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../adr/0028-boot-env-snapshot-ordering.dark.svg">
+  <img src="../adr/0028-boot-env-snapshot-ordering.svg" alt="Boot ordering">
+</picture><p><em>(source: <a href="../adr/0028-boot-env-snapshot-ordering.puml"><code>0028-boot-env-snapshot-ordering.puml</code></a>)</em></p>
+<p><strong>The constraint:</strong> <code>main.ts</code> imports <code>./config/env-snapshot.js</code> <strong>first</strong>, deliberately ahead of its
+otherwise-alphabetical order. <code>./app.module.js</code> would sort first and reaches <code>@prisma/client</code> at
+import time, whose generated client merges the schema-adjacent <code>apps/api/.env</code> into <code>process.env</code> as
+a side effect. Once that has run, &quot;what the operator actually supplied&quot; is unrecoverable from inside
+the process.</p>
+<p><strong>What is and is not enforced, stated plainly:</strong></p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A lint rule preventing a re-sort</td>
+<td><strong>None.</strong> <code>.oxlintrc.json</code> has no import-sort rule today. If one is ever adopted it needs an exception for this line.</td>
+</tr>
+<tr>
+<td>A test that goes red when the order breaks</td>
+<td><strong>Yes</strong>, <code>apps/api/test/boot/assert-env-not-file-sourced.test.ts</code> — the acceptance case&#39;s own refusal disappears, and a derived ordering-broken entry point proves it (ADR-0021 control proof). Scope: it spawns <code>tsx src/main.ts</code>, never <code>dist/</code>.</td>
+</tr>
+<tr>
+<td>The invariant holding in the compiled <code>dist/</code></td>
+<td><strong>Observed on the code path, not controlled, and never in the image.</strong> Rows 1 and 2 were reproduced against <code>node --import tsx dist/main.js</code> — the <code>CMD</code> in <code>apps/api/Dockerfile</code> — on Node 24 with <code>@prisma/client</code> 6.19.3 against real Postgres at <code>ff633a3</code> (Salih&#39;s #310 run): the refusal fired and named the guarded vars, and the no-op case booted through to a real <code>GET /v1/profile</code> → 200. <strong>That run was made outside any container, against a fresh <code>tsc</code> build — not against the built production image</strong>, which a registry/blob-CDN block prevents building in this environment (the same block behind <code>e2e/harness/README.md</code>&#39;s native-Postgres fallback). The emitted order was re-checked at <code>71074c6</code>: <code>tsc</code> puts <code>import &#39;./config/env-snapshot.js&#39;</code> first in <code>dist/main.js</code> and emits <code>dist/config/env-snapshot.js</code>, so it neither reorders nor elides.</td>
+</tr>
+</tbody></table></div>
+<p><strong>The gap that remains, stated as narrowly as it now is.</strong> The invariant has been <em>seen to hold</em> on
+the code path production runs — that is more than the earlier &quot;by construction, untested&quot; wording
+admitted, and this row is corrected here because that wording became false the day #310 merged. Three
+things are still missing, and they are different sizes:</p>
+<ul>
+<li><strong>The control proof at that layer.</strong> Row 4 has never been run against <code>dist/</code>, so nothing has been
+observed going <em>red</em> there. By ADR-0021&#39;s own standard a control is established only once it has
+been seen to fail, so the compiled path carries evidence, not a gate.</li>
+<li><strong>A checked-in test.</strong> Both measurements above are one-off manual runs at named commits.
+<code>apps/api/test/boot/support/run-server.ts</code>&#39;s <code>entryPath</code> defaults to <code>src/main.ts</code> and no fixture
+points at <code>dist/</code>.</li>
+<li><strong>This invariant inside the image.</strong> The image <em>is</em> built and booted in CI — <code>prod-deploy-smoke</code>
+(<code>.github/workflows/ci.yml</code>, &quot;Production compose stack … (real Docker build)&quot;) — but that job
+asserts guest/registration/login/QR, not the env-source guard. So the image is exercised and this
+invariant is exercised, never in the same run.</li>
+</ul>
+<p>Recorded here rather than in a comment because a reader of this document should find it without
+reading the entry point — and stated at this length because the failure mode being guarded against is
+precisely a limit that drops out of the write-up and reads as coverage.</p>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

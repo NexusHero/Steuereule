@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0091 — The owl fills every field: personal data with consent — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0091</p>
+        <h1>The owl fills every field: personal data with consent <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#addendum-the-owl-asks-for-the-printout-gaps">Addendum: The owl asks for the printout gaps</a></li><li><a class="chip" href="#addendum-the-card-no-longer-depends-on-the-model-a-child-in-one-answer">Addendum: The card no longer depends on the model; a child in one answer</a></li><li><a class="chip" href="#addendum-2026-11-28--the-masking-is-shown">Addendum (2026-11-28) — the masking is shown</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong><ul>
+<li><code>packages/core/src/interview/{field-catalog,record-handles,advisor-household,advisor,ki-port,advisor-basis-facts}.ts</code></li>
+<li><code>apps/api/src/{owl-mode,confirmation,advisor,ki,ch-salary-certificate,account}/</code></li>
+<li><code>apps/api/src/{lstb-scan,ch-certificate-scan,receipt}/</code> (documents without Person B)</li>
+<li><code>apps/api/prisma/</code> (table <code>EulenPersonendatenEinwilligung</code>)</li>
+<li><code>apps/mobile-web/src/screens/{advisor,privacy,PrivacyScreen.tsx}</code></li>
+</ul>
+</li>
+<li><strong>Builds on:</strong> ADR-0052 §8 (personal data masked), ADR-0054/0073 (Person B), ADR-0066 (field catalog, one write path), ADR-0090 (stream-versus-chat comparison)</li>
+<li><strong>Changes:</strong> ADR-0066 (the block <code>AI_FORBIDDEN_SCREENS</code>/<code>AI_FORBIDDEN_FIELDS</code> now applies only without consent)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The comparison of stream versus chat (seven made-up households, ADR-0090) showed: the owl reaches the same tax return as the stream only in simple single-person cases. The main reason is a design block. Since ADR-0066 the owl writes no names, no Steuer-ID (tax identification number), no dates of birth, addresses, IBAN or religion. It also creates no link (Person B) and no children. These values were also never sent to the language model. The consequences:</p>
+<ul>
+<li>Without name and Steuer-ID there is no printout.</li>
+<li>Without Person B there is nothing for B.</li>
+<li>Without first name and date of birth there is no child, and therefore no Kindergeld (child benefit), no daycare and no Kinderzulage (Swiss child allowance).</li>
+</ul>
+<p>On top of that came errors in the chat:</p>
+<ul>
+<li><strong>C2:</strong> The partner&#39;s documents ended up with A.</li>
+<li><strong>C3:</strong> Two commute drafts in one answer blocked each other with 409.</li>
+<li><strong>C4:</strong> Exchange rate, capital holder and rental properties were not writable.</li>
+<li><strong>M1:</strong> <code>interview.job</code> was often missing, and with it the estimate.</li>
+<li><strong>U1:</strong> An LStB (Lohnsteuerbescheinigung, wage tax certificate) with <code>kind: auto</code> was read only generically.</li>
+</ul>
+<p>The Product Owner decided: „Alles an die Eule“ (&quot;Everything to the owl&quot;). The owl may write all fields, and these values may go to the model. But this applies only after a one-time, explicit consent from the user.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Consent, once, explicit, revocable.</strong><ul>
+<li>The card appears in the chat below the answer as soon as the owl would need personal data or the user writes some.</li>
+<li>It names the data: name, Steuer-ID, date of birth, address, IBAN, marital status, partner and children.</li>
+<li>It names the recipient: Google Gemini as processor.</li>
+<li>It names religious affiliation explicitly as a special category (Art. 9 DSGVO); „Erlauben“ (&quot;Allow&quot;) covers that too.</li>
+<li>The buttons are labeled „Erlauben“ and „Nicht erlauben“ (&quot;Don&#39;t allow&quot;).</li>
+<li>It is stored per user in the table <code>EulenPersonendatenEinwilligung</code>: <code>version</code>, <code>erteiltAm</code>, <code>widerrufenAm</code>. It contains no personal data, only the decision. That is why the table is not field-encrypted but deliberately listed in the metadata list of <code>prisma-encrypted-fields.test.ts</code>. It is part of the data export and of account deletion.</li>
+<li>Granting and revoking each write one row to the audit log: <code>eulen_personendaten_einwilligung</code> and <code>…_widerruf</code>.</li>
+<li>Endpoint: <code>GET</code>/<code>PUT /v1/eulen-modus/personendaten-einwilligung</code>. The <code>PUT</code> is blocked for assistant accesses (<code>@ForbidAssistant</code>), because only the user themselves gives consent.</li>
+<li>Revoking is done under Profile → Privacy („Eule und persönliche Daten“ (&quot;Owl and personal data&quot;)).</li>
+<li>A consent to an older text version (<code>OWL_PERSONAL_DATA_CONSENT_VERSION</code>) does not count.</li>
+</ul>
+</li>
+<li><strong>Without consent, everything stays as it is today.</strong><ul>
+<li>Masking is on.</li>
+<li>The block from ADR-0066 applies.</li>
+<li>The owl explains why it does not prepare the field, and the answer carries <code>personalDataConsentRequest</code> so that the card appears.</li>
+</ul>
+</li>
+<li><strong>With consent:</strong><ul>
+<li>The message and history go to the model unmasked.</li>
+<li>The personal fields are writable: <code>profil</code>, <code>stammdaten</code>, <code>kopplung.filingType</code>, all fields of <code>kind</code>, the address of the rental property.</li>
+<li>The field catalog offers them in the prompt.</li>
+<li>The one write path from ADR-0066 stays: draft, „✓ Jetzt übernehmen“ (&quot;✓ Apply now&quot;), check of the value against the catalog, compare-and-set.</li>
+<li>The consent is re-read on every proposal, every apply and every undo. A revocation therefore takes effect immediately, also for drafts created before it.</li>
+<li>The summary of older conversation parts stays masked.</li>
+<li>The text of the documents from which the model reads amounts stays masked. The amounts need no names, and the assignment to A, B or a child runs without the model.</li>
+</ul>
+</li>
+<li><strong>Never:</strong> <code>kopplung.invitationCode</code>. The invitation code is a key to someone else&#39;s tax return, not a value of the tax return (<code>AI_NEVER_FIELDS</code>).</li>
+<li><strong>Check values, including the personal ones.</strong> The catalog check applies as for any other value:<ul>
+<li>The Steuer-ID has 11 digits, the tax number up to 13 digits. The check ignores spaces and slashes.</li>
+<li>It checks the IBAN with its check digit, like the master data screen.</li>
+<li>It accepts religion and marital status only as keys of the screen.</li>
+<li>When the owl writes the religion, the app also stores the time of consent (<code>religionEinwilligungAm</code>), like the screen.</li>
+</ul>
+</li>
+<li><strong>New entries (C1/C4).</strong><ul>
+<li><code>instance: „neu“</code> creates a new entry on apply; with several in one answer, „neu 1“, „neu 2“.</li>
+<li>A child works only with consent, and the draft needs first name and date of birth.</li>
+<li>A rental property always works: with floor area, units, „AfA wie Vorjahr“ (&quot;depreciation as in the previous year&quot;), service charges, loan interest and share of A. The address needs the consent.</li>
+<li>The entry is created once per answer and placeholder. The other drafts of the same answer then point to it.</li>
+<li>Undo removes a child created this way. A rental property remains as an empty entry, as the screen keeps it.</li>
+</ul>
+</li>
+<li><strong>Person B (C1).</strong><ul>
+<li>The owl creates Person B via <code>kopplung.filingType = zusammen</code>. This runs through the same <code>LinkService.set</code> as the link screen; the placeholder for B is created there.</li>
+<li>After that (in the next answer) it writes B&#39;s <code>profil</code> and <code>stammdaten</code> with <code>person: &quot;B&quot;</code>. Both screens now belong to <code>PERSON_B_SCREENS</code>.</li>
+<li>B&#39;s documents can then be assigned to B. This also applies to the family health insurance statement and a child&#39;s daycare certificate (C5).</li>
+</ul>
+</li>
+<li><strong>Documents without Person B (C2), for now only the safety net.</strong><ul>
+<li>If an LStB, a Lohnausweis (Swiss salary certificate), a Pensionskasse (Swiss pension fund) letter or a premium letter names a person who does not match A, the document is never attributed to A. The app asks „Wessen Beleg ist das?“ (&quot;Whose document is this?&quot;) (<code>personUnclear</code>), and A&#39;s drafts remain.</li>
+<li>Without a recognizable name it stays with A.</li>
+<li>How documents are assigned permanently (create B from the document, reassign, split household documents) is decided by a separate ADR.</li>
+</ul>
+</li>
+<li><strong>Drafts of one answer do not block each other (C3).</strong><ul>
+<li>If the user applies a draft that first creates a record (for example the commute with 0 sick days), the remaining open drafts of the same answer take the new state as their starting value. This applies only to fields that this step changed without writing them.</li>
+<li>A change by someone else remains a conflict (409).</li>
+</ul>
+</li>
+<li><strong>Exchange rate and capital holder (C4).</strong><ul>
+<li><code>chLohnausweis.wechselkurs</code> (EUR per CHF) is stored together with <code>wechselkursMonat</code>. <code>JJJJ</code> stands for the annual average according to Anlage N-Gre (annex for cross-border commuters), <code>JJJJ-MM</code> for the BMF monthly rate. Without a month, the annual average of the tax year applies. Only the screen sets the actual rate with a supporting document.</li>
+<li><code>kapital.inhaber</code> is A, B or joint.</li>
+</ul>
+</li>
+<li><strong>Basis information (M1).</strong><ul>
+<li>If the owl has an LStB, a Lohnausweis or a pension in front of it and <code>interview.job</code> (or <code>ausland</code>) is open, it attaches a draft itself: employed, or „Ja, in die Schweiz“ (&quot;Yes, to Switzerland&quot;), or pension. Without this information there is no estimate.</li>
+<li>The prompt demands the basis questions, the public-holiday region for the commute, and &quot;no church tax&quot; as <code>kapital.kirchensteuer = 0</code>.</li>
+</ul>
+</li>
+<li><strong><code>kind: auto</code> (U1).</strong> A recognized LStB goes to the LStB reader, as with <code>kind: lstb</code>.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Data protection:</strong><ul>
+<li>With consent, a processor processes personal data, including Art. 9 data.</li>
+<li>The prerequisites are the data processing agreement with Google and the region, as already for the chat today.</li>
+<li>The privacy policy must name the new purpose. That is text outside this ADR and is open.</li>
+</ul>
+</li>
+<li><strong>Stored messages:</strong><ul>
+<li>With consent, the app stores the users&#39; text unmasked, field-encrypted as before (<code>AdvisorChatMessage.inhalt</code>).</li>
+<li>After a revocation, the app masks the history again on every read for the model.</li>
+<li>Text already stored stays with the user until they delete the conversation.</li>
+</ul>
+</li>
+<li><strong>Tests:</strong><ul>
+<li><code>advisor-field-coverage.integration.test.ts</code> now goes through all 190 fields the owl knows with consent; all are writable.</li>
+<li><code>advisor-personal-data*.test.ts</code>, <code>advisor-tool-round-personal.test.ts</code>, <code>advisor-field-access-personal.test.ts</code> and <code>personal-data-consent.*.test.ts</code> cover consent, revocation, new entries, Person B and C3.</li>
+</ul>
+</li>
+<li><strong>Open:</strong><ul>
+<li>The permanent assignment of documents (point 8).</li>
+<li>Person B and her details in a single answer, without an intermediate step.</li>
+<li>The card has no E2E run yet, because the chat in E2E would need a model.</li>
+</ul>
+</li>
+</ul>
+<h2 id="addendum-the-owl-asks-for-the-printout-gaps"><a class="anchor" href="#addendum-the-owl-asks-for-the-printout-gaps" aria-hidden="true" tabindex="-1">#</a>Addendum: The owl asks for the printout gaps</h2>
+<ul>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Reason:</strong> The second comparison of stream versus chat (R2–R4) showed: with consent, the owl may write every field and the estimates are correct, but no chat account prints. The owl never asks for what the printout check is still missing (Weber: depot type and holder; Sommer: B&#39;s Grenzgänger details, the children&#39;s relationship, B&#39;s date of birth; Brandt: Kinderzulage payer, <code>kinshipB</code>; Richter: Familienkasse (family benefits office) and the Kindergeld details). „Fehlt noch etwas?“ (&quot;Is anything still missing?&quot;) got only the codes in words.</li>
+</ul>
+<p><strong>Decision</strong></p>
+<ol>
+<li><strong>A fixed plan instead of prompt wording</strong> (<code>packages/core/src/interview/advisor-printout-plan.ts</code>).<ul>
+<li>From the codes of the printout check (<code>PrintoutService.check</code>, unchanged), <code>printoutGapReads</code> derives the fields that can close each code, per person, child or property. Examples: <code>grenzgaengerPersonB</code> → B&#39;s <code>interview.ch-wohnsitz</code>/<code>ch-nichtrueckkehrtage</code> and B&#39;s Lohnausweis and N-Gre fields; <code>kinder</code> → per child <code>taxId</code>, <code>kinship</code>, <code>kinshipB</code>, <code>familyBenefitsOffice</code>, <code>domesticResidenceAllYear</code>, the other parent, the Kindergeld details and the Kinderzulage payer; <code>kapital</code> → <code>interview.kap-depot</code>, the required amounts of the depot type, <code>kapital.inhaber</code>; master data codes → the field itself; <code>personB</code> → B&#39;s name, Steuer-ID, date of birth, plus religion and occupation.</li>
+<li>The app reads these fields through the same field access the drafts write through (<code>ConfirmationService.readRawValues</code>), Person B under B&#39;s user. <code>planPrintoutGaps</code> keeps only what is empty, with the conditions of the check (non-return days only with residence in Germany, premium shares like <code>premiumClarified</code>, the other parent only without Zusammenveranlagung (joint assessment)).</li>
+<li>Each question says whether the owl may prepare it: catalog and consent as in points 2 and 3, Person B only as long as the user enters her. Otherwise it names the screen („Stammdaten“ (&quot;Master data&quot;), „im eigenen Konto von Person B“ (&quot;in Person B&#39;s own account&quot;)).</li>
+<li>Codes without a field (an annex the app does not print, a confirmation, a value that is too long) remain words from <code>describePrintoutGap</code>.</li>
+</ul>
+</li>
+<li><strong>The owl gets a checklist.</strong> The plan is in the case overview as <code>furtherFacts.printoutPlan</code> (only field names and neutral names like „Kind 1“ (&quot;Child 1&quot;)) and as its own list „Ausdruck-Checkliste“ (&quot;Printout checklist&quot;) in the case prompt. Rule 10 (d) says when: when the user asks whether anything is still missing, after applied drafts, or when nothing else is open. At most four points per answer, grouped by person or child, in the user&#39;s language. What the user has already said, it creates as a draft instead of asking.</li>
+<li><strong>The app asks itself when the model leaves it out.</strong> <code>printoutGapFollowUp</code> appends to the answer (also without a model) „Damit der Ausdruck vollständig ist, fehlt noch: …“ (&quot;For the printout to be complete, the following is still missing: …&quot;). This happens when the user asks about missing items, or when the drafts of the last answer have been applied and this answer asks nothing and prepares nothing. What the model already asks or is preparing as a draft right now, it does not append again. It does not repeat the same questions unasked (<code>meta.printoutGapsAsked</code>, server only).</li>
+<li><strong>Two fields without which the chat could never print.</strong><ul>
+<li><code>chLohnausweis.nGreSonderfaelle</code> („keine Sonderfälle“ (&quot;no special cases&quot;) of Anlage N-Gre) is a catalog field (yes/no) and writes the same switch as the screen. Without it, every N-Gre was missing in the chat (<code>grenzgaenger</code>).</li>
+<li>Person B may get her own Grenzgänger answers in the interview (<code>PERSON_B_INTERVIEW_FIELDS</code>: <code>ch-wohnsitz</code>, <code>ch-nichtrueckkehrtage</code>). The Switzerland screen also writes them there, and printout and estimate derive B&#39;s status from that. The rest of the interview stays shared.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Consequences</strong></p>
+<ul>
+<li>The field catalog has one more field. <code>advisor-field-coverage.integration.test.ts</code> includes it.</li>
+<li>The app&#39;s follow-up question is in German. In English only the model asks.</li>
+<li>What neither the user nor a document knows (for example a child&#39;s Steuer-ID or the name and address of the other parent) remains an honest gap. But the owl now names it with field and screen.</li>
+</ul>
+<h2 id="addendum-the-card-no-longer-depends-on-the-model-a-child-in-one-answer"><a class="anchor" href="#addendum-the-card-no-longer-depends-on-the-model-a-child-in-one-answer" aria-hidden="true" tabindex="-1">#</a>Addendum: The card no longer depends on the model; a child in one answer</h2>
+<ul>
+<li><strong>Date:</strong> 2026-11-17</li>
+<li><strong>Reason:</strong> The real-data run (2024 and 2025). The owl referred to a consent „unter dieser Antwort“ (&quot;below this answer&quot;), but the card did not appear. As a result, a child could not be created in the chat, and the child allowance, the Kindergeld comparison and childcare costs were missing from the estimate. In addition: messages over 2,000 characters came back as „HTTP 400“, and the owl gave four different total results in the same conversation.</li>
+</ul>
+<p><strong>Cause</strong></p>
+<p><code>personalDataConsentRequest</code> was created only in two ways: the masking had removed something from the message (Steuer-ID, IBAN, contact, a known name), or the model had attempted a draft for a blocked field. Without consent, however, the screen <code>kind</code> is not in the prompt&#39;s field catalog at all, and rule 2 tells the model it may not propose such fields. So it called no tool and only wrote the sentence. The app does not mask a date of birth or „unsere Tochter“ (&quot;our daughter&quot;). So neither of the two ways applied.</p>
+<p><strong>Decision</strong></p>
+<ol>
+<li><strong>The app decides about the card</strong> (<code>needsPersonalDataConsentOffer</code>, <code>packages/core/src/interview/advisor-consent-offer.ts</code>). Without consent, the answer carries the card if one of these applies:<ul>
+<li>The masking replaced something.</li>
+<li>The owl asked for it (new tool <code>request_personal_data_consent</code>) or a draft was rejected for lack of consent.</li>
+<li>The answer itself refers to the consent.</li>
+<li>The user mentions a child and none has been created yet, or a partner and there is no Person B.</li>
+<li>The user writes a date of birth, an address, or that they consent. A „Ja“ (&quot;Yes&quot;) in the chat does not replace the card.</li>
+</ul>
+</li>
+<li><strong>After „Erlauben“ the conversation continues on its own.</strong> The chat sends the user&#39;s last message again, in place of the rejected round (<code>replaceFromMessageId</code>), exactly as it was typed. Without consent, only the masked version is stored; if the typed text is no longer there (reloaded), the chat tells the owl in one sentence that consent is now given. This applies only to the card below the last answer.</li>
+<li><strong>A child in one answer.</strong> Further drafts for the same new child (<code>instance: „neu“</code>: Kindergeld, Kinderzulage with payer, childcare, health insurance, relationship) attach to the draft that creates it with first name and date of birth. Until now the tool round rejected each of them with <code>NEW_RECORD_INCOMPLETE</code>, and because one draft for the same screen succeeded, the rejection did not even appear under „nicht vorbereitet“ (&quot;not prepared&quot;).</li>
+<li><strong>The owl reads the app&#39;s estimate</strong> (<code>read_current_estimate</code>): result, Werbungskosten (work-related expenses), provision expenses, Sonderausgaben (special expenses), taxable income, income tax, Soli, credits, advance tax payments. These are amounts only. Rule 16 in the prompt: every figure about the total result comes from there.</li>
+<li><strong>Message length 8,000 characters</strong> (<code>ADVISOR_MESSAGE_MAX_CHARS</code> in the core, for API validation, OpenAPI and the input field).<ul>
+<li>The input field counts from 90 % and does not send a longer message.</li>
+<li>A rejection by the API appears in words in the chat, never as „HTTP 400“.</li>
+<li>The history budget rises from 6,000 to 12,000 tokens so that several full messages stay verbatim.</li>
+<li>The topic checker sees the beginning and end of a long message.</li>
+</ul>
+</li>
+</ol>
+<p><strong>Kindergeld in the comparison</strong></p>
+<p>The Günstigerprüfung (most-favorable comparison) calculates with the entitlement to Kindergeld for the months of the year, not with what was paid out (§ 31 Satz 4 EStG). A Swiss Kinderzulage counts as Kindergeld (§ 65 EStG), and the differential Kindergeld tops it up; together they are the same entitlement. The estimate already does this (<code>monthlyChildBenefitClaim × claimMonths</code>); <code>childBenefitForComparison</code> names it, and a test records that the entered amount does not change the estimate.</p>
+<p><strong>Consequences</strong></p>
+<ul>
+<li><code>advisor-child-through-chat.test.ts</code> goes the path with the real LangGraph run and the script model: card, consent, child with all amounts, estimate. The same case through the children screen gives the same estimate.</li>
+<li>The card may appear more often than necessary, for example when the user only mentions a child in passing. That is intended: „Nicht erlauben“ hides it, and a missing card was the more costly error.</li>
+<li><strong>Open in the calculation core:</strong> A child&#39;s health insurance (<code>healthBasicEur</code>, <code>careEur</code>) does not flow into the Vorsorgeaufwand (provision expenses) of the estimate. The child allowance is not reduced by months for a child born in the tax year; Kindergeld is.</li>
+</ul>
+<h2 id="addendum-2026-11-28--the-masking-is-shown"><a class="anchor" href="#addendum-2026-11-28--the-masking-is-shown" aria-hidden="true" tabindex="-1">#</a>Addendum (2026-11-28) — the masking is shown</h2>
+<p>Without the consent the model reads a user&#39;s message masked, while the message is stored and shown
+as written. Which parts were masked was invisible. Now <code>maskedSpans(original, sent)</code>
+(<code>packages/core/src/common/masked-spans.ts</code>) aligns the two texts word by word, and the ranges that
+differ are kept in the user message&#39;s <code>meta.masked</code> as positions and stand-ins, never values. They
+are fixed when the message is sent, so a later consent does not unmark what was masked at the time.
+The chat strikes these ranges through in the user&#39;s own bubble with one line under it; a spoken
+conversation does the same in what was said (ADR-0115) and adds that the speech service heard it,
+because there the recording has left the device before the masking runs. A range the model read as
+something that says more than &quot;taken out&quot; (the spouse as „Person B“, a birthdate as an age) shows
+that replacement.</p>
+<p>The marking shows what the masking did. It does not show what the masking missed: a name that is
+not in the profile and has no honorific in front of it goes out as written and is not marked.</p>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0090-real-case-findings-stream.html"><span class="eyebrow">Previous</span><span>ADR-0090</span></a><a class="step step-next" href="0092-document-assignment.html"><span class="eyebrow">Next</span><span>ADR-0092</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0061 — Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0061</p>
+        <h1>Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#rejected-alternative">Rejected alternative</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-10</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #451 slice 5 (dictation stage 2); <code>apps/mobile-web/src/lib/dictation/</code>, <code>apps/mobile-web/dictation/worker.mjs</code>, <code>apps/mobile-web/scripts/dictation-*.mjs</code>, <code>scripts/checks/bundle-security-check.mjs</code></li>
+<li><strong>Deviates from:</strong> ADR-0060 (self-hosted on-device OCR) for the model files</li>
+<li><strong>Supplements:</strong> ADR-0008 (documented exception: model cache in the browser)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Slice 5 of #451 adds a dedicated microphone button. Speech recognition runs on the device
+(Whisper &quot;base&quot;, multilingual, in the browser via WebGPU). The audio never leaves the device, the text
+lands in the input field and is never sent automatically.</p>
+<p>ADR-0060 rejected loading from a public CDN for the OCR: the IP address goes to
+a third party, unpinned code runs, and &quot;on-device&quot; is only half true. Pinning and checksum
+solve the &quot;unpinned code&quot; point. They do not solve the &quot;IP to third parties&quot; point.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>Option A: The model files come from Hugging Face, pinned and verified; the code that
+runs them stays self-hosted.</strong></p>
+<ol>
+<li><strong>Model:</strong> <code>onnx-community/whisper-base</code> (Apache-2.0) at commit
+<code>27a07b4b52b3a4c5886134bb4320e93e1a4bbc7c</code>, int8-quantized ONNX files (encoder +
+merged decoder) plus configuration and tokenizer, 79.7 MB in total.
+<code>scripts/dictation-model-lock.mjs</code> writes path, size and SHA-256 of each file to
+<code>src/lib/dictation/modelLock.ts</code>.</li>
+<li><strong>Consent first, then download.</strong> Before the first dictation, a dialog shows the size, origin
+(Hugging Face, USA) and that Hugging Face sees the IP address and time. Without consent,
+no request goes out. The fetch runs without cookies and without a referrer.</li>
+<li><strong>Every file is verified.</strong> The main thread loads each file from
+<code>huggingface.co/&lt;repo&gt;/resolve/&lt;commit&gt;/&lt;pfad&gt;</code> (Hugging Face redirects large files to its
+own CDN, e.g. <code>us.aws.cdn.hf.co</code>), checks SHA-256 against the lock and only then
+stores it in Cache Storage. A mismatch discards the whole cache; nothing half-verified
+is left behind.</li>
+<li><strong>Runtime self-hosted (as in ADR-0060).</strong> <code>scripts/dictation-assets.mjs</code> (postinstall) copies
+the worker, <code>transformers.min.js</code> (transformers.js 4.3.2) and the ONNX Runtime WASM in exactly the
+version that transformers.js bundles to <code>public/dictation/</code>, verified against
+<code>dictation-assets.lock.json</code>. The bundle gate has its own budget (32 MB); unpinned files
+make it fail. The worker disables remote loading and reads model files only from the
+verified cache entries.</li>
+<li><strong>Device:</strong> Microphone button only with WebGPU and at least 4 GB of memory (where the browser reports it);
+otherwise the hint from stage 1 remains.</li>
+<li><strong>Audio and text:</strong> Audio only in working memory, 16 kHz mono, never stored or sent;
+transcript into the input field, the PII filter applies on sending just as for typed text.</li>
+<li><strong>Cache:</strong> the only documented exception to ADR-0008, without user data; „Profil → Sprachmodell
+löschen“ (&quot;Profile → Delete speech model&quot;) removes it. local and sessionStorage stay untouched (<code>no-client-persistence</code>).</li>
+<li><strong>Privacy policy:</strong> Hugging Face as recipient of the IP address on the one-time fetch,
+consent under Art. 6(1)(a) and Art. 49(1)(a) DSGVO (GDPR).</li>
+</ol>
+<h2 id="rejected-alternative"><a class="anchor" href="#rejected-alternative" aria-hidden="true" tabindex="-1">#</a>Rejected alternative</h2>
+<p><strong>B — Host the model ourselves as in ADR-0060.</strong> No request to third parties, but around 80 MB more in the
+web export and our own traffic on every user&#39;s first dictation. The Product Owner decided for A on
+10.11.2026; with consent, pinning and checksum, the remaining point
+(IP address to Hugging Face) is openly named and chosen by the user.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Verified for real once locally (headless Chromium with software WebGPU): download of the 7 files,
+checksums match, the worker loads the model from the cache and recognizes the sentence „Ich habe
+dieses Jahr 300 Euro gespendet.“ (&quot;I donated 300 euros this year.&quot;); only the app&#39;s own origin, <code>huggingface.co</code>
+and <code>us.aws.cdn.hf.co</code> were contacted. In CI the gate deliberately does not load the model.</li>
+<li>Changing the model is a deliberate change: new commit in
+<code>scripts/dictation-model-lock.mjs</code>, lock diff in the review.</li>
+<li>An upgrade of transformers.js needs <code>node scripts/dictation-assets.mjs --update</code>; the script
+aborts if the bundled ONNX Runtime does not match the installed WASM.</li>
+<li>If Hugging Face is unreachable, dictation is not possible; typing and the keyboard&#39;s dictation
+(stage 1) remain.</li>
+<li>The native app (iOS/Android) will later use the system&#39;s speech recognition; the same rule
+(text only into the field, never sent automatically) applies there as well.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0060-on-device-ocr-web-self-hosted.html"><span class="eyebrow">Previous</span><span>ADR-0060</span></a><a class="step step-next" href="0062-household-at-account-level.html"><span class="eyebrow">Next</span><span>ADR-0062</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

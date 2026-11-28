@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Incident runbook — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Reliability</p>
+        <h1>Incident runbook</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#api-down-uptime-check-on-v1healthlive">API down (uptime check on <code>/v1/health/live</code>)</a></li><li><a class="chip" href="#5xx-ratio-more-than-5-percent-of-requests-for-5-minutes">5xx ratio (more than 5 percent of requests for 5 minutes)</a></li><li><a class="chip" href="#container-crash-instance-killed-or-exited">Container crash (instance killed or exited)</a></li><li><a class="chip" href="#unhandled-errors-3-or-more-in-5-minutes">Unhandled errors (3 or more in 5 minutes)</a></li><li><a class="chip" href="#new-error-groups-cloud-error-reporting">New error groups (Cloud Error Reporting)</a></li><li><a class="chip" href="#cloud-sql-disk-above-80-percent--cpu-above-80-percent-for-15-minutes">Cloud SQL disk above 80 percent / CPU above 80 percent for 15 minutes</a></li><li><a class="chip" href="#after-the-incident">After the incident</a></li></ul>
+      </header>
+      <article class="prose">
+<p>What each alert means and the first three things to check. The alerts are defined in
+<a href="../../infra/gcp/monitoring.tf"><code>infra/gcp/monitoring.tf</code></a> (Google Cloud Monitoring, email only, one
+project per environment: staging and production). They exist only when the OpenTofu variable
+<code>alert_email</code> is set; the uptime check also needs <code>api_hostname</code>.</p>
+<p>Useful commands (replace the region if you changed it; the service names are fixed by <code>deploy.yml</code>):</p>
+<pre><code class="language-bash">gcloud run services describe steuereule-api --region europe-west4 --format=&#39;value(status.latestReadyRevisionName)&#39;
+gcloud logging read &#39;resource.type=&quot;cloud_run_revision&quot; AND resource.labels.service_name=&quot;steuereule-api&quot; AND severity&gt;=ERROR&#39; --limit 20 --freshness 1h
+gcloud run services update-traffic steuereule-api --region europe-west4 --to-revisions=&lt;previous-revision&gt;=100
+</code></pre>
+<h2 id="api-down-uptime-check-on-v1healthlive"><a class="anchor" href="#api-down-uptime-check-on-v1healthlive" aria-hidden="true" tabindex="-1">#</a>API down (uptime check on <code>/v1/health/live</code>)</h2>
+<p>Fires when the check fails from every location for 3 minutes. <code>live</code> does not touch the database, so a
+failure means the process or the route to it is gone, not a database blip.</p>
+<ol>
+<li>Is it the latest deploy? Compare the time of the alert with the last run of the Deploy workflow; if it
+matches, roll back with the traffic command above.</li>
+<li>Does the Cloud Run URL (not the custom domain) answer <code>/v1/health/live</code>? If yes, the problem is the
+domain mapping or DNS/certificate, not the app.</li>
+<li>Read the ERROR logs of the last hour. A boot failure shows as a crash loop (see Container crash): a
+missing secret or a Redis URL the instance cannot reach are the usual causes.</li>
+</ol>
+<h2 id="5xx-ratio-more-than-5-percent-of-requests-for-5-minutes"><a class="anchor" href="#5xx-ratio-more-than-5-percent-of-requests-for-5-minutes" aria-hidden="true" tabindex="-1">#</a>5xx ratio (more than 5 percent of requests for 5 minutes)</h2>
+<ol>
+<li>Group the ERROR logs by message: one failing route or a general failure?</li>
+<li>Check <code>/v1/health/ready</code>: a failing database check points to Cloud SQL (see below); a ready API with
+5xx points to a code path or an upstream (Stripe, Brevo, the AI providers).</li>
+<li>Started with a deploy? Roll back, then investigate. Started without one? Check Cloud SQL and Redis.</li>
+</ol>
+<h2 id="container-crash-instance-killed-or-exited"><a class="anchor" href="#container-crash-instance-killed-or-exited" aria-hidden="true" tabindex="-1">#</a>Container crash (instance killed or exited)</h2>
+<p>Counts the Cloud Run log lines &quot;Memory limit of ... exceeded&quot;, &quot;Container terminated on signal&quot; and
+&quot;Container called exit&quot;. The API runs with 2 GiB; the PDF export (Chromium) is the largest consumer.</p>
+<ol>
+<li>Open the log lines around the first hit: memory limit (look at which request ran: PDF export?) or a
+signal/exit at boot (configuration)?</li>
+<li>Is the instance count high? A memory kill under load is a capacity problem, not a bug in one request.</li>
+<li>If it began after a deploy, roll back; otherwise raise the memory limit in <code>deploy.yml</code> or limit the
+concurrent PDF renders (see <code>reliability-spec.html</code> section 4.1).</li>
+</ol>
+<h2 id="unhandled-errors-3-or-more-in-5-minutes"><a class="anchor" href="#unhandled-errors-3-or-more-in-5-minutes" aria-hidden="true" tabindex="-1">#</a>Unhandled errors (3 or more in 5 minutes)</h2>
+<p>Counts ERROR log lines of the Nest <code>ExceptionsHandler</code> and the better-auth wrapper. These are 500s the
+code did not expect, not validation errors.</p>
+<ol>
+<li>Read the stack trace of the first occurrence (the log line has it) and find the route.</li>
+<li>Is it one user or one input? The request id is in the log entry.</li>
+<li>Check whether it started with a deploy; if the route is central (login, cockpit), roll back first.</li>
+</ol>
+<h2 id="new-error-groups-cloud-error-reporting"><a class="anchor" href="#new-error-groups-cloud-error-reporting" aria-hidden="true" tabindex="-1">#</a>New error groups (Cloud Error Reporting)</h2>
+<p>The API logs unexpected errors with their stack trace in the structured form Cloud Error Reporting
+groups. Cloud Run sends them there on its own: no Terraform resource is needed for the grouping. Open
+Error Reporting in the Cloud console (project of the environment, service <code>steuereule-api</code>) to see each
+distinct error once, with its count, first and last occurrence and the stack.</p>
+<p>How it relates to the alert above: the alert policy &quot;API: unhandled errors&quot; counts log lines through the
+log-based metric <code>api_unhandled_error</code> and fires on volume (3 in 5 minutes). Error Reporting answers a
+different question, &quot;is this a kind of error we have not seen before&quot;, and shows every group, also one
+that happens once. The metric filter matches the plain-text and the structured log line, so changing the
+log format does not silence the alert. Use the alert to be woken, Error Reporting to find out which error
+it is.</p>
+<p>Operator step, done once per project in the console and not in Terraform: Error Reporting, Configure
+notifications, turn on notifications for new error groups (email or another channel). Without it new
+groups only show in the console.</p>
+<h2 id="cloud-sql-disk-above-80-percent--cpu-above-80-percent-for-15-minutes"><a class="anchor" href="#cloud-sql-disk-above-80-percent--cpu-above-80-percent-for-15-minutes" aria-hidden="true" tabindex="-1">#</a>Cloud SQL disk above 80 percent / CPU above 80 percent for 15 minutes</h2>
+<p>Applies to both instances in the project (tax data and keystore).</p>
+<ol>
+<li>Which instance? The alert names the database id. The tax-data instance autoresizes its disk; the
+keystore instance does not (<code>disk_autoresize = false</code>), so a full keystore disk needs a manual resize.</li>
+<li>Disk: check for a large table or a runaway log (<code>log_connections</code> and <code>log_disconnections</code> are on).
+CPU: look at Query Insights and <code>pg_stat_activity</code> for a long-running query.</li>
+<li>Cloud SQL has a private address only. If the API or the migrate job cannot connect at all, check that
+the Cloud Run revision still has the VPC network and subnet attached (<code>gcloud run services describe steuereule-api --region europe-west4</code>, field network interfaces) before looking at the database.</li>
+<li>A migration running at the time? The deploy runs one before the API revision; wait for it to finish
+before acting.</li>
+</ol>
+<h2 id="after-the-incident"><a class="anchor" href="#after-the-incident" aria-hidden="true" tabindex="-1">#</a>After the incident</h2>
+<p>Write what happened, what you did and one change that would have caught it earlier. A change to the
+alerts belongs in <code>monitoring.tf</code>, not in the console.</p>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

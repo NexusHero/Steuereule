@@ -1,6 +1,6 @@
 // An E-Rechnung (ADR-0101 §22, § 14 Abs. 1 UStG from 2025): XRechnung in UBL or CII syntax, or the CII
 // XML a ZUGFeRD PDF carries. Read from its structure, never guessed from text; the strict XML reader
-// refuses DTDs and entities. Sources: docs/research/self-employed-extension.md §8.
+// refuses DTDs and entities. Sources: docs/research/self-employed-extension.html §8.
 import { at, childrenNamed, parseXml, textAt, XmlError, type XmlElement } from '../domains/ledger/xml'
 import type { BusinessReceiptRead } from './business-receipt'
 

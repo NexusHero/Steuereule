@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0052 — Agent access: the user's own AI assistant fills in the tax return (MCP) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0052</p>
+        <h1>Agent access: the user&#39;s own AI assistant fills in the tax return (MCP) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#implementation-ticket-breakdown">Implementation (ticket breakdown)</a></li><li><a class="chip" href="#rejected-alternatives">Rejected alternatives</a></li><li><a class="chip" href="#amendment-1-2026-11-03--implementation-171-origin-and-confirmation-384-req-032">Amendment 1 (2026-11-03) — Implementation 17.1: origin and confirmation (#384, REQ-032)</a></li><li><a class="chip" href="#amendment-2-2026-11-20--advice-and-feedback-for-the-assistant">Amendment 2 (2026-11-20) — Advice and feedback for the assistant</a></li><li><a class="chip" href="#amendment-3-2026-11-20--read-view-the-assistant-reads-derived-data-not-details">Amendment 3 (2026-11-20) — Read view: the assistant reads derived data, not details</a></li><li><a class="chip" href="#amendment-4-2026-11-21--the-assistants-access-ends-at-the-mcp-endpoint">Amendment 4 (2026-11-21) — The assistant&#39;s access ends at the MCP endpoint</a></li><li><a class="chip" href="#amendment-5-2026-11-21--the-assistant-registers-itself-again">Amendment 5 (2026-11-21) — The assistant registers itself again</a></li><li><a class="chip" href="#amendment-6-2026-11-21--booking-drafts-comparisons-limit-and-streamable-http">Amendment 6 (2026-11-21) — Booking drafts, comparisons, limit and Streamable HTTP</a></li><li><a class="chip" href="#amendment-7-2026-11-22--registration-limit-for-hosted-assistants">Amendment 7 (2026-11-22) — Registration limit for hosted assistants</a></li><li><a class="chip" href="#amendment-8-2026-11-23--the-consent-screen-says-where-the-access-goes">Amendment 8 (2026-11-23) — The consent screen says where the access goes</a></li><li><a class="chip" href="#amendment-9-2026-11-23--limits-an-assistant-could-walk-around">Amendment 9 (2026-11-23) — Limits an assistant could walk around</a></li><li><a class="chip" href="#amendment-10-2026-11-25--one-gate-for-every-tool-file-upload-write-scope-for-payment-links">Amendment 10 (2026-11-25) — One gate for every tool, file upload, write scope for payment links</a></li><li><a class="chip" href="#amendment-11-2026-11-26--bescheidabgleichen-compares-against-the-submitted-return-546">Amendment 11 (2026-11-26) — <code>bescheid_abgleichen</code> compares against the submitted return (#546)</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted (stakeholder decision NexusHero, 2026-11-03) — draft from the
+grilling session with NexusHero; Musti review runs on the slice PRs</li>
+<li><strong>Date:</strong> 2026-11-05</li>
+<li><strong>Deciders:</strong> NexusHero (stakeholder) — decisions; Musti — architecture review</li>
+<li><strong>Amends / supplements:</strong> product ADR-014/048 (AI suggests, never directly), ADR-0051 (no
+personal data to external AI), ADR-0049 (marking layer of the year carry-over),
+ADR-0009 (better-auth as auth server), ADR-0050 (paper route, payment at printout)</li>
+<li><strong>Postpones:</strong> the 1.0 go-live (see Consequences)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Users want to use SteuerEule with their own AI assistant (Claude, Gemini, DeepSeek or others):
+the assistant should evaluate documents and fill in the tax return in the app
+largely on its own. The app is not built for this today:</p>
+<ul>
+<li>Identity is an httpOnly session cookie (ADR-0007/0009); there is no access for third-party clients.</li>
+<li>Every form knows only values, no origin. &quot;Unconfirmed&quot; exists only for carried-over
+previous-year values (ADR-0049).</li>
+<li>Product ADR-014/048 lets an AI only suggest; only the user&#39;s confirmation turns it into an
+item. ADR-0051 forbids personal data to external models — for <em>our</em> AI.</li>
+<li>The document inbox stores only metadata (file name, type, date), no files.</li>
+</ul>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong>Actor: the user&#39;s own assistant.</strong> SteuerEule provides an interface; the
+user connects it to their assistant. We do not call any third-party model and do not run
+an agent. Third parties that handle tax returns for many users (payroll offices, other apps)
+are excluded. Accounts only, no guest sessions (ADR-0045).</p>
+</li>
+<li><p><strong>Interface: a remote MCP server with OAuth 2.1.</strong> Authorization via the OAuth/OIDC
+provider plugin of better-auth (ADR-0009): one login, one identity, no second auth service.
+The user grants access on a consent page that shows the assistant&#39;s name from
+the client registration.</p>
+</li>
+<li><p><strong>Tools: a few domain tools</strong> in the language of the tax return — not generated from the OpenAPI.
+At a minimum: status of a tax year, what is missing for the printout (pre-check), one tool per
+form for entering data (Lohnsteuerbescheinigung (wage tax certificate), interview answers, children,
+rental income, capital, Lohnausweis/N-Gre, master data, linking), upload document, read owl
+hints, request payment link.</p>
+</li>
+<li><p><strong>Scope.</strong> The agent reads and writes all tax facts, master data and the linking, and uploads
+documents including the file. <strong>Not via the interface:</strong> delete account, email, password,
+passkeys, sign out devices, any consent (in particular Art. 9 DSGVO (GDPR) on religion, the
+owl mode, the agent access itself) and paying.</p>
+</li>
+<li><p><strong>Payment.</strong> The agent can trigger the Stripe checkout and receives the payment link; paying, and
+thereby concluding the contract, is done by the human (ADR-0050).</p>
+</li>
+<li><p><strong>Collective confirmation instead of confirmation per value</strong> — an amendment, not a repeal of
+product ADR-014/048. Everything the agent writes is <strong>unconfirmed</strong> and carries its origin
+(„Assistent: Claude, aus Beleg X“, &quot;Assistant: Claude, from document X&quot;). The user reviews in the app <strong>per Anlage</strong> (schedule) and confirms or
+changes. Pre-check, printout and payment treat unconfirmed values like open ones. Technically this
+is the marking layer from ADR-0049, extended to every form.</p>
+</li>
+<li><p><strong>Conflicts: the user wins.</strong> If the agent writes a value that the user has confirmed or
+entered themselves, that value stays; the agent value appears as a suggestion
+(„Assistent schlägt 4.800 statt 4.750 vor“, &quot;Assistant suggests 4,800 instead of 4,750&quot;).</p>
+</li>
+<li><p><strong>Personal data: write yes, read masked.</strong> Steuer-ID (tax identification number), IBAN, address, names of
+third parties (partner, other parent, employer) are returned by the interface only masked.
+What is in the app once does not flow to the model again. ADR-0051 applies unchanged to our
+own AI; the data flow to the user&#39;s assistant happens at the user&#39;s instigation and is
+governed separately.</p>
+</li>
+<li><p><strong>Third countries.</strong> We do not block any providers. The consent page states clearly that the data goes to the
+provider of the chosen assistant — possibly to a country without an
+adequacy decision — and that the decision lies with the user.</p>
+</li>
+<li><p><strong>Duration and revocation.</strong> A connection applies indefinitely until the user revokes it. Mandatory
+is therefore an overview „Verbundene Assistenten“ (&quot;Connected assistants&quot;) (name, connected since, last used,
+revoke) next to the device management. Every access is logged in the audit log with the assistant as
+the source (REQ-004).</p>
+</li>
+<li><p><strong>Documents with files.</strong> The document inbox gets real file storage: EU object storage,
+encrypted, type and size check, virus scan, part of DSGVO export and deletion. We do not read
+the files server-side — the assistant does that; the file is the evidence.</p>
+</li>
+<li><p><strong>Owl mode stays.</strong> It serves users without their own assistant; the agent gets the
+owl cards as the tool &quot;hints&quot; and sees the same findings.</p>
+</li>
+<li><p><strong>Timing: before 1.0, and the go-live waits for it.</strong> DSGVO audit, DSFA (data protection impact assessment)
+and legal review (#329) cover the agent access from the start.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Second identity path.</strong> Besides the session cookie there are bearer tokens with scopes. Every guard,
+every rate limit (#350) and the audit log must know both paths; the excluded actions
+from point 4 are refused server-side for tokens, not merely not offered. An indefinite
+token with broad access is a worthwhile target — short access token lifetime with refresh,
+revocation takes effect immediately.</li>
+<li><strong>Origin becomes a cross-cutting concern.</strong> Today every form stores only the value. In future every
+value needs an origin and a confirmation state; cockpit, pre-check, printout, year carry-over and
+DSGVO export must evaluate it. This is the largest rebuild of this undertaking.</li>
+<li><strong>New infrastructure.</strong> OAuth provider (better-auth plugin), MCP server, object storage with
+virus scan. The file storage depends on the still-open Hetzner infrastructure (#292) — this makes the
+infrastructure track even more of a critical path.</li>
+<li><strong>Legal.</strong> In addition to #329: delimitation from commercial assistance in tax matters (StBerG)
+for the &quot;own assistant&quot; model, DSFA for the agent access,
+privacy policy (third-country notice), terms clause on the user&#39;s responsibility for confirmed
+values.</li>
+<li><strong>Product promise.</strong> &quot;Fully automatic&quot; means: the assistant fills in, the human reviews and
+confirms per Anlage. Marketing and website must not promise more.</li>
+<li><strong>Load.</strong> Agents call more often and faster than humans; the load test (ticket 11) and
+rate limits must cover agent traffic.</li>
+<li><strong>Quality gate.</strong> An end-to-end test with a real MCP client in CI: connecting,
+tools, unconfirmed values, confirmation per Anlage, revocation, refused account actions.</li>
+<li><strong>1.0 is postponed</strong> by this block, including audit and legal review.</li>
+</ul>
+<h2 id="implementation-ticket-breakdown"><a class="anchor" href="#implementation-ticket-breakdown" aria-hidden="true" tabindex="-1">#</a>Implementation (ticket breakdown)</h2>
+<p>In dependency order; details in the roadmap ticket <code>17-agenten-zugang-mcp.md</code>.</p>
+<ol>
+<li><strong>Origin and confirmation for every form</strong> — generalize the marking layer from ADR-0049;
+pre-check, printout and payment treat &quot;unconfirmed&quot; like open;
+confirmation screen per Anlage; conflict rule &quot;user wins&quot;.</li>
+<li><strong>OAuth provider</strong> — better-auth plugin, scopes, consent page with third-country notice,
+overview „Verbundene Assistenten“ with revocation, token path in guards, rate limits and audit.</li>
+<li><strong>MCP server</strong> — domain tools, masking on read, refused actions server-side,
+CI test with a real MCP client.</li>
+<li><strong>File storage for documents</strong> — EU object storage, encryption, checks, virus scan, export and
+deletion (depends on #292).</li>
+<li><strong>Law and data protection</strong> — legal review, DSFA, privacy policy,
+terms; part of the 1.0 acceptance.</li>
+</ol>
+<h2 id="rejected-alternatives"><a class="anchor" href="#rejected-alternatives" aria-hidden="true" tabindex="-1">#</a>Rejected alternatives</h2>
+<ul>
+<li><strong>We run the agent (our own model call).</strong> We would become the controller for the
+data transfer to every provider (data processing, third country) and would bear the model costs.</li>
+<li><strong>Third parties for many users.</strong> Close to commercial assistance in tax matters; liability and
+risk of misuse considerably greater.</li>
+<li><strong>Agent values apply immediately.</strong> Contradicts product ADR-014/048 and puts the responsibility
+for a tax return into a model.</li>
+<li><strong>Personal API key instead of OAuth.</strong> A long-lived secret with broad access that sits in the
+assistant in plain text; no standardized consent and revocation path.</li>
+<li><strong>Generate tools from the OpenAPI.</strong> Around 80 technical tools overwhelm many models
+and expose internals.</li>
+<li><strong>Block known providers.</strong> Trivial to bypass via the freely chosen client name.</li>
+</ul>
+<h2 id="amendment-1-2026-11-03--implementation-171-origin-and-confirmation-384-req-032"><a class="anchor" href="#amendment-1-2026-11-03--implementation-171-origin-and-confirmation-384-req-032" aria-hidden="true" tabindex="-1">#</a>Amendment 1 (2026-11-03) — Implementation 17.1: origin and confirmation (#384, REQ-032)</h2>
+<p>Stakeholder decisions (NexusHero, refinement 17.1):</p>
+<ul>
+<li>Unconfirmed values block pre-check, printout and payment <strong>regardless of origin</strong> —
+including existing, unconfirmed year carry-overs.</li>
+<li>&quot;The user wins&quot; (§7) applies to <strong>every</strong> non-user writer, including the year carry-over:
+it no longer overwrites a value entered in the target year, but files a suggestion instead.</li>
+<li>Confirmation happens on a dedicated screen „Prüfen &amp; bestätigen“ (&quot;Review &amp; confirm&quot;) (reachable from the cockpit hint and the
+printout pre-check); the single-confirm button of the carry-over is dropped.</li>
+<li>There is at most one open suggestion per field; the newest replaces the older one.</li>
+</ul>
+<p>Technical cut (follows from §6/§7, without a new dependency):</p>
+<ul>
+<li>The table <code>UebernahmeKennzeichnung</code> (ADR-0049) is renamed to the generic <code>Kennzeichnung</code>
+and kept per <strong>field</strong> (<code>&lt;maske&gt;[:&lt;instanz&gt;].&lt;feld&gt;</code>); existing fact markings are
+fanned out to their fields by a migration. No row = entered by the user = confirmed.
+Profile and master data are independent of the year and sit under tax year 0.</li>
+<li>The suggestion value is encrypted (<code>mode=strict</code>), because it can carry anything a form
+stores. Origin and confirmation are part of export and deletion.</li>
+<li>If the user changes a value themselves, it counts as confirmed (the marking is dropped). An
+open suggestion on a confirmed value does not block — it is not a value of the tax return.</li>
+<li>With Zusammenveranlagung (joint assessment), unconfirmed values of Person B also block (<code>unbestaetigt.personB</code>);
+Person B confirms in their own app.</li>
+<li>The decision between writing and suggesting lies in the core (<code>kennzeichnung.ts</code>); the API reads
+and writes fields only via the forms&#39; repositories. 17.1 wires up the forms that a
+non-user can fill today (LStB, pension, capital, rental income); the remaining forms get
+the write path and user hook together with the assistant (17.3).</li>
+</ul>
+<h2 id="amendment-2-2026-11-20--advice-and-feedback-for-the-assistant"><a class="anchor" href="#amendment-2-2026-11-20--advice-and-feedback-for-the-assistant" aria-hidden="true" tabindex="-1">#</a>Amendment 2 (2026-11-20) — Advice and feedback for the assistant</h2>
+<p>Stakeholder decision (NexusHero): The user&#39;s assistant gets the same domain advice
+as the in-app advisor, so that it can run the tax return on its own and give its user
+feedback. No model call on our side (§1 stays): the advice consists of <strong>deterministic
+tools</strong>, not an agent-to-agent question to our LLM.</p>
+<ul>
+<li><strong>Advice tools</strong> (scope <code>steuerdaten:read</code>, they neither read nor write user data, audited):
+<code>einkommensteuer_berechnen</code>, <code>veranlagungsarten_vergleichen</code>, <code>kapitalertraege_guenstigerpruefung</code>,
+<code>spekulationsfrist_pruefen</code>, <code>renovierung_15_prozent_pruefen</code>, <code>schenkungsteuer_berechnen</code>,
+<code>kleinunternehmer_pruefen</code>, <code>gewerbesteuer_schaetzen</code>, <code>steuerwissen_lesen</code>, <code>gesetzestext_lesen</code>,
+<code>rechtsquelle_nachschlagen</code>. They share schemas and calculation core with the in-app advisor
+(<code>TOOL_ARG_SCHEMAS</code>), so the numbers are the same.</li>
+<li><strong>Feedback:</strong> <code>steuerbericht</code> (estimate, printout gaps, unconfirmed Anlagen, open questions,
+next steps), <code>offene_fragen</code> (next interview question with possible answers, only the user
+knows them) and <code>auswirkung_simulieren</code> (refund before/after via the real write path in a
+transaction that is always rolled back; scope <code>steuerdaten:write</code>, never inside a running transaction).</li>
+<li><strong>External text marked:</strong> <code>gesetzestext_lesen</code> returns the retrieved wording with <code>untrusted: true</code>
+and the note to cite it only as a source.</li>
+<li><strong>Entering with the same target check as the internal advisor:</strong> <code>maske_eintragen</code> rejects unknown
+fields, never-writable fields, the bookkeeping form and values the field cannot hold, giving
+the reason. Personal fields stay open for the user&#39;s own assistant (§8).</li>
+<li><strong>Person B (Zusammenveranlagung, ADR-0054):</strong> <code>maske_eintragen</code> and <code>auswirkung_simulieren</code> take
+<code>person</code> (A/B) with the rules of the in-app advisor (<code>checkDraftPerson</code>): B only if the user manages B&#39;s
+details, only in B&#39;s own forms, where the person is mandatory. The user confirms B&#39;s
+unconfirmed values and decides on their suggestions as well on „Prüfen &amp; bestätigen“ (marked as „Person B“);
+confirming an Anlage applies to both.</li>
+<li><strong>Children as records:</strong> <code>kinder_auflisten</code> (first name masked, year of birth, <code>instance</code>) and
+<code>kind_anlegen</code> (scope <code>steuerdaten:write</code>); the details follow with <code>maske_eintragen</code>, form <code>kind</code>.</li>
+<li><strong>Sign-in for standard MCP clients</strong> (MCP Authorization, RFC 9728/8414/8707), verified in a local run with a
+real MCP client: <code>/mcp/sse</code> answers without a token with 401 and
+<code>WWW-Authenticate: Bearer resource_metadata=…</code>; <code>/.well-known/oauth-protected-resource[/mcp/sse]</code> names
+better-auth under <code>/api/auth</code> as the server, whose metadata is also available under
+<code>/.well-known/oauth-authorization-server[/api/auth]</code>. The MCP endpoint is an OAuth resource;
+its entry is created on the first <code>/oauth2/</code> request (<code>ensureMcpResource</code>), not at startup, so that
+the app boots without a database. Tokens for this resource are JWTs (issuer <code>…/api/auth</code>,
+audience <code>…/mcp/sse</code>); the guard checks them against its own keys and additionally requires the
+still-existing consent, so that a revocation takes effect immediately for JWTs too (§10). Clients with
+loopback redirect count as native (RFC 8252), <code>offline_access</code> grants refresh tokens, and the
+consent page states that the connection lasts until revoked.</li>
+<li><strong>Undoing its own mistakes:</strong> <code>eintrag_zuruecknehmen</code> clears an unconfirmed value or discards
+a suggestion, both only if the same assistant wrote it. <code>kind_entfernen</code> deletes only
+a child that the assistant created and on which nothing is confirmed or entered by the user;
+for this, <code>kind_anlegen</code> marks name and date of birth as unconfirmed entries of the assistant.
+A duplicate <code>kind_anlegen</code> returns the existing child.</li>
+<li><strong>Describing fields:</strong> <code>maske_felder</code> returns shape and hint from the field catalog per form; references
+to tools of the in-app advisor are reworded for the external assistant.</li>
+<li><strong>Not yet:</strong> bookings and fixed assets (self-employed) and new rental properties via MCP. Payment, account and consents remain excluded (§4).</li>
+</ul>
+<h2 id="amendment-3-2026-11-20--read-view-the-assistant-reads-derived-data-not-details"><a class="anchor" href="#amendment-3-2026-11-20--read-view-the-assistant-reads-derived-data-not-details" aria-hidden="true" tabindex="-1">#</a>Amendment 3 (2026-11-20) — Read view: the assistant reads derived data, not details</h2>
+<p>Stakeholder decisions (NexusHero, grilling 20.11.2026 after the real-data run 2024 via MCP).
+Tightens §8 (&quot;read masked&quot;) into data minimization; applies only to the external assistant, the
+in-app advisor keeps ADR-0091.</p>
+<ol>
+<li><strong>Persons only derived.</strong> Per person (user, partner, children): age on 31.12. of the tax year
+instead of date of birth, federal state instead of address (no postcode, no town, no street), marital status and
+assessment type, occupational group from the interview answer <code>beruf</code> (not the job title).
+Steuer-ID and IBAN never, not even masked.</li>
+<li><strong>Amounts in plain text.</strong> Tax amounts identify nobody and are the core of the advice.</li>
+<li><strong>Write precisely, read derived.</strong> The assistant writes precise values (date of birth,
+employer address); it reads them back derived, including its own („Geburtsdatum gesetzt,
+Alter 33“, &quot;date of birth set, age 33&quot;).</li>
+<li><strong>Third parties only as role and country</strong> („Arbeitgeber 1, Schweiz“, &quot;employer 1, Switzerland&quot;); employers, daycare, tradespeople,
+donation recipients and the other parent without names and addresses.</li>
+<li><strong>Free text only as &quot;set&quot;.</strong> Remarks, explanations and notes do not flow back.</li>
+<li><strong>Children as number and age</strong> with <code>instance</code>, without initials; the assistant keeps the mapping of children
+of the same age itself (from <code>kind_anlegen</code>).</li>
+<li><strong>Church tax without denomination.</strong> Per person, the assistant writes only the new detail
+&quot;subject to church tax yes/no&quot;, which the estimate uses; a denomination (Art. 9 DSGVO) is entered by the
+user with consent in the app. With &quot;yes&quot; without a denomination, the report flags a gap for
+the printout. If the two contradict each other, the user&#39;s denomination applies (§7), and the report names the
+contradiction. The religion key is no longer writable via MCP.</li>
+<li><strong>Tools.</strong> <code>maske_lesen(screen, person)</code>: per field the value (amounts in plain text, personal data derived),
+state (confirmed / unconfirmed / suggestion open) and origin as a type (user, you yourself, other
+assistant, year carry-over, document; no names of other assistants). <code>haushalt_ueberblick</code> replaces
+<code>steuerjahr_stand</code>. Documents readable with belegId, type, year, date and the fields whose origin they
+are, without file names.</li>
+<li><strong>Transparency</strong> via the audit log as before (REQ-004); no separate view.</li>
+</ol>
+<p>In addition, from the real-data run, further tools for the assistant&#39;s work (ticket breakdown in
+<code>17-agenten-zugang-mcp.md</code>, slices 17.8–17.13): batch entry per form, breakdown of the estimate
+(calculation path), Bescheid (tax assessment notice) reconciliation with the objection deadline, check rules and printout plan, tasks for the
+user, convenience (assessment comparison from case data, multi-field scenario, exchange rates, Vordruck (form) lines,
+find field, previous year and deadlines), rental properties and bookings. Still excluded:
+reading documents server-side (§11), consents, payment, account actions.</p>
+<h2 id="amendment-4-2026-11-21--the-assistants-access-ends-at-the-mcp-endpoint"><a class="anchor" href="#amendment-4-2026-11-21--the-assistants-access-ends-at-the-mcp-endpoint" aria-hidden="true" tabindex="-1">#</a>Amendment 4 (2026-11-21) — The assistant&#39;s access ends at the MCP endpoint</h2>
+<p>Finding from the security review after the real-data runs: since 17.2 an assistant token had been accepted by
+<code>UserContextGuard</code> on every route and treated by <code>RequiresAccount</code> like a user session;
+it was blocked only where <code>@ForbidAssistant()</code> was present (5 of 39 controllers). Via the normal
+API, the read view (Amendment 3), the scopes and &quot;only the user confirms&quot; could thereby be bypassed.</p>
+<ol>
+<li><strong>Allowlist instead of denylist.</strong> A bearer token is valid only on controllers with
+<code>@AcceptsAssistantToken()</code>; that is the MCP controller alone. Everywhere else the guard answers with
+403 before it looks up the token. A test records that the marker is present only there.
+<code>@ForbidAssistant()</code> remains as a second block.</li>
+<li><strong>Registration only when signed in.</strong> <code>allowUnauthenticatedClientRegistration</code> is off: only a signed-in
+user registers a client. Consequence: an MCP client that registers itself before sign-in
+(RFC 7591, which is how the usual assistants connect) no longer gets in this way.
+Instead, the user creates the access in the profile („Assistent verbinden“, &quot;Connect assistant&quot;): a public client
+(PKCE, no secret) with the assistant&#39;s callback address (Claude, ChatGPT or a custom one, https
+or loopback). The app shows the server address and client ID, which the user enters in the assistant.</li>
+<li><strong>The assistant is its client ID.</strong> Origin (<code>Kennzeichnung.herkunftClientId</code>,
+<code>vorschlagClientId</code>) and tasks (<code>AssistentAufgabe.clientId</code>) record the client ID. &quot;Own
+entry&quot; (undo, remove child or property, read own tasks, &quot;you&quot; in the read view)
+goes by it; the name a client gives itself is display only. Entries from before this
+change carry no ID and continue to go by the name.</li>
+<li><strong>Tasks for the user</strong> (<code>aufgabe_fuer_nutzer</code>): fixed types, at most 300 characters, no
+identifiers (IBAN, Steuer-ID), no links or web addresses, at most 20 open per year; in the app
+only as plain text with the assistant&#39;s name.</li>
+</ol>
+<p>Deliberately not in this cut: an upper limit for tool calls and concurrent sessions; tasks
+only from text templates. Booking drafts via MCP remain open (a booking is not a field value and
+needs its own draft path).</p>
+<h2 id="amendment-5-2026-11-21--the-assistant-registers-itself-again"><a class="anchor" href="#amendment-5-2026-11-21--the-assistant-registers-itself-again" aria-hidden="true" tabindex="-1">#</a>Amendment 5 (2026-11-21) — The assistant registers itself again</h2>
+<p>Amendment 4 no. 2 is withdrawn. With MCP it is usual that the user enters only the
+server address in the assistant; the assistant reads the metadata (RFC 9728, RFC 8414), registers itself
+(RFC 7591) and sends the user to sign in and grant access. There is no client secret (public
+client, PKCE). Copying a client ID by hand is one step more than with other services.</p>
+<ol>
+<li><code>allowUnauthenticatedClientRegistration</code> is on again. A registration grants nothing: a token
+is only created after the user signs in and grants access, and applies only at the MCP endpoint (Amendment 4 no. 1).</li>
+<li><strong>Limit:</strong> at most 10 registrations per hour and address (<code>/oauth2/register</code>).</li>
+<li><strong>Cleanup:</strong> A self-registered client that no user has approved after 7 days is
+deleted (<code>oauth-client-sweep.ts</code>; runs with a registration, at most hourly per process).</li>
+<li>„Assistent verbinden“ in the profile remains as a second path for assistants without their own registration;
+a client created there belongs to the account and is not cleaned up.</li>
+</ol>
+<p>Not examined: Client ID Metadata Documents (the client ID is an address of the assistant, nothing
+is stored) as a later replacement for registration.</p>
+<h2 id="amendment-6-2026-11-21--booking-drafts-comparisons-limit-and-streamable-http"><a class="anchor" href="#amendment-6-2026-11-21--booking-drafts-comparisons-limit-and-streamable-http" aria-hidden="true" tabindex="-1">#</a>Amendment 6 (2026-11-21) — Booking drafts, comparisons, limit and Streamable HTTP</h2>
+<p>Closes #548 and #549 and takes up the points left open in Amendment 4 (booking drafts, upper limit).
+Unchanged: the assistant writes only unconfirmed values or suggestions; the user decides in the app.</p>
+<ol>
+<li><strong>Booking drafts are suggestions.</strong> <code>buchung_entwerfen(taxYear, …)</code> takes the same details as
+<code>stage_booking_draft</code> of the in-app advisor and checks them the same way (<code>parseBookingDraft</code>, <code>checkBookingDraft</code>:
+chart of accounts, tax code, balance, finalization, year; without a book <code>NO_BOOK</code>). Because there is no
+card in the chat via MCP, the draft sits as an open suggestion on <code>buchung:&lt;entwurf-id&gt;.entry</code> with the assistant&#39;s
+origin (<code>fileProposal</code>); it appears under „Prüfen &amp; bestätigen“ (Anlage EÜR) as a readable booking
+(date, text, document, total) and is only booked with „Übernehmen“ (&quot;Apply&quot;) via the existing booking path
+(<code>decideProposal</code> → <code>applyDraft</code>); „Verwerfen“ (&quot;Discard&quot;) leaves nothing behind. <code>buchungsentwuerfe_auflisten</code> shows only
+its own open drafts; the booking text is returned, as it is the user&#39;s own detail, not an identifier.
+Undoing works with <code>eintrag_zuruecknehmen</code> (form <code>buchung</code>, field <code>entry</code>); an applied booking
+can only be cancelled by the user. At most 25 open drafts per assistant and year; only the first business.</li>
+<li><strong>Comparisons from the case data.</strong> <code>veranlagung_vergleichen</code> calculates Zusammenveranlagung versus Einzelveranlagung with
+the core (<code>filingTypeComparison</code>) from the taxable income of the app estimate, split between both persons in the ratio of their
+income (an approximation, which the answer says; without church tax); without
+Person B or an estimate, it names the reason. <code>vorjahr_vergleichen</code> puts <code>schaetzung_aufschluesseln</code> of both
+years side by side, with the change in the main figures, the fields with a previous-year value that are now empty
+(only form and field names, only the user&#39;s own), and the number of children and rental properties.</li>
+<li><strong>Limit:</strong> at most 120 tool calls per user and minute (sliding window, across all of the user&#39;s sessions and
+clients) and at most 3 open SSE sessions per user (<code>MCP_LIMITS</code> in <code>mcp-rate-limit.ts</code>).
+Beyond that, a tool answers with <code>RATE_LIMITED: … in X Sekunden wieder</code>, and a further SSE session with 429.
+The first rejected call of a block and every rejected session go into the audit log. The counter lives
+in the process memory, without a database: <strong>it applies per instance</strong>; with several instances (ADR-0053)
+a user can do correspondingly more. A shared counter (e.g. Redis) would be the next step.</li>
+<li><strong>Streamable HTTP.</strong> Besides the old SSE transport (<code>GET /mcp/sse</code>, <code>POST /mcp/messages</code>) there is
+<code>POST /mcp</code> (MCP Streamable HTTP, stateless: a new server per request, JSON responses, <code>GET</code>/<code>DELETE</code>
+with 405). Same guard, <code>@AcceptsAssistantToken()</code>, 401 with <code>WWW-Authenticate</code> and the same limit. Since
+nothing is held between requests, any instance answers any request. The <strong>SSE sessions stay
+in the memory of one instance</strong>: a <code>POST /mcp/messages</code> that lands on another one does not find its session
+(404); clients should use <code>/mcp</code>.</li>
+<li><strong>Two resources, one endpoint.</strong> <code>/mcp</code> is a separate OAuth resource (metadata under
+<code>/.well-known/oauth-protected-resource/mcp</code> with <code>resource …/mcp</code>), because a client checks that the resource
+matches its server address (<code>/mcp/sse</code> does not match <code>/mcp</code>). Both resources are created on the first
+OAuth call; the guard accepts tokens with audience <code>…/mcp/sse</code> (all issued so far) and
+<code>…/mcp</code> on both transports. The metadata of <code>/mcp/sse</code> remains unchanged.</li>
+</ol>
+<h2 id="amendment-7-2026-11-22--registration-limit-for-hosted-assistants"><a class="anchor" href="#amendment-7-2026-11-22--registration-limit-for-hosted-assistants" aria-hidden="true" tabindex="-1">#</a>Amendment 7 (2026-11-22) — Registration limit for hosted assistants</h2>
+<p>Amends Amendment 5 no. 2. A hosted assistant such as Claude.ai registers itself from its own
+servers, not from the user&#39;s device. All its users therefore share a few addresses; with
+10 registrations per hour and address, from the eleventh user in an hour nobody would get in any more.</p>
+<ol>
+<li><strong>Limit:</strong> at most 100 registrations per 10 minutes and address (<code>OAUTH_REGISTRATION_RATE_LIMIT</code>).</li>
+<li>This remains justifiable because a registration grants nothing (Amendment 5 no. 1) and a never-
+approved client is deleted after 7 days (Amendment 5 no. 3). The limit only protects the table.
+So that the cleanup keeps up, one run checks up to 20 pages of 200 clients (4,000 instead of 200), the
+oldest first, and skips retained clients instead of getting stuck on them.</li>
+<li>Open: the limit counts per process in memory, like the other better-auth limits; with several
+instances it multiplies. A shared store (Redis) comes with #292.</li>
+</ol>
+<h2 id="amendment-8-2026-11-23--the-consent-screen-says-where-the-access-goes"><a class="anchor" href="#amendment-8-2026-11-23--the-consent-screen-says-where-the-access-goes" aria-hidden="true" tabindex="-1">#</a>Amendment 8 (2026-11-23) — The consent screen says where the access goes</h2>
+<p>A client registers itself without signing in (Amendment 5) and picks its own name. The consent screen
+showed only that name and the scopes, so a client that calls itself &quot;Claude&quot; and redirects to someone
+else&#39;s server looked like the user&#39;s own assistant. A user who approves it hands that server an access
+and a refresh token; the read view (Amendment 3) limits what it reads to amounts and derived facts.</p>
+<ol>
+<li><strong>Destination:</strong> <code>GET /v1/oauth/client-info</code> returns the redirect addresses the client registered,
+each with where it leads: the host of a web address (in its ASCII form, so a look-alike domain shows
+as <code>xn--…</code>), <code>localhost</code> for a loopback redirect of an app on the user&#39;s machine, or an app scheme.
+The screen shows the destination of the redirect address the request names, or every registered
+destination when the request names none of them. The authorization code is only ever sent to a
+registered address, so this is the part of a client it cannot make up.</li>
+<li><strong>Notice:</strong> the screen states that SteuerEule has not checked the assistant and that the name is the
+assistant&#39;s own.</li>
+<li>Open: nothing verifies a client. A list of known assistants with their redirect hosts would let the
+screen mark those as recognised; a user who does not read the destination is still not protected.</li>
+</ol>
+<h2 id="amendment-9-2026-11-23--limits-an-assistant-could-walk-around"><a class="anchor" href="#amendment-9-2026-11-23--limits-an-assistant-could-walk-around" aria-hidden="true" tabindex="-1">#</a>Amendment 9 (2026-11-23) — Limits an assistant could walk around</h2>
+<p>Four gaps from a code review of the MCP server. None let an assistant read or write what it was not
+granted; each let one that was granted access do more than intended.</p>
+<ol>
+<li><strong>Children:</strong> <code>kind_anlegen</code> had no upper bound, unlike <code>vermietung_anlegen</code> (10 objects). An
+assistant now creates a child only while the tax year holds fewer than 12
+(<code>MAX_CHILDREN_BY_ASSISTANT</code>); more are added by the user in the app. The repository counts and
+inserts under one advisory lock per account and year, so calls arriving together cannot pass the cap
+(the same lock also keeps their sequence numbers apart).</li>
+<li><strong>SSE session and client:</strong> <code>POST /mcp/messages</code> checked that a session belongs to the caller&#39;s
+user, not to the caller&#39;s client. The server behind a session carries the scopes of the client
+that opened it, so another assistant of the same user, granted less, could have acted through it
+with the session id. A message from another client is now refused with 403.</li>
+<li><strong>Checkout links:</strong> every <code>zahllink_anfordern</code> creates a checkout session at the payment provider,
+bounded only by the 120 tool calls per minute. Now at most 5 per hour and account
+(<code>MCP_CHECKOUT_LINK_LIMIT</code>), refused before the provider is asked.</li>
+<li><strong>Limits across instances:</strong> amends Amendment 6. The tool-call window stays in the process and
+refuses a flood without a round trip; a call it lets through is also counted in the shared
+rate-limit storage (ADR-0106), so several instances hold one limit together. The checkout-link limit
+counts there too. This takes effect only where that storage has Redis (#292); without it the storage
+counts per process, as before. The limit of open SSE sessions stays per process, because the
+sessions themselves live in one process.</li>
+<li>Cost: with Redis, every tool call that passes the process window adds one round trip to it, and the
+storage opens a connection per call. If Redis does not answer, the call waits for the storage&#39;s
+timeout (400 ms) and is then counted in the process.</li>
+<li>Known bound: the shared storage counts in fixed windows (a key expires one window after its first
+increment), as it does for the sign-in limits of ADR-0106. Around a window boundary several instances
+together can let through up to twice the limit within one rolling window. Each process still holds its
+own sliding window. The limits bound abuse, not billing, so this is accepted here rather than giving
+the MCP its own counter.</li>
+</ol>
+<h2 id="amendment-10-2026-11-25--one-gate-for-every-tool-file-upload-write-scope-for-payment-links"><a class="anchor" href="#amendment-10-2026-11-25--one-gate-for-every-tool-file-upload-write-scope-for-payment-links" aria-hidden="true" tabindex="-1">#</a>Amendment 10 (2026-11-25) — One gate for every tool, file upload, write scope for payment links</h2>
+<p>Recorded in <a href="0111-beta-readiness.html">ADR-0111</a> §&quot;Agent access&quot;. In short: every tool passes one gate (policy,
+bounded arguments with <code>taxYear</code> 2000 to next year, audit row naming the assistant, one error shape); caps
+are counted under an advisory lock; <code>beleg_hochladen</code> uploads the file through the REST upload&#39;s checks;
+<code>zahllink:write</code> replaces <code>zahllink:read</code>, which stays accepted for existing refresh tokens; a request without
+a token gets 401 with a challenge before any guest identity exists.</p>
+<p>Accepted, with the reason:</p>
+<ul>
+<li>Nothing verifies a client (amendment 8). Registration is open by the protocol; what bounds a deceptive
+client is the consent screen (it shows the redirect target and the rights asked for), the step-up before
+the grant, the read view without identifiers, and that every value an assistant writes stays unconfirmed.</li>
+<li><code>kind_anlegen</code> answers that a child with this first name and birth date already exists. An assistant with
+the write right and without the read right learns that one fact about the user&#39;s own household; without
+the answer it would create the child twice, and the user would have to find and remove the copy.</li>
+<li>The two comparison tools keep their names (<code>veranlagung_vergleichen</code>, <code>veranlagungsarten_vergleichen</code>) and
+the advice tools their <code>year</code> argument: a rename breaks connected assistants, and both are described in the
+tool list.</li>
+</ul>
+<h2 id="amendment-11-2026-11-26--bescheidabgleichen-compares-against-the-submitted-return-546"><a class="anchor" href="#amendment-11-2026-11-26--bescheidabgleichen-compares-against-the-submitted-return-546" aria-hidden="true" tabindex="-1">#</a>Amendment 11 (2026-11-26) — <code>bescheid_abgleichen</code> compares against the submitted return (#546)</h2>
+<p>The tool compared a notice with the app&#39;s live estimate. That answers a different question than the one a
+user has when the Bescheid arrives: what did the Finanzamt change from what I filed. Decision (stakeholder):</p>
+<ul>
+<li>The comparison is the app&#39;s own Bescheid-Abgleich (ADR-0098 §8): the version frozen at submission
+against the entered Bescheid, taken from <code>AssessmentService</code>, not a second diff. Each position carries its
+difference and, for a position the Finanzamt changed on its own, the effect of that difference on the
+refund, as the core computes it (<code>diffAssessment</code>); the API computes nothing. A multi-entry simulation
+(<code>szenario_simulieren</code>) cannot stand in for it: the Bescheid positions (taxable income, tax) are
+results, not mask fields an entry could set.</li>
+<li>Without a submitted version the tool refuses with a hint; it does not fall back to the live estimate. The
+same for a year with no Bescheid entered. The appeal deadline stays.</li>
+<li>The Finanzamt&#39;s free text (explanations) does not flow back to the assistant (amendment 3, 5).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0051-owl-ai-mode.html"><span class="eyebrow">Previous</span><span>ADR-0051</span></a><a class="step step-next" href="0053-beta-hosting-cloud-run.html"><span class="eyebrow">Next</span><span>ADR-0053</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

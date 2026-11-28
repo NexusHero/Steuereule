@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>User test: old ↔ new navigation (#450 part 2B, D12) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">User tests</p>
+        <h1>User test: old ↔ new navigation (#450 part 2B, D12)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#setup">Setup</a></li><li><a class="chip" href="#data-protection">Data protection</a></li><li><a class="chip" href="#preparation-once-per-variant">Preparation (once per variant)</a></li></ul>
+      </header>
+      <article class="prose">
+<p>Goal: find out whether the new navigation (#443, hub cockpit) actually gets people through the tax return faster and more reliably than the old tunnel. The automated measurement (part 2A) counts clicks; this test measures time, errors and the points at which someone does not know how to continue.</p>
+<p>The participants are German-speaking. Text that is read aloud or handed to participants stays in German in these materials, with an English translation next to or below it.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">File</th>
+<th align="left">Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><a href="session-log.html">session-log.html</a></td>
+<td align="left">Flow of each session, role of the facilitator, template for the notes</td>
+</tr>
+<tr>
+<td align="left"><a href="tasks.html">tasks.html</a></td>
+<td align="left">The four tasks with test data and success criterion</td>
+</tr>
+<tr>
+<td align="left"><a href="sus-questionnaire.html">sus-questionnaire.html</a></td>
+<td align="left">System Usability Scale (10 questions) with scoring</td>
+</tr>
+<tr>
+<td align="left"><a href="evaluation.html">evaluation.html</a></td>
+<td align="left">Table for the results and the report</td>
+</tr>
+</tbody></table></div>
+<h2 id="setup"><a class="anchor" href="#setup" aria-hidden="true" tabindex="-1">#</a>Setup</h2>
+<ul>
+<li><strong>10 people</strong>, 5 per variant (<strong>between-subjects</strong>: each person sees only one variant, so that they do not learn from the first).<ul>
+<li><strong>Old:</strong> tag <code>baseline/pre-443</code> (commit <code>1990ed3</code>), the state before #443.</li>
+<li><strong>New:</strong> current <code>main</code>.</li>
+</ul>
+</li>
+<li>Same tasks, same test data, same order, same device (laptop, Chrome, 1280 px).</li>
+<li>Duration per session about 40 minutes: 5 welcome, 25 tasks, 5 SUS, 5 debrief.</li>
+<li>Recruitment by the product owner. Mix per variant as equal as possible: at least 2 people who have so far done their tax return themselves, at least 1 person over 55, at most 1 person from the team or with knowledge of the app.</li>
+</ul>
+<h2 id="data-protection"><a class="anchor" href="#data-protection" aria-hidden="true" tabindex="-1">#</a>Data protection</h2>
+<ul>
+<li>Only <strong>synthetic test data</strong> from <a href="tasks.html">tasks.html</a>. Participants never enter their own data.</li>
+<li>Test accounts are created beforehand and deleted afterwards.</li>
+<li>No video or audio recording without written consent. Without consent: only notes and a stopwatch.</li>
+<li>The results use codes (A1–A5, N1–N5), no names.</li>
+</ul>
+<h2 id="preparation-once-per-variant"><a class="anchor" href="#preparation-once-per-variant" aria-hidden="true" tabindex="-1">#</a>Preparation (once per variant)</h2>
+<ol>
+<li>Start the stack (see <code>e2e/harness/README.md</code>); for <strong>Old</strong>, first run <code>git worktree add ../steuereule-alt baseline/pre-443</code>.</li>
+<li>Create a fresh, confirmed account per person (email <code>nutzertest-&lt;kürzel&gt;@beispiel.de</code>), still without any details.</li>
+<li>Browser: new profile, no autofill, zoom 100 %, window 1280 × 800.</li>
+<li>Stopwatch, printed task cards, printed SUS form, note template from <a href="session-log.html">session-log.html</a>.</li>
+</ol>
+
+      </article>
+      <p class="back"><a href="../../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../../assets/site.js"></script>
+</body>
+</html>

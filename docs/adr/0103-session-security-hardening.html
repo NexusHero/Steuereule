@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0103 — Session-security hardening: /v1 CSRF, an absolute session cap, token rotation, stronger registration defaults — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0103</p>
+        <h1>Session-security hardening: <code>/v1</code> CSRF, an absolute session cap, token rotation, stronger registration defaults <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-23</li>
+<li><strong>Deciders:</strong> engineering; proven by breaking each control (ADR-0021).</li>
+<li><strong>Builds on</strong> <a href="0009-better-auth-as-auth-server.html">ADR-0009</a> (better-auth is the auth server),
+<a href="0011-cors-credentialed-cross-origin.html">ADR-0011</a> (the session cookie is <code>SameSite=None; Secure</code>
+because the web app is genuinely cross-site), <a href="0012-session-guard-coexistence-and-guest-upgrade.html">ADR-0012</a>
+(the <code>UserContextGuard</code> seam, the one shared <code>trustedOrigins</code> allowlist, and §5&#39;s note that <code>SameSite=None</code>
+removes the cookie&#39;s own CSRF defence), <a href="0027-session-freshness-gate-disabled.html">ADR-0027</a>
+(<code>session.freshAge</code> stays 0 — the device list depends on it), and
+<a href="0052-agent-access-mcp.html">ADR-0052</a> (the MCP/OAuth bearer path, which carries no ambient cookie).</li>
+<li><strong>Context tags:</strong> security, auth</li>
+<li><strong>Component:</strong> <code>apps/api</code> · better-auth 1.7.15</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>An audit of <code>apps/api/src/auth</code> against better-auth 1.7.15 found four session-security gaps. Each was
+confirmed against the installed <code>better-auth</code> dist before a line was changed, and each fix is pinned by a
+test that fails against the attack and passes with the fix (ADR-0021).</p>
+<h3 id="vulnerability-1--no-csrf-protection-on-the-apps-own-v1-routes"><a class="anchor" href="#vulnerability-1--no-csrf-protection-on-the-apps-own-v1-routes" aria-hidden="true" tabindex="-1">#</a>Vulnerability 1 — no CSRF protection on the app&#39;s own <code>/v1</code> routes</h3>
+<p>The session cookie is <code>SameSite=None</code> so the web app works cross-site (ADR-0011). better-auth&#39;s own origin
+check (<code>advanced.disableOriginCheck: false</code>) runs only inside its mounted handler, which serves <code>/api/auth/*</code>
+(<code>mount-better-auth.ts</code>); the NestJS <code>/v1</code> controllers sat behind <code>UserContextGuard</code>, which establishes a
+<code>userId</code> but never checked the request&#39;s origin. CORS does not close this: it stops a foreign page from
+<em>reading</em> a response, not from <em>sending</em> a credentialed request. A plain cross-site form POST — for example
+<code>multipart/form-data</code> to <code>POST /v1/belege/upload</code> — would arrive with the victim&#39;s session cookie attached.</p>
+<p>ADR-0012 §5 named &quot;origin-based CSRF via <code>trustedOrigins</code>&quot; as the primary defence given <code>SameSite=None</code>, but
+that control only ever covered better-auth&#39;s own routes; the app&#39;s routes had no equivalent. This ADR closes
+that gap, not a regression.</p>
+<h3 id="vulnerability-2--unbounded-session-lifetime"><a class="anchor" href="#vulnerability-2--unbounded-session-lifetime" aria-hidden="true" tabindex="-1">#</a>Vulnerability 2 — unbounded session lifetime</h3>
+<p><code>session.expiresIn</code> defaults to 604800s/7 days (<code>context/create-context.mjs:148</code>) and is slid forward on use
+every <code>updateAge</code> (86400s/1 day, <code>:147</code>): <code>getSession</code> rewrites <code>expiresAt</code> to <code>now + expiresIn</code> while
+keeping the row&#39;s <code>createdAt</code> (<code>api/routes/session.mjs:179-200</code>, <code>db/internal-adapter.mjs</code> <code>updateSession</code>).
+There is no absolute maximum age, so an actively-used session — including a stolen cookie in active use —
+renews indefinitely.</p>
+<h3 id="vulnerability-3--the-session-token-is-never-rotated"><a class="anchor" href="#vulnerability-3--the-session-token-is-never-rotated" aria-hidden="true" tabindex="-1">#</a>Vulnerability 3 — the session token is never rotated</h3>
+<p><code>getSession</code>&#39;s slide extends <code>expiresAt</code> but does not mint a new token. better-auth&#39;s <code>/change-password</code>
+(<code>api/routes/update-user.mjs</code>) rotates the current token and revokes the account&#39;s other sessions <strong>only when
+the caller passes <code>revokeOtherSessions: true</code></strong>; its default (<code>false</code>/absent) updates the password hash and
+does neither — the current token stays valid and every other session stays live. The API cannot rely on the
+web client to send the flag.</p>
+<p>(The guest→account upgrade is <em>not</em> a gap: sign-in/sign-up always creates a brand-new better-auth session
+(<code>api/routes/sign-in.mjs</code>, <code>sign-up.mjs</code> <code>createSession</code>), and the guest identity is a separate HMAC cookie
+retired by the upgrade hook (<code>guest-account-upgrade.prisma.ts</code>) — there is no stale token to rotate there.)</p>
+<h3 id="vulnerability-4--weak-registration-defaults"><a class="anchor" href="#vulnerability-4--weak-registration-defaults" aria-hidden="true" tabindex="-1">#</a>Vulnerability 4 — weak registration defaults</h3>
+<p><code>emailAndPassword.minPasswordLength</code> was 8, and <code>requireEmailVerification</code> was <code>false</code>. Flipping verification
+on is not safe here: guest-first onboarding relies on an account being usable immediately after sign-up
+(ADR-0012 <code>autoSignIn</code>), and ADR-0030 sweeps accounts that are <em>never</em> verified — both presuppose that
+unverified accounts exist and work.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-origin-based-csrf-guard-on-every-v1-route-origincsrfguard"><a class="anchor" href="#1-origin-based-csrf-guard-on-every-v1-route-origincsrfguard" aria-hidden="true" tabindex="-1">#</a>1. Origin-based CSRF guard on every <code>/v1</code> route (<code>OriginCsrfGuard</code>)</h3>
+<p>A global Nest guard (<code>auth/origin-csrf.guard.ts</code>, registered as <code>APP_GUARD</code> in <code>AuthModule</code>). On a
+state-changing request (POST/PUT/PATCH/DELETE) it requires, <strong>when an <code>Origin</code> header is present</strong>, that the
+origin be one of the configured <code>trustedOrigins</code>:</p>
+<ul>
+<li><strong>Bearer-authenticated requests are exempt</strong> — the MCP/OAuth path (ADR-0052) carries no ambient cookie and
+cannot be driven by a cross-site page.</li>
+<li><strong>A request with no <code>Origin</code> header is allowed</strong> — a browser attaches <code>Origin</code> to every cross-site
+state-changing request (fetch/XHR and modern form POSTs alike), so its absence means a non-browser client:
+a native app (whose token is read from SecureStore, ADR-0012 §3) or server-to-server. This matches
+better-auth&#39;s own origin check and keeps the device/QR flow and the native app working.</li>
+</ul>
+<p>The allowlist is the <strong>same</strong> set better-auth is given — the CORS origins plus the web-app origin — computed
+once by <code>auth/trusted-origins.ts</code> (<code>mergeTrustedOrigins</code>) and used in both places, honouring ADR-0012 §5&#39;s
+&quot;one allowlist, no second drifting copy&quot; rule.</p>
+<p><code>Sec-Fetch-Site</code> is deliberately not the decision signal: the deployment is genuinely cross-site (ADR-0011),
+so a legitimate web-app call and an attacker&#39;s call are <em>both</em> <code>Sec-Fetch-Site: cross-site</code> — only the Origin
+value distinguishes them.</p>
+<h3 id="2-an-absolute-session-cap-enforced-on-both-session-boundaries"><a class="anchor" href="#2-an-absolute-session-cap-enforced-on-both-session-boundaries" aria-hidden="true" tabindex="-1">#</a>2. An absolute session cap, enforced on both session boundaries</h3>
+<p>better-auth&#39;s config cannot express a maximum age independent of the sliding window, so the cap
+(<strong>30 days</strong> from <code>createdAt</code>, <code>SESSION_ABSOLUTE_MAX_AGE_MS</code>) is enforced in two places — because there are
+two session readers, and the mounted better-auth handler (<code>/api/auth/*</code>, <code>mount-better-auth.ts</code>) runs
+<em>outside</em> <code>UserContextGuard</code>:</p>
+<ul>
+<li><strong><code>UserContextGuard</code></strong> (the <code>/v1</code> routes): a session whose <code>createdAt</code> is over the cap is refused like an
+expired one — the guard falls through to the guest path. This is immediate, including for a pre-existing
+session that has not been slid since this shipped.</li>
+<li><strong>A <code>databaseHooks.session.update.before</code> clamp</strong> (<code>session-absolute-cap.ts</code>): every expiry slide
+better-auth performs is clamped to <code>createdAt + cap</code>. Once a session is past the cap the clamp is a time
+in the past, so better-auth&#39;s own <code>expiresAt &lt; now</code> check (<code>session.mjs</code>) expires and <strong>deletes</strong> the
+session on its next read — on <em>every</em> route, better-auth&#39;s own endpoints included. This is what forces a
+<strong>stolen, actively-used</strong> cookie to re-authenticate: clamping the server-side <code>expiresAt</code> invalidates the
+row for whoever holds the cookie, where merely clearing the legitimate user&#39;s cookie would not.
+<em>Residual:</em> a slide happens at most once per <code>updateAge</code> (1 day), so a session that was already over the
+cap when this shipped keeps working on <code>/api/auth/*</code> until its next slide (≤1 day of use) catches it; the
+guard already blocks it on <code>/v1</code> immediately, and every session created from here on is clamped before it
+can ever exceed the cap.</li>
+</ul>
+<p>The sliding idle window is pinned explicitly at its existing values (<code>expiresIn</code> 7 days, <code>updateAge</code> 1 day)
+so they are reviewed decisions rather than inherited defaults, and <strong><code>freshAge</code> stays 0</strong> (ADR-0027 — the
+device list depends on it; this ADR does not touch that).</p>
+<p>30 days balances the &quot;stay signed in&quot; expectation of a consumer tax app against bounding a stolen
+<code>SameSite=None</code> cookie&#39;s lifetime: well beyond the 7-day idle window, so an ordinary active user is never cut
+off mid-session, yet a hard ceiling where before there was none.</p>
+<h3 id="3-rotate-the-token-and-revoke-siblings-on-every-password-change"><a class="anchor" href="#3-rotate-the-token-and-revoke-siblings-on-every-password-change" aria-hidden="true" tabindex="-1">#</a>3. Rotate the token and revoke siblings on every password change</h3>
+<p>A matcher in better-auth&#39;s <code>hooks.before</code> forces <code>revokeOtherSessions: true</code> onto the <code>/change-password</code>
+request body whatever the client sent (<code>auth/force-session-rotation.ts</code>). better-auth then performs the full
+rotate-and-revoke through its own supported path — a fresh token is issued (the old one dies) and the
+account&#39;s other sessions are deleted. No bespoke session surgery is added.</p>
+<h3 id="4-stronger-registration-defaults-verification-gated-at-the-sensitive-action"><a class="anchor" href="#4-stronger-registration-defaults-verification-gated-at-the-sensitive-action" aria-hidden="true" tabindex="-1">#</a>4. Stronger registration defaults, verification gated at the sensitive action</h3>
+<p><code>minPasswordLength</code> is raised to <strong>12</strong> (paired with the existing Have I Been Pwned breach check, ADR-0012
+§5). <code>requireEmailVerification</code> stays <strong>false</strong> so guest-first onboarding and the ADR-0030 sweep keep working;
+instead, the most sensitive outward action — filing the return, <code>POST /v1/steuerjahre/:jahr/abgabe</code>
+(ADR-0098 §8) — now carries <code>@RequiresVerifiedEmail()</code>. A signed-in account whose email is unverified is
+refused there; a guest is already refused by <code>@RequiresAccount()</code>, and a bearer/assistant caller is allowed
+through (it acts for an account that completed OAuth consent and cannot verify an email itself, ADR-0052).</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>A cross-site POST to a <code>/v1</code> route with a victim&#39;s cookie is rejected unless its <code>Origin</code> is trusted; the
+legitimate cross-origin web app and the native app are unaffected.</li>
+<li>A session cannot outlive 30 days from login however actively it is used; past that, the user re-authenticates.</li>
+<li>Changing a password logs out the account&#39;s other devices and invalidates the old token — standard behaviour,
+now enforced server-side rather than left to the client.</li>
+<li>Sign-up still works without a verified email, but filing a return requires one.</li>
+<li>These are additive controls on the existing <code>UserContextGuard</code>/better-auth wiring; no controller or service
+changed except the one <code>@RequiresVerifiedEmail()</code> on the submission endpoint.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Use <code>Sec-Fetch-Site</code> instead of the Origin allowlist for CSRF.</strong> Rejected: the web app is legitimately
+cross-site (ADR-0011), so it and an attacker both send <code>Sec-Fetch-Site: cross-site</code>; only the Origin value
+separates them.</li>
+<li><strong>A non-zero <code>freshAge</code> as the lifetime bound.</strong> Rejected: <code>freshAge</code> is a per-action freshness gate, not a
+session cap, and ADR-0027 disabled it precisely because any finite value re-breaks the device list; the cap
+belongs in the guard, measured from <code>createdAt</code>.</li>
+<li><strong>Require email verification globally (<code>requireEmailVerification: true</code>).</strong> Rejected: it breaks guest-first
+onboarding (ADR-0012 <code>autoSignIn</code>) and contradicts ADR-0030&#39;s sweep of never-verified accounts; gating the
+sensitive action is the honest middle.</li>
+<li><strong>Rotate the token with bespoke session code in a Nest layer.</strong> Rejected: forcing better-auth&#39;s own
+<code>revokeOtherSessions</code> flag reuses its tested rotate-and-revoke path instead of duplicating session handling.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0102-ports-and-adapters-enforced-by-architecture-tests.html"><span class="eyebrow">Previous</span><span>ADR-0102</span></a><a class="step step-next" href="0104-pentest-finding-fixes.html"><span class="eyebrow">Next</span><span>ADR-0104</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -133,7 +133,7 @@ Stripe account (test mode for staging and the beta); the operator details for th
     (then add its ranges `35.191.0.0/16,130.211.0.0/22`), and deploy again.
 18. After the release, run the encryption phase of the identity backfill in the image:
     `node --import tsx scripts/backfill-identity.ts` (ADR-0109 §12).
-19. Ask a repository admin to add the four missing required checks (`docs/ci-pipeline.md`, Required checks).
+19. Ask a repository admin to add the four missing required checks (`docs/ci-pipeline.html`, Required checks).
 
 ### Rotating the field key (ADR-0008, REQ-003)
 
@@ -254,7 +254,7 @@ Rollback of step 5: `tofu apply -var db_keep_public_ipv4=true`. The sequence can
 project; whether the Cloud Run socket prefers the private address while both exist is not verified here, which is
 why step 5 is the real proof. A new stack needs none of this: one `apply`, one deploy.
 
-Alarme (`monitoring.tf`) entstehen mit `alert_email`; was sie bedeuten: [docs/sre/incident-runbook.md](../docs/sre/incident-runbook.md).
+Alarme (`monitoring.tf`) entstehen mit `alert_email`; was sie bedeuten: [docs/sre/incident-runbook.html](../docs/sre/incident-runbook.html).
 
 Datenbank zwischen Testrunden anhalten und wieder starten:
 
@@ -271,11 +271,11 @@ deployt, bis Last oder Verfügbarkeit es verlangen (ADR-0053).
 ### k3s auf Hetzner, managed EU-Postgres, Redis (Track 06 / #292)
 
 **Slice 1: IaC-Skelett + Feinschnitt + Credential-Blöcke.** Dieses Verzeichnis ist das
-Skelett der echten Infrastruktur aus `docs/roadmap-1.0.md` (Infra-Track, D7) und den
+Skelett der echten Infrastruktur aus `docs/roadmap-1.0.html` (Infra-Track, D7) und den
 Research-ADRs [Produkt-ADR-047](../finanzo-funke-design-system/project/research/adr/047-prisma-postgres-redis.md)
 (Datenschicht) und [Produkt-ADR-049](../finanzo-funke-design-system/project/research/adr/049-deployment-k3s-hetzner.md)
 (Deployment). Es schließt die in
-[ADR-0026](../docs/adr/0026-local-production-shaped-compose-stack.md) offen benannte #292-Lücke:
+[ADR-0026](../docs/adr/0026-local-production-shaped-compose-stack.html) offen benannte #292-Lücke:
 der lokale `docker-compose.prod.yml`-Stack ist der *lokale Test*-Gegenpart, **nicht** das
 Cloud-Deployment — dieses Verzeichnis ist der Anfang davon.
 

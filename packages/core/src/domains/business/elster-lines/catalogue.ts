@@ -23,7 +23,7 @@ const DATA_KEY: Partial<Record<ElsterForm, string>> = {
 /**
  * Anlage G and Anlage S are filed electronically only. The Formular-Management-System shows a notice
  * instead of a PDF, the Anleitung zur Einkommensteuererklärung (FMS and ELSTER) has no section for
- * them, and no other official public source names their fields (docs/research/self-employed-forms.md).
+ * them, and no other official public source names their fields (docs/research/self-employed-forms.html).
  * GewSt 1 A has no PDF either, but its ELSTER help names the fields (without Zeile).
  */
 const ELECTRONIC_ONLY: ReadonlySet<ElsterForm> = new Set(['anlage-s', 'anlage-g'])

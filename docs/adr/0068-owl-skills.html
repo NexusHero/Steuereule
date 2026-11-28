@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0068 — Owl: skills and question rounds — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0068</p>
+        <h1>Owl: skills and question rounds <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#persistent-and-honest-added-2026-11-13">Persistent and honest (added 2026-11-13)</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#rejected">Rejected</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-12</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #495; <code>apps/api/skills/berater-interview/SKILL.md</code>, <code>apps/api/prisma/schema.prisma</code> (<code>AdvisorInterview</code>), <code>packages/core/src/interview/advisor-skills.ts</code>, <code>apps/api/src/ki/{advisor-skills,advisor-prompt,advisor-tools,advisor-tool-round}.ts</code>, <code>apps/mobile-web/src/screens/advisor/chat/{SkillsMenu,QuestionRound}.tsx</code></li>
+<li><strong>Supplements:</strong> ADR-0038 (zero-write), ADR-0067 (projects, conversations, notes)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The Product Owner wants to be able to let the owl work like an advisor: not just answer questions,
+but ask its way through the tax return in a targeted manner. This needs ways of working that can be switched on
+and off (&quot;skills&quot;), and as the first skill an interview modeled on &quot;grill-me&quot;.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Skills are shipped; the user only switches them on and off.</strong> No custom
+skill texts from users: a freely worded instruction text would be a way to bypass the owl&#39;s rules
+(prompt injection by the user themselves, zero-write). The registry is in
+<code>ADVISOR_SKILL_IDS</code>; new skills are a code change with review.</li>
+<li><strong>A skill changes how the owl asks, not what it may enter.</strong> Its text comes in the
+case-specific part of the system prompt after the fixed rules. Drafts, notes, checks and
+zero-write apply unchanged.</li>
+<li><strong>A skill applies per session, not stored.</strong> The field <code>skill</code> on the message switches it on
+for this message; the UI remembers the choice until the page reloads. A
+stored skill per user or conversation is a later step.</li>
+<li><strong>Advisor interview = rounds with choice fields.</strong> The tool <code>ask_questions</code> poses a
+round of 1 to 4 questions, each with 2 to 4 tappable answers and the owl&#39;s recommendation
+(must be one of the answers, otherwise it is dropped). The answers go back as an ordinary
+message (&quot;1: Ja&quot;, one line per question); there is nothing special about it, drafts arise
+as usual. The round stays operable as long as it is the last message, after that it is
+history. A question can also be answered freely: the input field remains.</li>
+<li><strong>A round without at least two answers per question is discarded,</strong> not shown.</li>
+</ol>
+<h2 id="persistent-and-honest-added-2026-11-13"><a class="anchor" href="#persistent-and-honest-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Persistent and honest (added 2026-11-13)</h2>
+<ol start="6">
+<li><strong>The app keeps the state of the interview, not the model.</strong> Ten areas
+(<code>INTERVIEW_AREAS</code> in core: grunddaten, kinder, einkuenfte, arbeit, vorsorge, haushalt,
+belastungen, spenden, ausland, vorjahr) each have, per tax year, the state open, done or
+not applicable. The owl ticks them off with <code>mark_interview_area</code>. Storage is per user
+and tax year in <code>BeraterInterview</code> (encrypted, included in account deletion and data export). With the skill
+switched on, the state is in every prompt.</li>
+<li><strong>Finished only when no area is open any more.</strong> Until then every answer ends with a
+new round. At the end the owl summarizes and asks for confirmation (<code>apps/api/skills/berater-interview/SKILL.md</code>).</li>
+<li><strong>Fact or decision.</strong> Every question has <code>kind</code>. With <code>fact</code> (what the user had or
+did) the API discards a recommendation, and the UI shows none, not even for older
+rounds without <code>kind</code>. Otherwise „Empfehlungen übernehmen“ (&quot;Apply recommendations&quot;) would assert facts on the user&#39;s behalf.
+Only <code>decision</code> carries <code>recommended</code> and a one-sentence <code>reason</code>.</li>
+<li><strong>Multiple choice.</strong> <code>multiple: true</code> allows several answers („Was davon hattest du?“ (&quot;Which of these did you have?&quot;));
+they go back as &quot;1: A, B&quot;. Answers that look exactly the way the app writes them
+skip the topic checker (<code>isRoundAnswer</code>); before, every round with more than one
+question fell through this gap and was checked.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>The model can also call <code>ask_questions</code> in a conversation without a skill; the
+tool text refers to the skill, but the UI always shows a round.</li>
+<li>Users cannot create their own skills. Anyone who wants that first needs a review of the texts
+(length, content, exclusion of instructions against the fixed rules).</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>Users&#39; own skills:</strong> see 1.</li>
+<li><strong>Skills in the admin panel:</strong> an additional maintenance path with no benefit, as long as there is one skill.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0067-owl-projects-conversations-notes-context.html"><span class="eyebrow">Previous</span><span>ADR-0067</span></a><a class="step step-next" href="0069-owl-advisor-stance-and-tax-knowledge.html"><span class="eyebrow">Next</span><span>ADR-0069</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

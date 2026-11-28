@@ -11,7 +11,7 @@
 #              ├─► e2e-scenarios / e2e-self-employed
 #              └─► prod-stack-smoke + prod-stack-dast ──► prod-deploy-smoke*
 #
-# * aggregate jobs that keep the name of the required check (the ruleset pins check names), see docs/ci-pipeline.md.
+# * aggregate jobs that keep the name of the required check (the ruleset pins check names), see docs/ci-pipeline.html.
 name: Build & E2E
 
 on:

@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0116 — The documentation is HTML pages in the app's design — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0116</p>
+        <h1>The documentation is HTML pages in the app&#39;s design <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li><li><a class="chip" href="#proof-adr-0021">Proof (ADR-0021)</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-28</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner)</li>
+<li><strong>Applies to:</strong> <code>docs/</code>, <code>scripts/checks/adr-check.mjs</code>, <code>scripts/checks/register-check.mjs</code>, <code>scripts/checks/lib/html-doc.mjs</code></li>
+<li><strong>Builds on:</strong> ADR-0021 (a control is proven by breaking it), ADR-0025 (the requirements register is checked against the repository)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The documentation was 156 Markdown files under <code>docs/</code>. On 2026-11-28 a generator laid them out as a static site in the app&#39;s design (<code>docs/site/</code>, pull request #611), with the Markdown as the one source and a check in CI that the pages matched it. That left two forms of every document in the repository: the Markdown that was edited and the page that was read.</p>
+<p>The Product Owner decided that the pages replace the Markdown: there is one documentation, and it looks like the app.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>The HTML pages under <code>docs/</code> are the documentation and its source.</strong> The Markdown files, the generator (<code>scripts/docs/build-site.mjs</code>), its template and its CI check are removed. A page is edited by hand.</li>
+<li><strong>Where a page lives.</strong> A document keeps the path it had, with <code>.html</code> in place of <code>.md</code>: <code>docs/adr/0012-….html</code>, <code>docs/requirements/register.html</code>. The architecture document is <code>docs/index.html</code> and one page per arc42 chapter (<code>docs/01-introduction-and-goals.html</code> to <code>docs/12-glossary.html</code>); the backend modules are <code>docs/subsystems.html</code>. <code>docs/documents.html</code> lists every document that is neither architecture nor decision.</li>
+<li><strong>One stylesheet.</strong> <code>docs/assets/site.css</code> carries the look. Its first block is a copy of the app&#39;s tokens (<code>packages/tokens/dist/tokens.css</code>) with the dark theme bound to the reader&#39;s system setting; when the tokens change, that block is copied again.</li>
+<li><strong>A new ADR</strong> is a copy of the newest ADR page with its number, title, status and text replaced; it gets a row in <code>docs/adr/index.html</code> and the &quot;Next&quot; step of the ADR before it. A new document of another kind gets a card in <code>docs/documents.html</code>.</li>
+<li><strong>The checks read the pages.</strong> <code>adr-check</code> and <code>register-check</code> were written for Markdown tables and backtick citations. <code>scripts/checks/lib/html-doc.mjs</code> turns a page back into that shape, one line per line of the HTML file, so the parsers and their tests stay as they are and a finding names the line to open in the page&#39;s source.</li>
+<li><strong>Diagrams stay PlantUML</strong> with the shared style <code>docs/diagram-style.puml</code>, rendered light and dark by <code>scripts/docs/render-diagrams.sh</code>.</li>
+<li><strong><code>README.md</code> files stay Markdown</strong> (the repository&#39;s own, and those of packages and tools): GitHub shows them where they lie.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>GitHub shows a page as source code.</strong> The documentation is read from a checkout (<code>docs/index.html</code> in a browser) until it is published somewhere; publishing is not part of this decision.</li>
+<li><strong>The navigation is repeated in every page.</strong> A change to it (a new chapter, a renamed entry) is made in all of them. The arc42 chapters and the three library entries are stable; a new ADR or document does not touch the navigation.</li>
+<li><strong>A change in review is a change of HTML.</strong> A diff shows tags beside the text.</li>
+<li><strong>Pull requests that were open on 2026-11-28 and change a Markdown file under <code>docs/</code></strong> conflict with this one. Their documentation changes are carried into the pages by hand, or this conversion is repeated after they are merged.</li>
+<li><strong>Four links were dead in the Markdown and are dead in the pages:</strong> <code>use-cases.html</code> to <code>adr/0005-deterministic-core-llm-assist.md</code>, <code>adr/0008-keine-erfundenen-daten.md</code> and <code>adr/0016-dsgvo-loeschung-und-export-im-kern.md</code>, and ADR-0107 to <code>0051-receipt-scan-pipeline.md</code>. The ADRs with these numbers are about something else, so the intended target is not known.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Markdown as the source, the site generated from it</strong> (the state of pull request #611). Text stays easy to edit and to review, the navigation exists once, and GitHub renders the documents. Rejected by the Product Owner: two forms of one documentation.</li>
+<li><strong>Markdown and site side by side, the site as an extra.</strong> Rejected for the same reason.</li>
+</ul>
+<h2 id="proof-adr-0021"><a class="anchor" href="#proof-adr-0021" aria-hidden="true" tabindex="-1">#</a>Proof (ADR-0021)</h2>
+<ul>
+<li>Before the Markdown was removed, the register was read both ways and compared: both tables with the same headers, 15 and 33 rows, every cell equal except one link that now ends in <code>.html</code>; 331 citations in the Markdown, 330 found in the page, the missing one a document path that had become <code>.html</code> and is recognised since <code>html</code> is a cited extension.</li>
+<li>With the row of ADR-0115 taken out of <code>docs/adr/index.html</code>, <code>adr-check</code> reported <code>ADR-0115 (0115-owl-voice.html) has no row in docs/adr/index.html</code>.</li>
+<li>With a cited test renamed in <code>docs/requirements/register.html</code>, <code>register-check</code> reported <code>register.html:61 cites apps/api/test/guest-session-gone.test.ts — no such file</code>.</li>
+<li>Both pages were restored and both checks pass.</li>
+</ul>
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0115-owl-voice.html"><span class="eyebrow">Previous</span><span>ADR-0115</span></a><span></span></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -4,7 +4,7 @@ import { VAT_PERIOD_LIMIT_STEPS, appliesFrom, valueForYear } from '../../math/ta
 /**
  * The Umsatzsteuer-Voranmeldung (§ 18 Abs. 1, 2, 2a UStG, §§ 46–48 UStDV) and the Zusammenfassende
  * Meldung (§ 18a UStG), ADR-0101 §22. The app computes and shows the Kennzahlen to type into Mein ELSTER;
- * it does not transmit. Sources: docs/research/self-employed-extension.md §3, §4.
+ * it does not transmit. Sources: docs/research/self-employed-extension.html §3, §4.
  */
 
 export type VatFilingPeriod = 'monat' | 'quartal' | 'befreit'

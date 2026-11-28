@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0034 — The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0034</p>
+        <h1>The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#open--the-stakeholders-call-not-mine">Open — the stakeholder&#39;s call, not mine</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-11</li>
+<li><strong>Deciders:</strong> Musti (lead) — an engineering contract call, settling <strong>F3</strong> held open on the §4
+review of <a href="https://github.com/NexusHero/Steuereule/pull/340">#340</a> (&quot;This is the piece I will settle
+in the ADR… do not rebuild this half until that lands&quot;).</li>
+<li><strong>Applies</strong> <a href="0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.html">ADR-0032</a> (the
+honesty principle) at a <strong>module boundary</strong> rather than at a screen, and
+<a href="0004-testing-strategy.html">ADR-0004</a> (pure, I/O-free logic in <code>packages/core</code>).</li>
+<li><strong>Applies</strong> <a href="0033-the-question-graph-lives-in-packages-core.html">ADR-0033</a> § <em>&quot;Citation form, so this
+class of error stops&quot;</em> — which is also half of what this decision is about.</li>
+<li><strong>Context tags:</strong> architecture, determinism boundary, honesty principle, tax computation</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Two problems, one function. <code>packages/core/src/tarif.ts</code> (#340, the N strand of #321) computes the
+comparison between <strong>Einzelveranlagung</strong> (separate assessment) and <strong>Zusammenveranlagung</strong> (joint assessment) and returns, alongside the two
+amounts, a field named <code>empfehlung</code> (recommendation).</p>
+<h3 id="1-the-verdict-outruns-its-evidence-and-it-does-so-at-the-api-boundary"><a class="anchor" href="#1-the-verdict-outruns-its-evidence-and-it-does-so-at-the-api-boundary" aria-hidden="true" tabindex="-1">#</a>1. The verdict outruns its evidence, and it does so at the API boundary</h3>
+<p>Measured on #340&#39;s head: <code>empfehlung</code> is emitted in identical form at <code>delta = 1 €</code> and at
+<code>delta = −1449 €</code>. The module&#39;s own header names three factors it does <strong>not</strong> compute —
+Solidaritätszuschlag (solidarity surcharge), Kirchensteuer (church tax), Progressionsvorbehalt (progression proviso) — and states correctly that each can flip
+which Veranlagung (assessment) wins.</p>
+<p>That honesty is real and it is entirely in the comments. What crosses the module boundary is a field
+called <code>empfehlung</code> from a function documented as <em>the Günstigerprüfung</em> (most-favorable-outcome check), with no attached limit. A
+caller cannot distinguish a coin-flip from a clear answer, because the return value does not carry the
+difference.</p>
+<p>ADR-0032 was written about screens. It has to bind here too: a screen can only promise what it is
+handed, and a module that manufactures an unqualified claim has already spent the credibility before
+any screen is written. <strong>The rule binds where the claim is made, not only where it is rendered.</strong></p>
+<p>Magnitude, so this is a measurement and not a feeling. Kirchensteuer is 8–9 % of the assessed income
+tax; Solidaritätszuschlag is 5.5 % of it above the Freigrenze (exemption threshold). Both are surcharges <strong>on an ESt that
+differs between the two Veranlagungen</strong>, so their contribution to the delta is of the order of tens to
+hundreds of euro at ordinary incomes. A delta of 1 € is inside that band. So is a delta of 100 €.
+Progressionsvorbehalt is worse: with Lohnersatzleistungen (wage replacement benefits) in play it is unbounded from the inputs this
+module has.</p>
+<h3 id="2-the-name-is-already-taken-in-the-other-log-for-a-different-comparison"><a class="anchor" href="#2-the-name-is-already-taken-in-the-other-log-for-a-different-comparison" aria-hidden="true" tabindex="-1">#</a>2. The name is already taken, in the other log, for a different comparison</h3>
+<p><strong>Günstigerprüfung</strong> in this product&#39;s vocabulary is <strong>Produkt-ADR-032</strong>&#39;s sense — § 32d Abs. 6 EStG,
+Abgeltungsteuer (flat withholding tax) on Kapitalerträge (capital income) against the personal tariff rate. What <code>tarif.ts</code> performs is the
+§ 26 / § 26a / § 26b comparison of <strong>assessment types</strong>.</p>
+<p>Two different comparisons, both of which a German speaker would describe as &quot;checking which is
+cheaper&quot;. The collision is <strong>scheduled, not hypothetical</strong>: #341 already declares the <code>einkuenfte</code> →
+<code>kap-depot</code> branch that Produkt-ADR-032&#39;s Kapitalerträge slice will hang off, and that slice needs the
+word <em>Günstigerprüfung</em> for its own, correct meaning.</p>
+<p>The correct term for what this function does is <strong>Veranlagungsartenvergleich</strong> (comparison of assessment types).</p>
+<p>This is the same conflation ADR-0033 § <em>Citation form</em> was written against, one level up: there it was
+two <strong>ADR logs</strong> sharing a number, here it is two <strong>decisions</strong> sharing a word.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-the-function-is-veranlagungsartenvergleich-günstigerprüfung-is-reserved"><a class="anchor" href="#1-the-function-is-veranlagungsartenvergleich-günstigerprüfung-is-reserved" aria-hidden="true" tabindex="-1">#</a>1. The function is <code>veranlagungsartenvergleich</code>; <em>Günstigerprüfung</em> is reserved</h3>
+<p><code>veranlagungsartenvergleich</code> names the § 26 comparison, in code, in tests, and in prose. The term
+<strong>Günstigerprüfung</strong> is reserved for Produkt-ADR-032&#39;s § 32d Abs. 6 comparison and is not used for
+anything else in this repository.</p>
+<p>Kaan&#39;s provisional prose rename on #340 was the right call and is hereby confirmed rather than
+provisional — see <em>Consequences</em>.</p>
+<h3 id="2-no-verdict-travels-without-its-own-margin-and-the-type-enforces-it"><a class="anchor" href="#2-no-verdict-travels-without-its-own-margin-and-the-type-enforces-it" aria-hidden="true" tabindex="-1">#</a>2. No verdict travels without its own margin, and the <strong>type</strong> enforces it</h3>
+<p>The return value is a discriminated union. <code>empfehlung</code> <strong>survives as a field, but only inside the one
+variant that has earned it</strong>:</p>
+<pre><code class="language-ts">export type Unschaerfe =
+  | { readonly kind: &#39;bestimmt&#39;; readonly obergrenze: number }
+  | { readonly kind: &#39;unbestimmt&#39;; readonly grund: &#39;progressionsvorbehalt-nicht-eingegeben&#39; }
+
+export type Veranlagungsartenvergleich =
+  | { readonly aussage: &#39;eindeutig&#39;; readonly empfehlung: &#39;einzel&#39; | &#39;zusammen&#39;
+      readonly einzel: number; readonly zusammen: number; readonly delta: number
+      readonly unschaerfe: Unschaerfe }
+  | { readonly aussage: &#39;zu-knapp&#39;
+      readonly einzel: number; readonly zusammen: number; readonly delta: number
+      readonly unschaerfe: Unschaerfe }
+  | { readonly aussage: &#39;unbestimmt&#39;
+      readonly einzel: number; readonly zusammen: number; readonly delta: number
+      readonly unschaerfe: Unschaerfe }
+</code></pre>
+<p>Not an optional <code>empfehlung?</code>, not a nullable one, and not a top-level <code>empfehlung</code> beside a
+<code>konfidenz</code> field the caller may ignore. <strong>A caller that wants the verdict must read <code>aussage</code> first,
+and the compiler refuses the shortcut.</strong></p>
+<p>This is deliberately the same instinct as ADR-0031 § 4 as built in #341: the thing that must not be
+skipped is made <em>unrepresentable to skip</em>, rather than written down as a rule someone has to remember.
+A caveat in a doc comment is exactly the control ADR-0021 says is not one — it cannot fail.</p>
+<h3 id="3-the-margin-is-computed-not-chosen"><a class="anchor" href="#3-the-margin-is-computed-not-chosen" aria-hidden="true" tabindex="-1">#</a>3. The margin is <strong>computed</strong>, not chosen</h3>
+<p><code>unschaerfe</code> is a bound on how far the excluded factors could move <code>delta</code>. It is <strong>derived from the
+two computed ESt amounts</strong>, never a threshold picked by feel.</p>
+<ul>
+<li><strong>Solidaritätszuschlag and Kirchensteuer</strong> are surcharges <em>on the assessed income tax</em>. Given
+<code>einzel</code> and <code>zusammen</code>, an upper bound on their contribution to the delta is arithmetic over
+numbers this module already holds.</li>
+<li><strong>Progressionsvorbehalt</strong> is <strong>not</strong> boundable from zvE alone: arbitrary Lohnersatzleistungen move
+it arbitrarily. While that input is absent, <code>unschaerfe</code> is <code>unbestimmt</code>, and <code>aussage</code> <strong>can never
+be <code>eindeutig</code></strong>.</li>
+</ul>
+<p><code>aussage</code> is <code>&#39;eindeutig&#39;</code> <strong>only</strong> when <code>unschaerfe.kind === &#39;bestimmt&#39; &amp;&amp; |delta| &gt; unschaerfe.obergrenze</code>.</p>
+<p>The point of ruling it this way is that <strong>there is no magic number anywhere in the module, and nobody
+has to defend one.</strong> A chosen threshold — 50 €, 200 € — would be a product decision wearing an
+engineering costume, and the first person asked to justify it could not.</p>
+<h3 id="4-what-a-caller-is-entitled-to-conclude"><a class="anchor" href="#4-what-a-caller-is-entitled-to-conclude" aria-hidden="true" tabindex="-1">#</a>4. What a caller is entitled to conclude</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th>From</th>
+<th>Entitled to conclude</th>
+<th><strong>Not</strong> entitled to conclude</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>einzel</code>, <code>zusammen</code></td>
+<td>the § 32a tariff on the two zvE handed in, exact to the euro</td>
+<td>that the zvE handed in is the right figure — accuracy layer 3 is still open (#321 § A)</td>
+</tr>
+<tr>
+<td><code>delta</code></td>
+<td>the exact tariff difference <strong>for those zvE</strong></td>
+<td>the difference in what the user actually pays</td>
+</tr>
+<tr>
+<td><code>aussage: &#39;eindeutig&#39;</code> + <code>empfehlung</code></td>
+<td>this Veranlagung wins <strong>by more than the excluded factors could move it</strong></td>
+<td>that it wins <em>by</em> <code>delta</code></td>
+</tr>
+<tr>
+<td><code>aussage: &#39;zu-knapp&#39;</code></td>
+<td>the tariff difference is inside the noise floor of what we do not compute</td>
+<td>that the two are equal, or that it does not matter</td>
+</tr>
+<tr>
+<td><code>aussage: &#39;unbestimmt&#39;</code></td>
+<td>we cannot bound the error at all</td>
+<td>anything whatsoever about which wins</td>
+</tr>
+</tbody></table></div>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Today, the honest answer is usually &quot;we cannot say.&quot;</strong> Until Soli and Kirchensteuer are computed
+and Progressionsvorbehalt is an input, most real inputs return <code>unbestimmt</code>. That is the correct
+output of a module that excludes three flip-capable factors, and it is a <strong>gate, not a defect</strong>: no
+screen renders this comparison until at least one real input path can reach <code>eindeutig</code>. It also
+turns the missing work into something a ticket can be written against, which a doc comment never
+does.</li>
+<li><strong><code>Veranlagung.jsx:60</code>&#39;s promise stays out</strong>, on the same reasoning #340 already reached. The
+sentence <em>&quot;Kippt das (z. B. durch Lohnersatz mit Progressionsvorbehalt), sagen wir es dir hier
+zuerst&quot;</em> is a claim to detect the flip; the module cannot yet see the thing that causes it.</li>
+<li><strong>The three accuracy layers of <code>tarif.ts</code> are unaffected.</strong> Layer 1 (<code>incomeTax</code> exact per zvE) and
+layer 2 (the comparison exact given two zvE) both still hold and are still claimed. This ADR governs
+only what layer 2&#39;s <em>result</em> is allowed to assert.</li>
+<li><strong>One rename lands across <code>tarif.ts</code>, its tests, and any prose.</strong> Cheap now; it would not be cheap
+after the Kapitalerträge slice has its own <code>guenstigerpruefung</code>.</li>
+<li><strong><code>empfehlung</code> is not deleted</strong>, which was the alternative — see below.</li>
+</ul>
+<h2 id="open--the-stakeholders-call-not-mine"><a class="anchor" href="#open--the-stakeholders-call-not-mine" aria-hidden="true" tabindex="-1">#</a>Open — the stakeholder&#39;s call, not mine</h2>
+<p>Whether the product <strong>shows</strong> a <em>&quot;zu knapp, um das zu sagen&quot;</em> state to the user, or simply does not
+offer the comparison until it can answer, is a screen-commitment question under ADR-0032 and belongs
+to NexusHero. It is raised, not assumed.</p>
+<p>This ADR fixes the module&#39;s contract either way: the screen ruling changes what is rendered, not what
+is returned. <code>zu-knapp</code> and <code>unbestimmt</code> remain distinct in the return value regardless, because
+&quot;inside the noise floor&quot; and &quot;we cannot measure the noise floor&quot; are different facts and collapsing
+them would be the same defect one level down.</p>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Keep a top-level <code>empfehlung</code> and add a <code>konfidenz</code> / <code>aussagekraft</code> field beside it.</strong> Rejected:
+it is the current defect with more fields. The honest half stays optional to read, and the field
+named <code>empfehlung</code> is still the one a caller reaches for first.</li>
+<li><strong>Delete <code>empfehlung</code> entirely; return only <code>einzel</code>, <code>zusammen</code>, <code>delta</code>.</strong> Tempting, and rejected.
+It pushes the &quot;is this delta meaningful?&quot; decision into every caller, which is precisely the drift
+the <code>isValidSteuerId</code> precedent exists against — one definition, imported by both sides. The
+threshold is a property of what the module excludes, so it belongs to the module.</li>
+<li><strong>Pick a fixed noise-floor constant (e.g. 200 €) and emit <code>empfehlung</code> above it.</strong> Rejected: nobody
+can defend the number, and it would be wrong in both directions — far too small at high incomes
+where Kirchensteuer alone exceeds it, needlessly large at low ones. Rule 3 removes the question
+instead of answering it badly.</li>
+<li><strong>Leave the shape alone and document the caveat harder in the header.</strong> Rejected on ADR-0021&#39;s
+thesis: a caveat that a caller can ignore without anything failing is not a control. The header on
+#340 was already excellent and it still let a bare verdict cross the boundary.</li>
+<li><strong>Keep the name <em>Günstigerprüfung</em> and disambiguate by context.</strong> Rejected. It is the same bet the
+three-digit/four-digit ADR numbering lost five times in one week; a name that needs its context to
+be read correctly will eventually be read without it.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0033-the-question-graph-lives-in-packages-core.html"><span class="eyebrow">Previous</span><span>ADR-0033</span></a><a class="step step-next" href="0035-foundation-consolidation.html"><span class="eyebrow">Next</span><span>ADR-0035</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

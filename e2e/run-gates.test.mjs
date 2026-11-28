@@ -45,7 +45,7 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
 const NOT_IN_CI = {
   // An empty list is the goal. Each entry needs a reason and is dropped by the test below once CI runs the script.
-  'google-auth': 'REQ-008 Google sign-in gate (#203, class b): needs the API booted with the dev-only Google credentials; not yet proven safe to run in a gate group, tracked as a gap in docs/process/script-inventory.md',
+  'google-auth': 'REQ-008 Google sign-in gate (#203, class b): needs the API booted with the dev-only Google credentials; not yet proven safe to run in a gate group, tracked as a gap in docs/process/script-inventory.html',
 }
 
 function e2eScripts() {

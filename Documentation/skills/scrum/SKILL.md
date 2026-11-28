@@ -25,7 +25,7 @@ come from [`ultimate-dev-process`](../ultimate-dev-process/SKILL.md) — this sk
 - **Progressive refinement:** only the **current sprint** is decomposed into task issues. Future epics
   stay coarse (one Epic issue) and are broken down just-in-time at Planning — never refine the whole
   backlog upfront (YAGNI).
-- **The Requirements Register** (`docs/requirements/register.md`) tracks delivered `REQ-NNN`s and their
+- **The Requirements Register** (`docs/requirements/register.html`) tracks delivered `REQ-NNN`s and their
   acceptance tests; the board is where work is *discussed and moved*, the Register is the *source of
   truth for what shipped*.
 

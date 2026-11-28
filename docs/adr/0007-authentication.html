@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0007 — Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident, TLS everywhere — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0007</p>
+        <h1>Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident, TLS everywhere <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#security-hardening-wirklich-sicher">Security hardening (&quot;wirklich sicher&quot;)</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> <del>Accepted</del> · <strong>Superseded by <a href="0009-better-auth-as-auth-server.html">ADR-0009</a></strong>
+(2026-07-23) · 2026-07-22 · implements product ADR-046, honours ADR-027/020/006</p>
+<blockquote>
+<p><strong>Superseded (2026-07-23).</strong> The Keycloak-IdP decision below is replaced by
+<a href="0009-better-auth-as-auth-server.html">ADR-0009</a>: <strong>better-auth is the auth server</strong> and Keycloak is
+dropped. Kept on record per the log&#39;s immutability rule (supersede, don&#39;t rewrite). <strong>Still live from
+this ADR:</strong> the phase-1 <code>UserContextGuard</code> <code>userId</code> seam (REQ-002) — ADR-0009 mounts better-auth
+<em>behind</em> it unchanged. Only the &quot;which identity system&quot; choice is superseded.</p>
+</blockquote>
+<blockquote>
+<p><strong>Amended (2026-07-23, <a href="0011-cors-credentialed-cross-origin.html">ADR-0011</a>).</strong> The guest-session
+cookie&#39;s <code>SameSite</code> attribute below was named <code>strict</code> for the <em>same-origin</em> web session. Enabling
+credentialed cross-origin CORS for the live demo (ADR-0011) forces <code>SameSite=None; Secure</code> instead —
+browsers drop a <code>strict</code>/<code>Lax</code> cookie on a cross-site credentialed request, which would leave the
+onboarding vertical broken even with CORS headers correct. <code>UserContextGuard</code> now sets
+<code>SameSite=None; Secure</code>; the seam itself (<code>UserContextGuard</code> / <code>guest-session.ts</code>) is unchanged.</p>
+</blockquote>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The product decided the auth <em>surface</em> already: Google &amp; Apple, email + password, and a guest mode
+(<code>auth.html</code>, #61), with <strong>identity only required at submission</strong> and multi-device without device
+management (ADR-027), on EU-resident infra (ADR-020/047/049). SteuerEule handles tax data — a
+high-value target — and is also a portfolio piece, so demonstrating a hardened, industry-standard
+identity setup is a first-class goal. Open for the <em>engineering</em> build: which identity system, how it
+mounts on the NestJS + Fastify API (ADR-046), where data lives, which session model spans an Expo app
+<strong>and</strong> web, and how the walking skeleton gets a user context before full login exists.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ul>
+<li><strong>Keycloak is the Identity Provider (IdP)</strong> — self-hosted on our k3s in the EU (ADR-049). It owns
+users, credentials, MFA, social federation (Google/Apple), brute-force protection, token issuance
+and the admin surface. A mature, audited IdP carries the security-critical parts instead of
+hand-rolled code.</li>
+<li><strong>better-auth is the application relying party (RP)</strong> — it federates to Keycloak over <strong>OIDC
+(Authorization Code + PKCE)</strong> and provides the TypeScript DX, the <strong>Expo/React-Native</strong> integration,
+and app-session handling. Keycloak is the source of truth for identity; better-auth is its client on
+the NestJS API. (This revises ADR-046&#39;s &quot;better-auth alone&quot; and this ADR&#39;s earlier draft, which had
+wrongly dismissed Keycloak as overkill — for a tax product the hardened IdP is worth the JVM service.)</li>
+<li><strong>TLS everywhere, mandatory.</strong> Keycloak requires HTTPS in production; the k3s ingress terminates
+<strong>TLS 1.3 + HSTS</strong> (cert-manager + Let&#39;s Encrypt), and service-to-service traffic may use mTLS.</li>
+<li><strong>Methods, phased:</strong><ol>
+<li><strong>Guest</strong> first — a lightweight app session (no Keycloak account yet) so the walking-skeleton
+Cockpit read (T4) has a <code>userId</code> immediately; guest data is anonymous until claimed.</li>
+<li><strong>Email + password</strong> (Keycloak realm, email verification/OTP; <code>registrierung.html</code>&#39;s demo code
+becomes a real one).</li>
+<li><strong>Google</strong> and <strong>Apple</strong> via Keycloak identity brokering (Apple Sign-In is mandatory on iOS once
+another social provider ships). A guest <strong>upgrades</strong> to a real Keycloak account, carrying its data
+over — the concrete shape of &quot;Identität erst bei Abgabe&quot; (ADR-027).</li>
+</ol>
+</li>
+<li><strong>Sessions/tokens:</strong> short-lived <strong>access tokens + refresh-token rotation with reuse detection</strong>
+(Keycloak). Web keeps the session in <code>httpOnly</code> + <code>Secure</code> + <code>SameSite=strict</code> cookies; <strong>Expo/RN</strong>
+keeps the refresh/session token in <strong>SecureStore</strong> (better-auth Expo integration). Server-verified,
+revocable, multi-device with no device registry (ADR-027).</li>
+<li><strong>Authorization:</strong> <code>userId</code> (Keycloak <code>sub</code>) scopes every tax year and document (product ADR-006);
+guest data is reachable only by its own session until claimed. <strong>ELSTER submission requires a
+verified real identity</strong> (ADR-005/027) — a gate above ordinary login, out of scope for 1.0 reads.</li>
+<li><strong>Data residency &amp; secrets:</strong> the Keycloak realm DB and app data both live in <strong>our EU Postgres</strong>
+(ADR-047). All <code>AUTH_*</code> / <code>BETTER_AUTH_*</code> / Keycloak client secrets come from the vault/sealed
+secrets (12-Factor III), never hard-coded.</li>
+</ul>
+<h2 id="security-hardening-wirklich-sicher"><a class="anchor" href="#security-hardening-wirklich-sicher" aria-hidden="true" tabindex="-1">#</a>Security hardening (&quot;wirklich sicher&quot;)</h2>
+<p>Non-exhaustive, tracked toward the infra/compliance ADR line and CI gates:</p>
+<ul>
+<li><strong>Transport:</strong> TLS 1.3, HSTS, modern ciphers, auto-renewed certs; optional mTLS between services.</li>
+<li><strong>IdP:</strong> enforce <strong>MFA</strong> (WebAuthn/passkeys + TOTP), brute-force lockout, password policy, PKCE,
+strict redirect-URI allowlist, short token TTLs, refresh rotation + reuse detection.</li>
+<li><strong>App/API:</strong> CSRF protection, strict CORS allowlist, per-route rate limiting (login + API), input
+validation (class-validator), security headers/CSP (helmet), audit logging of tax-data access.</li>
+<li><strong>Data:</strong> encryption at rest, <strong>field-level encryption for the most sensitive tax fields</strong>,
+least-privilege DB roles, encrypted backups, KMS/vault-managed keys.</li>
+<li><strong>DSGVO:</strong> data minimization, retention &amp; deletion paths, <strong>no real PII in non-prod</strong> (§4.2),
+export/delete as first-class (Art. 15/17/20, <code>datenschutz.html</code>).</li>
+<li><strong>SDLC:</strong> dependency scanning (SCA), SAST, secret scanning in CI, and a pen-test before ELSTER
+go-live; the <code>security-review</code> gate runs on auth-touching changes.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>One TypeScript stack for the app + RP; Keycloak is a separate JVM service we run and patch —
+accepted operational cost for audited security and standard SSO/MFA.</li>
+<li>We own identity and tax data in the EU → strong DSGVO posture and native data-subject rights, but we
+carry the security burden (IdP hardening, session hygiene, breach handling).</li>
+<li>OAuth apps (Google, Apple) are configured <strong>in Keycloak</strong> as identity providers; Apple Sign-In
+brings App Store obligations. Local dev needs a Keycloak container in the compose stack.</li>
+<li>Guest→account upgrade must migrate anonymous data atomically to the new <code>sub</code>.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>better-auth alone (no Keycloak)</strong> — lighter, fewer moving parts, but we&#39;d hand-roll MFA,
+brute-force protection and social brokering that Keycloak provides audited. Chosen against for a
+tax product; better-auth stays, now as the OIDC RP.</li>
+<li><strong>Auth0 / Clerk</strong> — fastest, but US-based SaaS: identity PII leaves the EU and our control, per-MAU
+cost. Wrong fit for data sovereignty.</li>
+<li><strong>Supabase Auth</strong> — couples auth to Supabase; we run our own Postgres + k3s.</li>
+<li><strong>Auth.js (NextAuth)</strong> — web/Next-centric; weaker first-class Expo/RN and server-session story.</li>
+<li><strong>Ory (Hydra/Kratos)</strong> — capable, cloud-native, but a larger surface to assemble than Keycloak&#39;s
+batteries-included realm for our 1.0 needs.</li>
+<li><strong>Roll our own</strong> — rejected: auth is the last place to hand-roll security.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0006-language-switcher.html"><span class="eyebrow">Previous</span><span>ADR-0006</span></a><a class="step step-next" href="0008-profile-persistence-encryption.html"><span class="eyebrow">Next</span><span>ADR-0008</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

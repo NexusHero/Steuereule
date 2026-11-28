@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0015 — Crew reduced from four developers to two (Ogün and Enis retired) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0015</p>
+        <h1>Crew reduced from four developers to two (Ogün and Enis retired) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-07-27</li>
+<li><strong>Deciders:</strong> Stakeholder (NexusHero)</li>
+<li><strong>Context tags:</strong> delivery method, operating cost</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The crew was grown from two developers to four (ADR-era decision recorded in the process charter):
+<strong>Kaan</strong> and <strong>Ogün</strong> on frontend, <strong>Robin</strong> and <strong>Enis</strong> on backend, with Enis able to flex to
+frontend. The intent was parallel tracks — more slices in flight, no developer idle — with Suhay and
+Musti jointly holding capacity so all four stayed loaded.</p>
+<p>Each developer is an autonomous agent with its own context window. A slice therefore costs not just
+the code it produces but the tokens the agent spends reading the repository, reasoning, running the
+gate, and reporting back. Observed cost for a single slice in the DSGVO round:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Slice</th>
+<th>Tokens</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Robin</td>
+<td><code>GET /v1/account/export</code> (BE-A)</td>
+<td>~245k, then ~268k for the follow-up</td>
+</tr>
+<tr>
+<td>Enis</td>
+<td><code>DELETE /v1/account</code> (BE-B)</td>
+<td>~218k</td>
+</tr>
+<tr>
+<td>Kaan</td>
+<td>Splash fix, Cockpit finalisation</td>
+<td>~115k–170k per task</td>
+</tr>
+<tr>
+<td>Musti</td>
+<td>Reviews</td>
+<td>~45k–90k per review</td>
+</tr>
+<tr>
+<td>Salih</td>
+<td>Real-stack tests</td>
+<td>~98k–167k per test pass</td>
+</tr>
+</tbody></table></div>
+<p>Two things became visible:</p>
+<ol>
+<li><strong>The marginal developer did not pay for itself.</strong> Adding a second track on each side roughly
+doubled the token spend for a given round without halving the wall-clock — the single-lane
+review and test gates (Musti, Salih) stayed the bottleneck, and the WIP limit of two slices in
+the review+test queue capped useful parallelism at about two tracks anyway.</li>
+<li><strong>Ogün never delivered a slice.</strong> Across the whole run he was queued for the DSGVO frontend
+panels but the queue never drained far enough to dispatch him. A track that is planned, held,
+and reasoned about but never executed is pure coordination overhead.</li>
+</ol>
+<p>The four-developer roster also made every orchestration decision more expensive: capacity had to be
+split four ways at slice start and re-checked whenever a developer freed up, and the lead&#39;s
+find-and-route step had four possible destinations instead of two.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>Retire Ogün (frontend) and Enis (backend/full-stack). The crew returns to two developers —
+Kaan on frontend, Robin on backend — alongside Suhay, Matthias, Musti and Salih.</strong></p>
+<ul>
+<li>Their agent definitions (<code>.claude/agents/ogun.md</code>, <code>.claude/agents/enis.md</code>) are deleted; the
+role tables in the process charter, the delivery pipeline and the review/routing instructions in
+<code>lead-developer.md</code>, <code>scrum-master.md</code> and <code>salih.md</code> drop to two tracks.</li>
+<li><strong>Their history is not rewritten.</strong> <code>Co-authored-by: Enis &lt;enis@steuereule-crew.example&gt;</code> appears
+on merged commits (<code>DELETE /v1/account</code>, REQ-011 BE-B) and stays there — the work was really
+produced under that persona. <code>CONTRIBUTORS.md</code> keeps both entries, marked as former members, so a
+reader who encounters those trailers can still resolve who they were.</li>
+<li>Robin absorbs the backend track Enis held; Kaan absorbs the frontend track Ogün was queued for.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<p><strong>Positive</strong></p>
+<ul>
+<li>Roughly halves the per-round token spend on implementation, which was the dominant cost.</li>
+<li>Removes the capacity-splitting and routing overhead that four tracks imposed on Suhay and Musti.</li>
+<li>Matches real throughput: with a WIP limit of two slices in the review+test queue and single-lane
+review and test gates, two developer tracks saturate the pipeline.</li>
+</ul>
+<p><strong>Negative / accepted</strong></p>
+<ul>
+<li>No second opinion inside a discipline — Kaan and Robin no longer have a same-discipline peer to
+ask. Musti absorbs that mentoring load, which the lead-developer definition already covers.</li>
+<li>Genuinely independent frontend and backend work can no longer run two-wide per side. If a round
+ever needs that, the answer is to re-hire deliberately for that round, not to keep idle capacity
+standing.</li>
+<li>Enis&#39;s senior/full-stack flex is gone; a backend-light round can no longer borrow a second
+frontend pair of hands.</li>
+</ul>
+<p><strong>Neutral</strong></p>
+<ul>
+<li>The gates are unchanged. Risk tiers, the WIP limit, the local review-then-test order, the honesty
+invariant and the <code>Co-authored-by</code> convention all apply exactly as before, to a smaller crew.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Keep four, cap their context.</strong> Rejected: the cost is dominated by the work a slice genuinely
+requires (reading the repo, running the gate), not by verbosity that a cap would trim. It would
+have degraded quality rather than cost.</li>
+<li><strong>Keep Enis, drop only Ogün.</strong> Reasonable on the evidence — Enis delivered a real slice and found
+two genuine bugs, whereas Ogün delivered nothing. Rejected because the backend bottleneck is the
+review/test lane, not backend authoring capacity, so the second backend track has the same
+marginal-value problem as the second frontend one.</li>
+<li><strong>Keep all four, run fewer rounds.</strong> Rejected: it hides the cost rather than removing it, and
+leaves idle personas that the orchestrator must still plan around.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0014-responsive-breakpoint-strategy.html"><span class="eyebrow">Previous</span><span>ADR-0014</span></a><a class="step step-next" href="0016-crew-reduced-to-four-roles.html"><span class="eyebrow">Next</span><span>ADR-0016</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

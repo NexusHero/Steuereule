@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0071 — Owl: tax years as projects in the sidebar, conversations answer concurrently — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0071</p>
+        <h1>Owl: tax years as projects in the sidebar, conversations answer concurrently <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#rejected">Rejected</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-12</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #503; <code>apps/api/src/advisor/{advisor.service,advisor-shared,advisor.repository}.ts</code>, <code>apps/mobile-web/src/screens/advisor/{CopilotBridgeProvider,OwlModeScreen}.tsx</code>, <code>apps/mobile-web/src/screens/advisor/chat/ConversationList.tsx</code></li>
+<li><strong>Amends:</strong> ADR-0067 § 2 (&quot;Only one conversation answers at a time … Parallel work was deliberately not built&quot;)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Since ADR-0067 the tax year is the project, but the sidebar only showed the conversations of the
+one open year, and switching was locked during an answer. The Product Owner wants
+the behavior known from Claude: projects with their conversations below one another, and conversations
+that answer side by side.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong>The sidebar shows all tax years as projects.</strong> At the top the open year with its
+conversations (rename, delete, search as before), below it every further year that has conversations,
+collapsed. The session delivers <code>projects</code> for this.</p>
+</li>
+<li><p><strong>A conversation of another year opens that year for the whole app.</strong> Case overview,
+drafts and notes belong to the year; a conversation from 2024 next to the numbers of 2026 would be
+wrong. If the year changes elsewhere in the app, the owl shows the most recently used
+conversation of the new year.</p>
+</li>
+<li><p><strong>Conversations answer concurrently.</strong> The client keeps the state of an answer per conversation
+(text, thoughts, plan, error, abort). Switching is never locked; stop affects the open
+conversation. The server had already kept runs separate from one another.</p>
+</li>
+<li><p><strong>A conversation has one answer at a time.</strong> The server rejects a second question in a conversation that is currently
+answering (<code>ADVISOR_CONVERSATION_BUSY</code>). An answer that has been stored as &quot;running&quot; for longer than five
+minutes is considered orphaned and does not lock.</p>
+</li>
+<li><p><strong>Who is answering is visible.</strong> The list shows „antwortet gerade …“ (&quot;answering …&quot;), from the state of the
+device and from the server (<code>answering</code>), so also for an answer from another device. A
+conversation that is answering cannot be deleted.</p>
+</li>
+<li><p><strong>The chat is the stage, the edges are quiet.</strong> The lines between list, chat and workbench
+can be dragged (width remembered per device, arrow keys work too); the chat always keeps
+at least 380 px. List and workbench no longer carry primary buttons: „Neues Gespräch“ (&quot;New conversation&quot;),
+„Änderung übernehmen“ (&quot;Apply change&quot;) and „Zurück zum Cockpit“ (&quot;Back to the cockpit&quot;) are quiet buttons, the workbench has no
+colored border. The one prominent button per draft stays in the answer in the chat.</p>
+</li>
+<li><p><strong>Applying from the workbench stays in the conversation.</strong> Previously the app then jumped to the cockpit;
+the cockpit now shows the result when the user goes there themselves.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Concurrent answers are concurrent model calls. The daily quota still counts per
+user.</li>
+<li>Two conversations can suggest the same value; &quot;replaced by newer draft&quot; applies as
+before across conversations. With Turbo the first one to finish writes; the second fails
+the check against intermediate changes and remains a draft.</li>
+<li>After a reload the device reattaches to the answer of the open conversation; the
+others keep running on the server and are caught up on opening.</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>Reading conversations of other years without switching the year:</strong> see 2.</li>
+<li><strong>Several answers in the same conversation:</strong> the order in the history would be random.</li>
+<li><strong>Freely creatable projects:</strong> remains rejected as in ADR-0067.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0070-owl-advises-proactively-and-knows-the-situation.html"><span class="eyebrow">Previous</span><span>ADR-0070</span></a><a class="step step-next" href="0072-n-gre-pension-fund-split-krankentaggeld-annual-rate.html"><span class="eyebrow">Next</span><span>ADR-0072</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

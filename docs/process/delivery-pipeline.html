@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Delivery pipeline — quality before the pull request — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Process</p>
+        <h1>Delivery pipeline — quality before the pull request</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#the-flow">The flow</a></li><li><a class="chip" href="#the-gates-in-order">The gates, in order</a></li><li><a class="chip" href="#the-evidence-block-required-in-every-pr-body">The evidence block (required in every PR body)</a></li><li><a class="chip" href="#risk-tiers--match-the-machinery-to-the-risk">Risk tiers — match the machinery to the risk</a></li><li><a class="chip" href="#how-workers-report--condensed-verdict-first">How workers report — condensed, verdict-first</a></li><li><a class="chip" href="#the-acceptance-loop--the-pipeline-chases-the-human-standard">The acceptance loop — the pipeline chases the human standard</a></li><li><a class="chip" href="#rules-that-keep-it-fast">Rules that keep it fast</a></li><li><a class="chip" href="#working-rules--earned-not-invented">Working rules — earned, not invented</a></li><li><a class="chip" href="#who-owns-what">Who owns what</a></li></ul>
+      </header>
+      <article class="prose">
+<p>How a change travels from the backlog to <code>main</code>. The guiding principle is <strong>shift-left</strong>: the code
+review and the QA test happen <strong>before</strong> the pull request is opened, not on it. A PR in this repo is a
+<strong>release candidate</strong> — already reviewed, already tested, CI green — presented to the stakeholder for a
+final human pass. It is never a workbench for work in progress.</p>
+<p>This keeps two promises:</p>
+<ul>
+<li><strong>The stakeholder only ever receives finished PRs</strong> — reviewed by the lead, tested by QA, green.
+Their final GitHub pass is an <em>audit</em> of the evidence, not a <em>discovery</em> of problems.</li>
+<li><strong>The GitHub history stays honest and readable</strong> — every merged PR carries the lead&#39;s approving
+review and QA&#39;s test report, so the trail shows <code>Lead → QA → Stakeholder</code> at a glance.</li>
+</ul>
+<h2 id="the-flow"><a class="anchor" href="#the-flow" aria-hidden="true" tabindex="-1">#</a>The flow</h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[Suhay + Musti · joint grilling&lt;br/&gt;refinement block: REQ, one Given-When-Then,&lt;br/&gt;ADR check, scope, honesty check, risk tier] --&gt; A2[Stakeholder rules on the block]
+    A2 --&gt; B[Musti · Lead&lt;br/&gt;break down, dispatch]
+    B --&gt; C[Kaan / Robin · Dev&lt;br/&gt;implement tests-first, own gate green]
+    C --&gt; D[Dev opens a DRAFT PR&lt;br/&gt;CI starts running here]
+    D -- the draft itself is the trigger --&gt; E{Musti · Lead&lt;br/&gt;reviews on the draft, comments in public as Musti&lt;br/&gt;posts his record even when he finds nothing}
+    E -- unresolved findings --&gt; C
+    E -- no unresolved findings --&gt; F{Salih · QA&lt;br/&gt;tests per risk tier: T3 not at all,&lt;br/&gt;T2 if user-visible, T1 in full}
+    F -- fails --&gt; C
+    F -- passes --&gt; G[Salih posts his test record&lt;br/&gt;and flips the PR to READY]
+    G --&gt; H[Stakeholder · final human pass on GitHub → merge]
+</code></pre>
+<h2 id="the-gates-in-order"><a class="anchor" href="#the-gates-in-order" aria-hidden="true" tabindex="-1">#</a>The gates, in order</h2>
+<ol>
+<li><p><strong>Refinement — no dev starts without it, and no one half of it counts.</strong> <strong>Suhay and Musti grill
+it together</strong> (ADR-0018) and the <strong>stakeholder rules on the result</strong>: the REQ it serves (or &quot;new →
+into the register first&quot;), exactly one Given–When–Then criterion, the ADRs it touches and any
+conflict, what is explicitly out of scope, <strong>which existing product claim this change might make
+untrue</strong>, and the risk tier. Suhay owns the story/scope/readiness half and the tier; Musti owns the
+technical design. Neither decides, because what was promised to the user is not theirs to settle.
+A refinement one of them ran alone <strong>is not a refinement</strong> — Kaan and Robin send back work that
+arrives without the joint block, or with only half of it.</p>
+</li>
+<li><p><strong>Implementation</strong> — Kaan (frontend) / Robin (backend) build <strong>tests-first</strong> in their own
+branch/worktree until their own gate is green (<code>typecheck</code> + <code>tests</code> + boot proof). No mock data in
+shipped code; a slice is vertical or it isn&#39;t done (ADR-0003/0005).</p>
+</li>
+<li><p><strong>Draft PR — opened as soon as the dev&#39;s own gate is green.</strong> The draft <em>is</em> the workbench, on
+purpose: the review happens on it, in the open, so the process can be watched rather than only its
+result. It also puts CI to work during the review instead of after it.</p>
+</li>
+<li><p><strong>Review — Musti, in public on the draft, and he starts on his own.</strong> He reads the diff locally
+(cheaper and better than through the API) but <strong>posts findings as comments on the PR</strong>. He posts his
+record <strong>even when he finds nothing</strong> — a silent pass is indistinguishable from not having looked.
+The slice advances on <strong>no unresolved findings</strong>, never on &quot;no comments&quot;. He runs <strong>before</strong> Salih:
+his review costs roughly a third of a real-stack run, and code sent back would invalidate that run
+anyway.</p>
+<p><strong>A draft PR opening is itself the trigger (ADR-0020). Nobody asks for permission to start the
+review, and the orchestrator does not gate it.</strong> The trigger is the PR, not who wrote it: a draft
+from Kaan or Robin, from Salih, or from the orchestrator all start the review the same way. The rule
+exists because the alternative was tried — for one slice the orchestrator asked before each
+dispatch, and that turned the review into something waiting on a hand-off, the same &quot;a role that has
+to be couriered is a role the process routes around&quot; failure ADR-0017 §9 removed on the tooling
+side. The gates in this document are the process; an extra approval step in front of one of them is
+not a safety measure, it is a stall with a person standing in it.</p>
+<p>Two exceptions, both already stated elsewhere and neither an invitation to wait: he is <strong>not</strong> the
+gate on a PR he authored (§7a), and a <strong>red CI pipeline blocks first</strong> (gate 6) — a review of code
+that does not build is wasted.</p>
+<p><strong>A thread is a brake; spend it only on demands (ADR-0017 §4a).</strong> With &quot;all comments must be
+resolved&quot; on the branch, opening a review thread holds the merge. <strong>The test is one sentence: does
+this comment owe someone an action before merge?</strong> Yes → inline thread anchored at <code>file:line</code>.
+No → <strong>plain PR comment</strong> — just as permanent, just as public, minus a brake it was never entitled
+to. Findings and change requests are threads; evidence, confirmations, praise, self-corrections and
+<strong>a requested ruling that concludes &quot;no change needed&quot;</strong> are comments. A comment carrying a demand
+<em>anywhere</em> in it is a thread, and the demand is better split into its own comment. And <strong>resolve
+your own satisfied threads at the end of the pass</strong>, not in the next round: &quot;no unresolved findings&quot;
+is the advance criterion, so a satisfied-but-open thread makes that criterion lie.</p>
+<p><strong>Authors: reply, don&#39;t resolve.</strong> Pushed a fix to a thread someone opened? Say in the thread what
+changed. <strong>Resolving belongs to whoever opened it</strong>, after re-reading — a push claims a finding is
+addressed, resolving confirms it, and merging the two lets an author close their own findings.</p>
+</li>
+<li><p><strong>Test — Salih, risk-tiered, and he flips the switch.</strong> <strong>T3</strong> (docs, DS assets, test infra,
+config): he does not run — CI covers it and there is nothing there his kind of testing catches.
+<strong>T2</strong>: he runs when a user can actually see or do something different. <strong>T1</strong> and any genuinely new
+user-facing surface: full real-stack pass. On a pass he posts his test record and <strong>flips the draft
+to ready-for-review</strong> — that flip is the signal that <em>both gates are through and it is the
+stakeholder&#39;s to merge</em>. Nobody else flips it.</p>
+</li>
+<li><p><strong>CI green.</strong> CI re-confirms on the PR what the crew already proved locally. A red pipeline is an
+automatic block — nothing advances past it, and because the draft opened early, CI has usually
+already spoken by the time the review finishes.</p>
+<p>On the review <em>record</em>: Musti lands a comment (&quot;Lead review: PASS — <what was checked>&quot;, or the
+findings if he has any), <strong>never a formal <code>APPROVE</code></strong>. This is a single-account repo, so GitHub
+blocks self-approval, and a self-&quot;APPROVE&quot; reads as a review-gate bypass. The comment is the durable
+trail; the human merge is the only authorization.</p>
+</li>
+<li><p><strong>Stakeholder final pass.</strong> A <strong>ready-for-review (non-draft)</strong> PR has both gates behind it and is
+his to merge. <strong>Most drafts are the crew at work and are not the human&#39;s to review</strong>, though they
+are deliberately open to <em>watch</em>: the review thread is the point.</p>
+<p><strong>But &quot;the non-draft queue&quot; is not the whole answer, and treating it as one costs a round trip.</strong>
+Under ADR-0017 §7a a PR that was owed no Salih-run — self-authored, or a tier that stood him down —
+is finished by the crew and <strong>stays draft</strong>, because nobody in the crew may flip it. That draft
+looks exactly like one still being worked on. So the crew owes an <strong>explicit handover</strong> on those
+(ADR-0017 §7b): a comment naming which gates ran, which were stood down and why, and that the PR is
+now the stakeholder&#39;s to flip or merge. Until that comment exists, a draft means &quot;not yet&quot;.
+(Branch protection can require the CI <strong>checks</strong> but not &quot;N reviews&quot; — single account, nobody else
+to approve; the human merge is the gate.)</p>
+</li>
+</ol>
+<h2 id="the-evidence-block-required-in-every-pr-body"><a class="anchor" href="#the-evidence-block-required-in-every-pr-body" aria-hidden="true" tabindex="-1">#</a>The evidence block (required in every PR body)</h2>
+<pre><code>## Evidence
+- Review (Musti): &lt;what was checked locally, why it holds&gt; — APPROVE
+- Test (Salih): &lt;what booted; flows + breakpoints exercised; real stack vs. contract; honest
+  confidence; what was NOT covered&gt;
+- Acceptance (Salih): &lt;REQ-IDs covered → their acceptance tests, green against the real stack&gt;
+- Control proof (ADR-0021, only if this PR adds or changes a control): &lt;what was broken, what
+  failed as a result, and that it passed again once restored&gt;
+- CI: green
+</code></pre>
+<p><strong>On the control-proof line (ADR-0021).</strong> A <em>control</em> is anything whose purpose is to constrain, block
+or guarantee — a CI job, a linter or tool config, an ignore/allow list, a security header, an
+authorization check, a rate limit, a regression test guarding a specific defect, a seed step something
+else depends on. A control that has only been watched to <strong>pass</strong> is unproven: passing is also what the
+broken version does. Break it, watch the right thing fail, restore it, and write that down. The proof
+runs where the control runs — a CI gate is proven by a <em>red CI run</em>, a browser-enforced behaviour by a
+<em>browser</em>. Where a genuine break is impractical, say so and say what was done instead; silence is not
+an option. Ordinary feature code is out of scope — its tests are already the proof.</p>
+<h2 id="risk-tiers--match-the-machinery-to-the-risk"><a class="anchor" href="#risk-tiers--match-the-machinery-to-the-risk" aria-hidden="true" tabindex="-1">#</a>Risk tiers — match the machinery to the risk</h2>
+<p>Not every slice needs the same weight. Applying the full grill + deep review + live 375/768/1280 test +
+arc42 to a static splash screen costs as much as it does for the auth flow — and buys almost nothing.
+So each slice gets a <strong>tier</strong>, assigned by <strong>Suhay</strong> at readiness (ADR-0018 moved it back to the Scrum
+Master seat; Musti may bump it <strong>up</strong> on a risk he sees, never silently down — the assigning and the
+bumping sit in different seats on purpose, so the ratchet only turns one way). The tier sets the
+<em>depth</em>, never waives honesty, tests-first, DS-fidelity,
+or vertical-never-mock — those hold at every tier.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>What it is</th>
+<th>Gate depth</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>T1 — critical</strong></td>
+<td>Auth, session, encryption, money/estimates, DSGVO, anything a real user&#39;s trust or data rides on</td>
+<td>Full: Musti technical grill <strong>+ ADR</strong>, tests-first, Musti local review, Salih live test (boot + flows at <strong>375/768/1280</strong> on the real seeded stack + REQ acceptance), <strong>arc42</strong> moves with it, full evidence block</td>
+</tr>
+<tr>
+<td><strong>T2 — standard</strong></td>
+<td>A normal vertical wired to an existing/contract&#39;d surface (a screen, a CRUD endpoint)</td>
+<td>Tests-first, Musti local review, Salih local test of the <strong>touched</strong> flow(s) on the real stack (not necessarily all three breakpoints unless layout is in play), evidence block. <strong>ADR/arc42 only if the architecture actually changes.</strong></td>
+</tr>
+<tr>
+<td><strong>T3 — trivial</strong></td>
+<td>Static/presentational screen, DS-asset or copy sync, docs, a pure-mechanical change</td>
+<td>Dev self-check + gate green (typecheck + tests) + a <strong>light Musti glance</strong> (async on the PR is fine). No live-test, no arc42, no grill.</td>
+</tr>
+</tbody></table></div>
+<p>The tier is named on the ticket and repeated in the PR body, so the reviewer and stakeholder know which
+depth to expect. When in doubt, tier <strong>up</strong> — the cost of over-testing a T1 is smaller than the cost of
+under-testing something that turns out to touch trust or data. (A splash screen is T3; the Cockpit or
+Profil vertical is T2; better-auth / encryption / the guest-upgrade transaction are T1.)</p>
+<h2 id="how-workers-report--condensed-verdict-first"><a class="anchor" href="#how-workers-report--condensed-verdict-first" aria-hidden="true" tabindex="-1">#</a>How workers report — condensed, verdict-first</h2>
+<p>A subagent&#39;s report is not a transcript. Lead with a <strong>verdict + a ≤10-line summary</strong> — PASS/FAIL (or
+APPROVE/REQUEST-CHANGES), what changed, and the one or two things that actually matter — then put the
+detail <strong>below</strong>, so it can be skimmed and so it doesn&#39;t flood the orchestrator&#39;s (or the next agent&#39;s)
+context. Multi-agent systems cost real tokens; a tight top-of-report is how we keep that cost down
+without losing the audit trail. The <strong>PR evidence block stays curated</strong> (it&#39;s the durable record) — but
+the working report back to the orchestrator leads with the conclusion, details on demand.</p>
+<h2 id="the-acceptance-loop--the-pipeline-chases-the-human-standard"><a class="anchor" href="#the-acceptance-loop--the-pipeline-chases-the-human-standard" aria-hidden="true" tabindex="-1">#</a>The acceptance loop — the pipeline chases the human standard</h2>
+<p>Green CI is only as honest as its acceptance tests: the CORS defects proved &quot;green&quot; can lie. The fix is
+a feedback loop that keeps the automated gates converging on what the stakeholder would actually
+accept. ADR-0016 retired the Product Owner seat, so the human end of this loop <strong>is</strong> the stakeholder —
+the mechanism is unchanged, but it now has exactly one person feeding it. If they stop exercising the
+preview, the loop stops learning; nothing else supplies its input.</p>
+<ul>
+<li><strong>Salih is the platform + gate engineer, not the per-slice tester.</strong> His top deliverables are a
+<strong>frictionless, always-current seeded preview</strong> (per-PR / one-command stack) that anyone can exercise,
+and <strong>CI gates that are realistic</strong> — every escaped bug and every stakeholder complaint becomes a permanent
+automated check against the real stack. He retires a manual check only once its automated equivalent
+is in CI and <em>proven</em> to catch the class; a thin risk-tiered exploratory pass remains for genuinely-new
+<strong>T1</strong> surface. <strong>The devs own their own PR&#39;s checks to green</strong> (Musti approves, the stakeholder
+merges) — verification parallelises across PRs instead of funnelling through one tester.</li>
+<li><strong>The stakeholder tests often, per slice, on the preview — risk-tiered.</strong> Because Salih made testing
+one click, a <strong>quick human sniff-test before merge on T1/user-facing slices</strong> (&quot;does it do what I
+meant, would a user accept it?&quot;) costs minutes of judgement, not a re-test. T3 skipped, T2
+spot-checked. It is the fast human gate on <em>is-this-the-real-need</em>, not a bottleneck.</li>
+<li><strong>The ping-pong invariant: a complaint is never just fixed — it always also becomes a test.</strong> When
+the stakeholder finds &quot;this didn&#39;t work&quot; on a green build, diagnose the fork: <strong>wrong thing built
+right</strong> (the <em>criterion</em> was incomplete → refine it in the register) or <strong>right thing built wrong</strong>
+(the <em>test</em> lied → Salih hardens it). Either way the finding lands as a <strong>new/corrected acceptance test in CI
+(red)</strong>, a <strong>dev</strong> makes it green, and only then is it closed. Every round hardens the gate, so &quot;CI
+green&quot; asymptotically becomes &quot;the stakeholder would accept it&quot; — and shifting the register&#39;s
+Given–When–Then left
+into the red-first ATDD test means most of the need is automated <em>before</em> the build, leaving the loop
+to mop up only the residual.</li>
+</ul>
+<h2 id="rules-that-keep-it-fast"><a class="anchor" href="#rules-that-keep-it-fast" aria-hidden="true" tabindex="-1">#</a>Rules that keep it fast</h2>
+<ul>
+<li><p><strong>Two tracks, both loaded.</strong> Suhay and Musti own capacity together (ADR-0018) — Suhay lines up the
+<em>ready</em> work, Musti shapes the technical split: work is split so the <strong>two devs
+— Kaan (frontend) and Robin (backend) — run in
+parallel</strong> on non-colliding slices — no dev sits idle while others build. This is the capacity that
+keeps development <em>fast</em>: the board must stay deep enough in ready, independent slices that four
+parallel tracks never starve. Planned at a <strong>sustainable pace</strong> (the team gets its daily breather; no
+crunch).</p>
+</li>
+<li><p><strong>The shared contract is frozen per track before either dev starts (#70).</strong> When a slice is split into a
+frontend and a backend track, the OpenAPI contract both build against (request and response fields, error
+shapes, and <em>when</em> persistence becomes real) is pinned at Planning and named in the slice&#39;s planning record, so
+neither dev learns the shape from whoever finishes first. Slice 1 showed the cost: the Onboarding frontend was
+built against an in-memory contract that changed under it once real <code>/v1/profile</code> persistence landed. A contract
+change found mid-slice is flagged to the other track&#39;s owner <strong>the same day it is decided</strong>, in the ticket, not
+discovered at rebase or integration time. Suhay facilitates; Musti makes the technical freeze call. Checked at the
+next Planning (does the record name the frozen contract?) and the next Retrospective (did anyone report rework from
+an unannounced change?).</p>
+</li>
+<li><p><strong>WIP limit: at most two slices in the review+test queue at once.</strong> Four devs <em>build</em> in parallel, but
+<strong>review (Musti) and test (Salih) are single-lane</strong> — so building faster than they can drain just
+piles up unmergeable work (we once had five slices built and zero merged). Cap the number of slices
+waiting on the gates: when the review/test queue is full, a freed-up dev&#39;s next move is to <strong>help land
+what&#39;s in the queue</strong> (rebase, integrate, R2-style follow-ups, close review comments), <em>not</em> start a
+third branch. Landing finished work is throughput; a growing pile is not. Musti and the orchestrator
+hold this limit; the real speed lever is a <em>short</em> queue that drains, plus automating the gate itself
+(see risk tiers, and the CI regression gates that let a green pipeline stand in for a manual pass).</p>
+</li>
+<li><p><strong>One ticket = one vertical slice = one short-lived branch.</strong> Small diffs, small final pass.</p>
+</li>
+<li><p><strong>The developer fixes — never the reviewer, the tester, or the orchestrator.</strong> When a gate finds a
+defect, it goes back to the <strong>dev who owns that code</strong> to fix; it then re-enters the loop — <strong>dev
+fixes → Musti re-reviews → Salih re-tests</strong>, round again until it holds. Musti reviews, Salih tests,
+the dev fixes: those stay separate heads on purpose. A reviewer or tester who reaches in and patches
+the code (even a &quot;trivial&quot; one-liner) blurs the role and burns their context on work that isn&#39;t
+theirs — and a shortcut fix that skips the loop never gets the independent re-review + re-test that
+makes the gate mean something. So even a one-line correction routes through the dev and back around
+the loop. (The orchestrator dispatches and sequences; it does not hand-edit the code either.)</p>
+</li>
+<li><p><strong>Every bug is fixed the moment it&#39;s found — nothing is parked for later.</strong> A bug we find is a bug we
+fix now: before the PR opens if a local gate caught it, on the PR if CI or a reviewer caught it —
+never carried forward as &quot;later&quot; work. <strong>Suhay</strong> files a ticket for <strong>every</strong> finding (ADR-0018 moved
+this back to him; the reporter reports precisely, he creates, prioritises and links), but the ticket
+is the <strong>record</strong> (what was wrong, the fix, the proving test), not a
+deferral — it is opened <em>and closed</em> inside the slice. The only thing ever <em>planned</em> forward is
+genuine future <strong>feature scope</strong> (the roadmap); a known bug never is. A finding that survives past
+its slice is a process miss.</p>
+</li>
+<li><p><strong>Every milestone yields a testable artifact + a current arc42.</strong> &quot;Done&quot; is not green tests alone: a
+milestone hands the stakeholder a <strong>valid, runnable artifact to exercise</strong> (a one-command seeded stack / a
+preview — Salih owns it), its compliance-critical acceptance tests <strong>run in CI against a real
+service</strong> (not a script nothing invokes), and the <strong>arc42 doc moves with the change</strong> — diagrams as
+<strong>PlantUML source + exported SVG</strong>, kept current (Musti owns it and asks himself &quot;is the arc42
+updated?&quot; on every completed task). The <strong>stakeholder</strong> then runs a hard product-acceptance pass on
+that artifact against the Requirements Register, and its findings become tickets.</p>
+</li>
+<li><p><strong>Before a merge, a completed CI run for the head SHA exists (#311).</strong> Green checks on the PR are not enough on
+their own: a PR whose checks were never created, or sat queued and were cancelled, looks the same as a green one
+once it is closed. Before merging, confirm that a workflow run for exactly the head SHA has <em>completed</em> (not
+queued, not cancelled, not skipped) with every required check green, and after the merge that the push run for the
+new <code>main</code> tip does the same. If a run is missing, or stuck queued past ~15 minutes (the pattern seen during the
+2026-08-06 runner outage, when four commits landed on <code>main</code> with no run at all), treat CI as unknown and
+escalate; do not merge. <strong>After a runner outage</strong>, re-dispatch every PR whose run stalled or never appeared
+(<code>gh workflow run</code> on its branch, or push an empty commit) and re-run <code>main</code>&#39;s tip, so <code>main</code> again has a passing
+run behind it. This is a human/agent step on purpose: an automated watchdog would queue on the same runner pool it
+is meant to watch. The fail-closed backstop is the ruleset below.</p>
+<p><em>Required checks on <code>main</code> (ruleset <code>main</code>, read 2026-11-26 from <code>gh api repos/NexusHero/Steuereule/rulesets</code>;
+re-read it rather than trusting this list, it is a snapshot):</em> <code>static: lint (oxlint)</code>, <code>static: validate compose</code>,
+<code>static: docs consistency (register + adr)</code>, <code>static: vordrucke (form-field geometry)</code>, <code>correctness: unit tests (no DB)</code>, <code>correctness: integration (postgres)</code>, <code>security: secret scan (gitleaks)</code>, <code>security: sast (semgrep)</code>,
+<code>security: iac scan (trivy)</code>, <code>security: dockerfile lint (hadolint)</code>, <code>security: workflow lint (actionlint)</code>,
+<code>supply-chain: build, SBOM, container scan &amp; bundle gate</code>, <code>e2e: smoke (real /api/auth over HTTP)</code>, <code>e2e: browser gates &amp; a11y</code>, <code>e2e: production compose stack + OWASP ZAP DAST</code>, the four <code>e2e: scenarios — &lt;group&gt;</code> jobs (employees &amp; families, cross-border CH, capital, pensions &amp; self-employed, navigation, dialogs &amp; chat; renamed from <code>shard 1/4 .. 4/4</code> on 2026-11-26), <code>SonarCloud Code Analysis</code>. The ruleset has no bypass actors, requires thread resolution and an up-to-date branch, and sets 0 required approving
+reviews. The aggregator jobs (<code>e2e: browser gates &amp; a11y</code>, <code>e2e: production compose stack + OWASP ZAP DAST</code>) keep
+their names because the ruleset pins the name; a renamed job would wait forever.</p>
+</li>
+<li><p><strong>Nobody merges around the gates.</strong> A PR reaches <code>ready</code> only once every gate it was owed has passed
+— Musti&#39;s review on the draft, and Salih&#39;s test where the tier calls for one; no approve on red CI;
+the stakeholder is the last gate. The stakeholder <em>can</em> merge a PR before the gates run, since he is
+the final authority on his own repository — but then the review becomes post-merge and can only
+produce tickets, never prevent the merge. That has a measured cost: it happened on #173 and a
+user-visible change went to <code>main</code> on five screens with neither gate on it.</p>
+</li>
+</ul>
+<h2 id="working-rules--earned-not-invented"><a class="anchor" href="#working-rules--earned-not-invented" aria-hidden="true" tabindex="-1">#</a>Working rules — earned, not invented</h2>
+<p>Five rules from 2026-08-04, the day eleven PRs landed. Each one exists because somebody got it
+wrong that day, and four of the five were the reviewer, the tester or the coordinator — not a
+dev. They are here because a rule that lives only in a conversation is gone by the next morning,
+and the next person deletes it as ceremony because nothing records what it cost.</p>
+<ul>
+<li><p><strong>Throwaway verification runs in your own worktree — never the shared checkout.</strong> A checker
+spliced in from another branch, a scratch file that prints a raw response, a <code>git checkout</code> to
+read someone else&#39;s tree: all get <code>git worktree add</code>. The shared checkout has one HEAD and
+several agents; a scratch file left on a colleague&#39;s branch is one <code>git add -A</code> from their
+commit and, with auto-merge armed, one merge from <code>main</code>. Reading a blob needs no checkout at
+all — <code>git show &lt;ref&gt;:&lt;path&gt;</code>.
+<strong>Second half, and the expensive one: after a break test, inspect the worktree, not just the
+file you broke.</strong> Restoring the file is not restoring the tree. A revert of a test hardening
+was found <em>already staged</em> in the shared checkout — one commit from landing, and an automated
+hook was at that moment asking for exactly that commit. <code>git status</code> after a break test, every
+time.
+<em>Footnote, because the wrong check makes it worse:</em> we merge by rebase, so every SHA is
+rewritten. <strong>Ancestry is not evidence of presence — content is.</strong>
+<code>git merge-base --is-ancestor &lt;sha&gt; origin/main</code> answered <em>no</em> for work that was demonstrably
+on <code>main</code>. Whoever trusts that answer concludes the work was lost, treats a stale revert as
+valuable, and pushes it. Grep for the change, don&#39;t ask about the commit.</p>
+</li>
+<li><p><strong>The tool footer on PR bodies and comments stays.</strong> The <code>Generated by/with Claude Code</code> footer
+is allowed since 2026-11-26 (ADR-0017, amendment for #348); nobody strips it and no check looks
+for it. <code>CONTRIBUTORS.md</code> says what it is.</p>
+</li>
+<li><p><strong>Angle brackets in a PR body or issue text: send <code>&amp;lt;</code>/<code>&amp;gt;</code>, never a literal one.</strong> GitHub&#39;s
+sanitiser reads <code>musti@steuereule-crew.example</code> wrapped in angle brackets as an HTML tag and
+<strong>silently drops it</strong>, leaving <code>Co-authored-by: Musti</code> with no address. It reports success either
+way, so the return value tells you nothing — same family as the stale-thread-ID rule below: a tool
+that discards input and calls it done. The only defence is reading the body back <strong>through the
+API</strong> (<code>pull_request_read</code>, <code>method: &quot;get&quot;</code>), not off the rendered page, which shows you the
+sanitiser&#39;s output rather than what you stored.</p>
+<p><strong>A code span does not protect it.</strong> Measured on #309: a body containing the word <em>email</em> in angle
+brackets <em>inside backticks</em> came back as an empty pair of backticks. The sanitiser runs before
+markdown, so backticks are not an escape — the entity form is the only one that survives, in prose
+and in code spans alike. Worth stating because &quot;it&#39;s in backticks, it&#39;ll be fine&quot; is the obvious
+wrong assumption, and it is how this rule got broken again <em>in the very PR that promoted it</em>.</p>
+<p><em>This rule was already here and still caught three of us in one day</em> — it was a sub-clause of the
+footer bullet above, so anyone scanning for &quot;angle brackets&quot; or &quot;broken trailer&quot; did not find it.
+Promoted to its own bullet for that reason alone. A rule nobody can locate is, in practice, a rule
+that is not written down — and the fix is the heading, not another retelling.</p>
+</li>
+<li><p><strong>A conflicted PR&#39;s displayed checks are stale.</strong> GitHub publishes <code>refs/pull/N/merge</code> only for
+a mergeable PR, and <code>pull_request</code> runs are created against that ref. A conflicted PR therefore
+gets <strong>no run at all</strong> — while the last green run stays displayed on it. The gate disappears
+exactly when the PR has drifted far enough to be dangerous, and it still looks checked. Two
+pushes to #239 went entirely unchecked this way. <strong><code>mergeable_state: dirty</code> means this PR has no
+valid CI, whatever is shown.</strong> Rebase, then read. The durable fix is in place since 2026-11-26: the
+<code>main</code> ruleset requires the branch to be up to date before merging (<code>strict_required_status_checks_policy</code>),
+so a PR behind <code>main</code> cannot merge on checks that ran against an older base.</p>
+</li>
+<li><p><strong>After resolving a review thread, confirm the thread you meant is the one that closed.</strong>
+<code>resolve_thread</code> keys on the thread ID alone and ignores the repo and PR number it is given, so
+a stale ID from an earlier pass resolves a thread on a different, already-merged PR — and
+reports success. The reviewer then reports a PR clear while its findings are still open, with
+the tool agreeing. Re-fetch thread IDs for the PR in front of you; never carry them between
+passes.</p>
+</li>
+<li><p><strong>Describing someone else&#39;s document means opening it — even if you read it last.</strong> Ruling from
+memory on something written down is the same failure as reviewing a diff from memory, and it is
+harder to catch, because a confident citation reads like a verified one. This happened three
+times in one day, to three different people, <em>while all three were working on a rule against
+it</em> — including twice in the twenty minutes after the first one was admitted. It survives
+knowing about it, which is why it needs a mechanism and not resolve.
+<strong>Two further instances happened while writing this rule, an hour apart.</strong> The pull request
+introducing it credited rule 5 to the wrong colleague in its description — written from memory
+of who had made the error. The correction that followed then reported the error as being <em>in
+this file</em>, derived from that description without opening the file, which had never named
+anyone. Both were caught by reading the artifact; neither was caught by care. Recorded rather
+than quietly fixed, because a rule broken twice by the people writing it is the strongest
+evidence it needs to exist. None of the five carries a name for the same reason — what matters
+is that four came from outside the dev seats, not who they came from.</p>
+</li>
+</ul>
+<h2 id="who-owns-what"><a class="anchor" href="#who-owns-what" aria-hidden="true" tabindex="-1">#</a>Who owns what</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Persona</th>
+<th>Owns in this pipeline</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Stakeholder (human)</td>
+<td>NexusHero</td>
+<td>Requirements &amp; acceptance criteria, <strong>ruling on the refinement block</strong>, per-slice acceptance on the preview, the merge</td>
+</tr>
+<tr>
+<td>Scrum Master</td>
+<td>Suhay</td>
+<td>The backlog and the board, <strong>the story/scope/readiness half of the refinement</strong>, risk tiers, the WIP limit, findings→tickets, and the Requirements Register — <strong>its state and, since ADR-0025, its text</strong>: he holds <code>Edit</code> and writes the <em>meaning</em> of a row (status, statement, GWT), while <code>register-check</code> in CI verifies the <em>evidence</em>. No <code>Write</code>, no <code>Bash</code>: he cannot create a file, run the test he cites, or land his own edit — it rides the branch in flight through the normal gate</td>
+</tr>
+<tr>
+<td>Lead / Architect</td>
+<td>Musti</td>
+<td><strong>The technical half of the refinement</strong>, <strong>review on the draft PR</strong>, his record, architecture docs, the right to bump a tier <strong>up</strong> (never down)</td>
+</tr>
+<tr>
+<td>Frontend dev</td>
+<td>Kaan</td>
+<td>UI slices, tests-first, <strong>opens a draft PR as soon as their own gate is green</strong></td>
+</tr>
+<tr>
+<td>Backend dev</td>
+<td>Robin</td>
+<td>API/data slices, tests-first, <strong>opens a draft PR as soon as their own gate is green</strong></td>
+</tr>
+<tr>
+<td>DevOps / Quality-Platform</td>
+<td>Salih</td>
+<td>The frictionless preview, the CI gates + their <strong>realism</strong> (bug/complaint → permanent check), the stakeholder↔pipeline ping-pong; the risk-tiered test pass, and <strong>the flip to ready — except where §7a stands him down</strong> (a tier he doesn&#39;t run, or a PR whose only applicable gate is its own author&#39;s), in which case nobody in the crew flips and it goes to the stakeholder</td>
+</tr>
+</tbody></table></div>
+<p>The role definitions live in <a href="../../.claude/agents"><code>.claude/agents/</code></a>; this document is the flow they
+share.</p>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

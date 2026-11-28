@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0090 — Findings from the real-case run through the stream (2024/2025) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0090</p>
+        <h1>Findings from the real-case run through the stream (2024/2025) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong><ul>
+<li><code>packages/core/src/{engine/married-estimate,domains/{lstb,n-gre,health-insurance,extraordinary-burdens},common/print-width,interview/{interview,field-catalog}}.ts</code></li>
+<li><code>apps/api/src/{lstb,children,printout,tax-estimate,confirmation,ch-certificate-scan}/</code></li>
+<li><code>apps/api/prisma/</code></li>
+<li><code>apps/mobile-web/src/screens/{lstb,children,master-data,filing-type-comparison}/</code></li>
+<li><code>e2e/forms/real-case-additions.mjs</code></li>
+</ul>
+</li>
+<li><strong>Builds on:</strong> ADR-0063 (church tax lines of the LStB, Lohnsteuerbescheinigung / wage tax certificate), ADR-0066 (the owl&#39;s field catalog), ADR-0079 (job-change year), ADR-0080 (Swiss health insurance statement), ADR-0087/0088, ADR-0089 (the stream)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The real case of a married Grenzgänger (cross-border commuter) household for 2024 and 2025 was run through the app alone, with the new stream. The app produced the printouts itself. The advisor&#39;s tax return and the Bescheid (Steuerbescheid, tax assessment notice) served as a comparison only afterwards. The run showed errors, gaps and two domain questions. We settled the questions using the official 2025 instructions and the Vordrucke (official forms).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Filing type comparison on the filing page.</strong> It starts from the known marital status: master data or the basis answer. Until now it always stood at „Nein“ (&quot;No&quot;). The two buttons share the row instead of sticking out of the card.</li>
+<li><strong>Taxable income (zvE) as in the Bescheid.</strong> For Zusammenveranlagung (joint assessment), the estimate reports taxable income after the allowances for children when these are more favorable than Kindergeld (child benefit) (§ 2 Abs. 5 EStG). The tax itself was already correct. But the comparison with the Bescheid made it look as if the child allowance were missing.</li>
+<li><strong>Religion of Person B.</strong> The partner form asks for B&#39;s religion and stores it only with consent (Art. 9 DSGVO). Without this information the church tax of the Zusammenveranlagung stayed „offen“ (&quot;open&quot;).</li>
+<li><strong>LStB line 24.</strong> The tax-free employer contributions to health and long-term care insurance (a–c, as a sum) are an optional line next to the church tax: own column, encrypted, endpoint <code>lstb-zuschuesse</code>. The estimate deducts them from the social insurance share, because only what the employee bore is deductible (§ 10 Abs. 2 Satz 1 Nr. 1 EStG). The owl can now also write line 24 and church tax lines 6/7.</li>
+<li><strong>Reimbursed medical costs.</strong> The interview asks for the costs before reimbursement (Kz 302) and for what the insurer, insurance or Beihilfe (civil-service allowance) reimbursed (Kz 303, new question <code>gesundheit-erstattung</code>). The difference is deductible, never less than 0. Before, the user had to do the arithmetic; in the real case this went wrong.</li>
+<li><strong>Daycare provider.</strong> The field accepts only as much text as fits in line 67 of Anlage Kind (child annex), and says so. It is measured in Helvetica 10 pt (<code>printedWidthPt</code>) and against the narrower box of the 2024/2025 Vordrucke. A parity test matches the widths with the renderer. The printout therefore no longer rejects a text that is too long only after payment.</li>
+<li><strong>N-Gre line 82 stays.</strong> Krankentaggeld (Swiss daily sickness allowance insurance) and half of the NBUV (non-occupational accident insurance) belong in lines 80/81 (sum line 82) according to the form and the 2025 ELSTER instructions. The advisor and the Finanzamt (tax office) left them out. They have no tax effect when the basic health insurance already uses up the maximum of €2,800.</li>
+<li><strong>New: the other half of the NBUV</strong> counts as Werbungskosten (work-related expenses), N-Gre lines 57/58 (Kz 380) and in the estimate. That is what the instructions on lines 97/98 say: a non-occupational accident includes the commute.</li>
+<li><strong>Child&#39;s Swiss health insurance in Kz 89.</strong> A child now has <code>healthInsuranceAbroad</code>. If it is set, health and long-term care insurance go together into Anlage Kind, Kz 89 („ausländische Kranken- und Pflegeversicherung“ (&quot;foreign health and long-term care insurance&quot;), 2024 line 36, 2025 line 37), not into Kz 66/67. The Swiss health insurance statement sets the flag itself, and the owl can write it.</li>
+<li><strong>No double counting.</strong> A health insurance entered as „ausländisch“ (&quot;foreign&quot;) in the interview does not count again when the Grenzgänger screen already has a Swiss insurer. Both are the same policy.</li>
+</ol>
+<p>The comparison of stream versus chat (seven made-up households) added:</p>
+<ol start="11">
+<li><p><strong>Life events in the printout.</strong> Until now they were missing from the PDF, and the check reported nothing. Now the app prints:</p>
+<ul>
+<li>Further training: Anlage N line 60 or N-Gre line 55, Kz 330.</li>
+<li>Relocation: as other Werbungskosten, Kz 380.</li>
+<li>Income replacement benefits: main form line 35, Kz 120 for A and Kz 121 for B.</li>
+</ul>
+<p>For severance pay (Anlage N lines 17/18, depending on how the employer taxed it) and double housekeeping (separate annex) there is no printout yet. The check now says so explicitly instead of printing silently.</p>
+</li>
+<li><p><strong>Anlage Kind without a child.</strong> If the basis names children but none is entered, the check reports „kinder“.</p>
+</li>
+<li><p><strong>LStB for B in the job-change year.</strong> If B works in Switzerland and B&#39;s commute shows a job change (or an LStB is already entered), the cockpit also offers B&#39;s German LStB. It is the same rule as for A in the stream (<code>hasGermanJobToo</code>).</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>In the 2025 real case, the app&#39;s health insurance (insurer change Helsana → SWICA on 1 July) and line 82 are correct. The advisor and the Finanzamt overlooked the SWICA half and the child&#39;s health insurance. That is a pointer for an objection, not an app error.</li>
+<li><strong>E2E:</strong> <code>real-case-additions</code> checks rows B (daycare too long, insurer abroad), G (religion of B) and H (line 24). <code>e2e/advisor/strom-vs-chat.mjs</code> compares stream and chat per household (manual, costs model calls).</li>
+<li><strong>Open:</strong><ul>
+<li>The single-filing path of the estimate does not yet have a Günstigerprüfung (most-favorable comparison) for high-income single parents.</li>
+<li>Person B is not in the stream yet (separate PR).</li>
+</ul>
+</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0089-stream-instead-of-catalogs.html"><span class="eyebrow">Previous</span><span>ADR-0089</span></a><a class="step step-next" href="0091-owl-personal-data-with-consent.html"><span class="eyebrow">Next</span><span>ADR-0091</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

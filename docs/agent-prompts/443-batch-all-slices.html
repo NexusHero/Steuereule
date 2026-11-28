@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Batch assignment: Ticket #443 complete (Slices 1–7) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Agent prompts</p>
+        <h1>Batch assignment: Ticket #443 complete (Slices 1–7)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#part-a--working-mode-applies-to-the-whole-batch">PART A — Working mode (applies to the whole batch)</a></li><li><a class="chip" href="#part-b--required-reading-before-slice-1">PART B — Required reading before Slice 1</a></li><li><a class="chip" href="#part-c--the-slices">PART C — The slices</a></li><li><a class="chip" href="#part-d--completing-the-batch">PART D — Completing the batch</a></li></ul>
+      </header>
+      <article class="prose">
+<p>You are working in the <strong>SteuerEule</strong> repo (pnpm monorepo, Expo + react-native-web, shipped <strong>only as a web app</strong>).
+You implement <strong>all seven slices of GitHub issue #443</strong> one after another, without asking questions in between. Afterwards a reviewer checks each slice individually.</p>
+<p>Read this assignment <strong>in full</strong> before you change anything. Follow it to the letter. If something is not stated here, do <strong>not</strong> decide it yourself: write it under &quot;Open questions&quot; in the report and use the fallback named in the assignment, or leave the point out.</p>
+<hr>
+<h2 id="part-a--working-mode-applies-to-the-whole-batch"><a class="anchor" href="#part-a--working-mode-applies-to-the-whole-batch" aria-hidden="true" tabindex="-1">#</a>PART A — Working mode (applies to the whole batch)</h2>
+<h3 id="a1-order-and-branches"><a class="anchor" href="#a1-order-and-branches" aria-hidden="true" tabindex="-1">#</a>A1. Order and branches</h3>
+<p>The slices are implemented <strong>strictly one after another</strong>. Each slice gets its own branch that builds on the previous one (stacked):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Slice</th>
+<th align="left">Branch</th>
+<th align="left">Branched from</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">1 Navigation</td>
+<td align="left"><code>feat/443-s1-navigation</code></td>
+<td align="left"><code>origin/main</code></td>
+</tr>
+<tr>
+<td align="left">2 Hub cockpit</td>
+<td align="left"><code>feat/443-s2-hub-cockpit</code></td>
+<td align="left"><code>feat/443-s1-navigation</code></td>
+</tr>
+<tr>
+<td align="left">3 Submission gate</td>
+<td align="left"><code>feat/443-s3-submission-gate</code></td>
+<td align="left"><code>feat/443-s2-hub-cockpit</code></td>
+</tr>
+<tr>
+<td align="left">4 Sheets</td>
+<td align="left"><code>feat/443-s4-sheets</code></td>
+<td align="left"><code>feat/443-s3-submission-gate</code></td>
+</tr>
+<tr>
+<td align="left">5 Persona boosters</td>
+<td align="left"><code>feat/443-s5-persona-boosters</code></td>
+<td align="left"><code>feat/443-s4-sheets</code></td>
+</tr>
+<tr>
+<td align="left">6 Dark mode</td>
+<td align="left"><code>feat/443-s6-dark-mode</code></td>
+<td align="left"><code>feat/443-s5-persona-boosters</code></td>
+</tr>
+<tr>
+<td align="left">7 Keyboard &amp; haptics</td>
+<td align="left"><code>feat/443-s7-keyboard-haptics</code></td>
+<td align="left"><code>feat/443-s6-dark-mode</code></td>
+</tr>
+</tbody></table></div>
+<pre><code class="language-bash">git fetch origin &amp;&amp; git switch -c feat/443-s1-navigation origin/main
+</code></pre>
+<p>For each further slice: <code>git switch -c &lt;new branch&gt;</code> directly from the finished previous branch.</p>
+<p><strong>Do not push. Do not open PRs. Do not merge anything.</strong> The reviewer does that.</p>
+<h3 id="a2-gate-at-the-end-of-each-slice"><a class="anchor" href="#a2-gate-at-the-end-of-each-slice" aria-hidden="true" tabindex="-1">#</a>A2. Gate at the end of each slice</h3>
+<p>A slice is only done when <strong>all</strong> of these commands are green:</p>
+<pre><code class="language-bash">pnpm lint
+</code></pre>
+<pre><code class="language-bash">pnpm -r typecheck
+</code></pre>
+<pre><code class="language-bash">pnpm -r test
+</code></pre>
+<pre><code class="language-bash">node e2e/scenarios/run-all-scenarios.mjs
+</code></pre>
+<pre><code class="language-bash">pnpm --filter @steuereule/e2e no-client-persistence
+</code></pre>
+<pre><code class="language-bash">pnpm --filter @steuereule/e2e breakpoint-layout
+</code></pre>
+<p>The E2E commands start the stack themselves. If the stack does <strong>not start at all</strong> locally (Docker/Postgres missing), write the exact error message into the report once and keep working as long as lint, typecheck and unit tests are green. Then mark each slice in the report with &quot;E2E not verified locally&quot;.</p>
+<h3 id="a3-stop-rules-halt-the-whole-batch"><a class="anchor" href="#a3-stop-rules-halt-the-whole-batch" aria-hidden="true" tabindex="-1">#</a>A3. Stop rules (halt the whole batch)</h3>
+<p>Stop <strong>immediately</strong>, write the report and do <strong>not</strong> start another slice if:</p>
+<ol>
+<li>a gate command is still red after <strong>three</strong> serious repair attempts;</li>
+<li>you would have to change a file in a forbidden area (A5) for which this assignment names no exception;</li>
+<li>an existing test only turns green if you change its expectation in domain terms (e.g. a different euro amount) without this assignment explicitly requiring the change;</li>
+<li>you would need a value for a tax rule that is not stated here.</li>
+</ol>
+<p>A halted batch is a <strong>good</strong> result if the report says exactly where and why.</p>
+<h3 id="a4-commits"><a class="anchor" href="#a4-commits" aria-hidden="true" tabindex="-1">#</a>A4. Commits</h3>
+<ul>
+<li>Small commits, at least one per work step, format <code>feat(&lt;area&gt;): …</code>, <code>test(&lt;area&gt;): …</code>, <code>refactor(&lt;area&gt;): …</code>. In English.</li>
+<li>No commit with a red typecheck or red unit tests.</li>
+<li>Write new tests <strong>first</strong> and see them red, then implement. If the implementation already exists: briefly introduce the bug on purpose, see the test red, take it out again.</li>
+</ul>
+<h3 id="a5-hard-rules-all-slices"><a class="anchor" href="#a5-hard-rules-all-slices" aria-hidden="true" tabindex="-1">#</a>A5. Hard rules (all slices)</h3>
+<ul>
+<li><strong>Only web is checked.</strong> Native variants only behind <code>Platform.OS !== &#39;web&#39;</code>; they must not block anything.</li>
+<li>Do not change <strong><code>packages/core</code>, <code>apps/api</code>, DTOs, the Prisma schema, ELSTER print templates</strong>. Exceptions are stated explicitly for Slice 2 and Slice 5.</li>
+<li><strong>Do not rename or remove any existing <code>testID</code> / <code>data-testid</code>.</strong> New <code>testID</code>s in German with hyphens, in the style of the existing ones (<code>cockpit-weiter</code>).</li>
+<li><strong>Do not delete, weaken or <code>.skip</code> existing tests.</strong> A test may only be adjusted if it checks the old click sequence or internal structure, not the domain result. Justify every adjustment in the report.</li>
+<li><strong>E2E scenarios:</strong> If a scenario turns red, first check whether the app is wrong (then fix the app). Only if the scenario expects the old click sequence, adjust the scenario. <strong>The expected euro amounts, PDF contents and form values in the scenarios must not change in Slices 1–4, 6, 7.</strong></li>
+<li><strong>No personal data in URLs</strong> (no names, Steuer-IDs (tax IDs), amounts).</li>
+<li><strong>No tax data in localStorage/sessionStorage.</strong> Only the keys named here are allowed: <code>steuereule.returnTo</code> (sessionStorage), <code>steuereule.appearance</code> and <code>steuereule.haptics</code> (localStorage).</li>
+<li><strong>Identifiers, file names, comments, commit messages in English.</strong> Visible UI text in German, always via i18n (<code>apps/mobile-web/src/i18n/locales/de.json</code> and <code>en.json</code> with the same keys, namespace <code>APP_NS</code>). No hard-coded German strings in components.</li>
+<li><strong>Colors only via <code>useTheme()</code></strong> (<code>t.color.*</code>, <code>t.shadow.*</code>). No hex values in components.</li>
+<li><strong>No new dependencies</strong> except <code>@react-navigation/bottom-tabs</code> (Slice 1) and <code>expo-haptics</code> (Slice 7).</li>
+<li><strong>Do not let any new file grow beyond ~300 lines.</strong> Rather split it.</li>
+</ul>
+<h3 id="a6-report"><a class="anchor" href="#a6-report" aria-hidden="true" tabindex="-1">#</a>A6. Report</h3>
+<p>Write the report continuously in <code>docs/agent-prompts/443-batch-report.html</code> (one section per slice, right after the slice) and commit it with the last commit of the slice. Structure per slice:</p>
+<ol>
+<li><strong>Status:</strong> done / halted (with stop rule number).</li>
+<li><strong>Branch and last commit hash.</strong></li>
+<li><strong>Changed and new files:</strong> one sentence each.</li>
+<li><strong>Deviations from the assignment:</strong> each with justification, otherwise &quot;none&quot;.</li>
+<li><strong>Adjusted existing tests/scenarios:</strong> which ones, why.</li>
+<li><strong>Result of each gate command (A2):</strong> green/red, for red the output.</li>
+<li><strong>Open questions.</strong></li>
+</ol>
+<hr>
+<h2 id="part-b--required-reading-before-slice-1"><a class="anchor" href="#part-b--required-reading-before-slice-1" aria-hidden="true" tabindex="-1">#</a>PART B — Required reading before Slice 1</h2>
+<ol>
+<li><code>gh issue view 443</code> in full (context, 22 decisions, slices, AC 1–12).</li>
+<li><code>docs/agent-prompts/443-slice-1-navigation.html</code> in full: this is the <strong>detailed part for Slice 1</strong>.</li>
+<li><code>apps/mobile-web/App.tsx</code>, <code>apps/mobile-web/App.test.tsx</code>.</li>
+<li><code>apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx</code>.</li>
+<li><code>apps/mobile-web/src/screens/catalog/CatalogScreen.tsx</code>.</li>
+<li><code>apps/mobile-web/src/screens/plausibility/PlausibilityScreen.tsx</code> and <code>packages/core/src/interview/plausibility.ts</code>.</li>
+<li><code>packages/core/src/interview/interview.ts</code> (types <code>EntryStepId</code>, <code>Answers</code>, value constants).</li>
+<li><code>e2e/scenarios/helpers/scenario-harness.mjs</code> and <code>e2e/scenarios/01-lena-hoffmann-angestellt.mjs</code>.</li>
+</ol>
+<hr>
+<h2 id="part-c--the-slices"><a class="anchor" href="#part-c--the-slices" aria-hidden="true" tabindex="-1">#</a>PART C — The slices</h2>
+<h3 id="slice-1--navigation-tab-stacks--a-url-per-screen"><a class="anchor" href="#slice-1--navigation-tab-stacks--a-url-per-screen" aria-hidden="true" tabindex="-1">#</a>SLICE 1 — Navigation (tab stacks &amp; a URL per screen)</h3>
+<p>Carry out <strong>sections 1–7</strong> from <code>docs/agent-prompts/443-slice-1-navigation.html</code>. Its sections 8 (commits) and 9 (report) are replaced by Part A; the branch is called <code>feat/443-s1-navigation</code>.</p>
+<p>Afterwards there is: <code>apps/mobile-web/src/navigation/</code> with <code>routes.ts</code>, <code>linking.ts</code>, <code>ShellState.tsx</code>, <code>CockpitStack.tsx</code>, <code>ProfileStack.tsx</code>, <code>AppTabs.tsx</code>, <code>RequiresAccount.tsx</code>. All following slices build on it.</p>
+<hr>
+<h3 id="slice-2--hub-cockpit"><a class="anchor" href="#slice-2--hub-cockpit" aria-hidden="true" tabindex="-1">#</a>SLICE 2 — Hub cockpit</h3>
+<p><strong>Goal:</strong> No more tunnel. After the primary document and after each screen, the user returns to the cockpit. The cockpit shows tiles with a status and a highlighted „Nächster Schritt“ (&quot;Next step&quot;).</p>
+<p><strong>2.1 Dissolve the tunnel</strong> (in <code>CockpitStack.tsx</code>):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Screen</th>
+<th align="left"><code>onDone</code> today</th>
+<th align="left"><code>onDone</code> new</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>Lstb</code></td>
+<td align="left">Catalog <code>lebenslagen</code></td>
+<td align="left"><code>CockpitHome</code></td>
+</tr>
+<tr>
+<td align="left"><code>CrossBorder</code></td>
+<td align="left">Catalog <code>einkuenfte</code></td>
+<td align="left"><code>CockpitHome</code></td>
+</tr>
+<tr>
+<td align="left"><code>Pension</code></td>
+<td align="left"><code>CockpitHome</code></td>
+<td align="left">unchanged</td>
+</tr>
+<tr>
+<td align="left"><code>Catalog</code> (all <code>entry</code>)</td>
+<td align="left">next catalog / <code>Workdays</code></td>
+<td align="left"><code>CockpitHome</code></td>
+</tr>
+<tr>
+<td align="left"><code>Workdays</code></td>
+<td align="left"><code>Plausibility</code> or <code>CockpitHome</code></td>
+<td align="left"><code>CockpitHome</code></td>
+</tr>
+<tr>
+<td align="left"><code>Plausibility</code>, <code>FilingTypeComparison</code></td>
+<td align="left">as today</td>
+<td align="left">unchanged (Slice 3 rebuilds them)</td>
+</tr>
+</tbody></table></div>
+<p>All <code>onBack</code> of the screens lead to <code>CockpitHome</code>. Exceptions: <code>Partner</code> → <code>CockpitMasterData</code> (as today) and <code>FilingTypeComparison</code> → <code>Plausibility</code> (as today). <code>revisit</code> on the catalog is always <code>true</code> when the catalog is opened via a tile and answers already exist for this <code>entry</code>; otherwise <code>false</code>.</p>
+<p><strong>2.2 Tiles.</strong> New file <code>apps/mobile-web/src/screens/cockpit/tiles.ts</code> with <strong>one</strong> list of all tiles (pure, without React), and <code>CockpitTiles.tsx</code> for rendering. In Slice 2, <strong>all</strong> tiles are visible, except where the &quot;Visible when&quot; column says something (the persona filter comes in Slice 5).</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Tile ID</th>
+<th align="left">Route</th>
+<th align="left">Visible when</th>
+<th align="left">Status &quot;done&quot; when</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>lstb</code></td>
+<td align="left"><code>Lstb</code></td>
+<td align="left">path <code>angestellte</code></td>
+<td align="left">LStB status from <code>wageTaxCertificateStatus</code> (core) is complete</td>
+</tr>
+<tr>
+<td align="left"><code>ch</code></td>
+<td align="left"><code>CrossBorder</code></td>
+<td align="left">path <code>ch</code></td>
+<td align="left"><code>foldStatus?.kind === &#39;bestimmt&#39; &amp;&amp; exchangeRate !== null</code></td>
+</tr>
+<tr>
+<td align="left"><code>rente</code></td>
+<td align="left"><code>Pension</code></td>
+<td align="left">path <code>rente</code></td>
+<td align="left"><code>status.kind === &#39;bestimmt&#39;</code></td>
+</tr>
+<tr>
+<td align="left"><code>lebenslagen</code></td>
+<td align="left"><code>Catalog</code> <code>lebenslagen</code></td>
+<td align="left">always</td>
+<td align="left"><code>nextStepFor(ENTRIES.lebenslagen, answers).kind === &#39;done&#39;</code></td>
+</tr>
+<tr>
+<td align="left"><code>einkuenfte</code></td>
+<td align="left"><code>Catalog</code> <code>einkuenfte</code></td>
+<td align="left">always</td>
+<td align="left">as above with <code>einkuenfte</code></td>
+</tr>
+<tr>
+<td align="left"><code>sonderausgaben</code></td>
+<td align="left"><code>Catalog</code> <code>sonderausgaben</code></td>
+<td align="left">always</td>
+<td align="left">as above with <code>sonderausgaben</code></td>
+</tr>
+<tr>
+<td align="left"><code>arbeitsweg</code></td>
+<td align="left"><code>Workdays</code></td>
+<td align="left">path ≠ <code>rente</code></td>
+<td align="left">commute query returns recorded workdays</td>
+</tr>
+<tr>
+<td align="left"><code>kapital</code></td>
+<td align="left"><code>Capital</code></td>
+<td align="left">always</td>
+<td align="left"><code>status.kind === &#39;bestimmt&#39;</code> (half filled = open)</td>
+</tr>
+<tr>
+<td align="left"><code>vermietung</code></td>
+<td align="left"><code>Rental</code></td>
+<td align="left">always</td>
+<td align="left"><code>status.kind === &#39;bestimmt&#39;</code> (half filled = open)</td>
+</tr>
+<tr>
+<td align="left"><code>kinder</code></td>
+<td align="left"><code>Children</code></td>
+<td align="left">interview answer <code>kinder</code> ≠ <code>Nein</code></td>
+<td align="left">children query returns at least one child</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>The &quot;query&quot; is in each case the hook that the corresponding screen component already uses today (look it up in its file). If &quot;done&quot; cannot be read unambiguously from the response: the tile shows <strong>no</strong> status, and you write it under &quot;Open questions&quot;.</li>
+<li>The path comes from <code>pathFromAnswers(interview.answers)</code> as today in <code>CockpitScreen</code>.</li>
+<li>Status display: <code>offen</code> / <code>erledigt</code> / <code>⏳ Betrag offen</code> (see 2.4). Text via i18n (<code>cockpit.kachel.status.offen</code> = „Offen“ (&quot;Open&quot;), <code>…erledigt</code> = „Erledigt“ (&quot;Done&quot;), <code>…betragOffen</code> = „⏳ Betrag offen“ (&quot;Amount pending&quot;); title <code>cockpit.kachel.&lt;id&gt;.titel</code>, German, short).</li>
+<li>testIDs: tile <code>cockpit-kachel-&lt;id&gt;</code>, status <code>cockpit-kachel-&lt;id&gt;-status</code>.</li>
+<li>The existing buttons <code>cockpit-kapital</code>, <code>cockpit-vermietung</code>, <code>cockpit-kinder</code> <strong>stay</strong> (do not remove the testIDs); they may visually become tiles as long as the testID stays on the clickable element. The same applies to <code>cockpit-bescheid</code>, <code>cockpit-stammdaten</code>, <code>cockpit-ausdruck</code>.</li>
+<li>Style: the existing <code>Card</code> component from <code>@steuereule/ui</code>, 2px outlines and hard shadows like the other cards. No new style.</li>
+</ul>
+<p><strong>2.3 „Nächster Schritt“.</strong> The existing button <code>cockpit-weiter</code> becomes the „Nächster Schritt“ button (testID stays <code>cockpit-weiter</code>). It opens the <strong>first visible tile that is not done</strong>, in this order:</p>
+<ul>
+<li>Path <code>angestellte</code>: <code>lstb</code> → <code>lebenslagen</code> → <code>einkuenfte</code> → <code>sonderausgaben</code> → <code>arbeitsweg</code></li>
+<li>Path <code>ch</code>: <code>ch</code> → <code>einkuenfte</code> → <code>sonderausgaben</code> → <code>arbeitsweg</code></li>
+<li>Path <code>rente</code>: <code>rente</code> → <code>einkuenfte</code> → <code>sonderausgaben</code> <em>(confirmed by the product owner)</em></li>
+</ul>
+<p>When all are done, the button points to „Abgabe vorbereiten“ (&quot;Prepare submission&quot;; from Slice 3 on; in Slice 2 it disappears then). Label via i18n: <code>cockpit.naechsterSchritt</code> = „Nächster Schritt: {{titel}}“. For guests and as long as the interview is not finished, today&#39;s behavior of <code>cockpit-weiter</code> / <code>cockpit-interview</code> stays unchanged.</p>
+<p><strong>2.4 „Betrag später eintragen“ (&quot;Enter amount later&quot;) (AC 5). Allowed exception: <code>packages/core</code>, <code>apps/api/src/tax-estimate</code>, and in <code>apps/api/src/advisor/advisor.service.ts</code>, <code>apps/api/src/owl-mode/owl-mode.service.ts</code>, <code>apps/api/src/printout/printout.service.ts</code> only the replacement of the amount parsing.</strong> <em>(Corrected after PR #449: the tax estimate has no <code>openItems</code> mechanism; <code>UNCERTAINTY_PER_ITEM</code>/<code>cockpit-range.ts</code> belong to the income range.)</em></p>
+<ul>
+<li>In <code>packages/core/src/interview/interview.ts</code>: constant <code>export const AMOUNT_LATER = &#39;spaeter&#39;</code>, allowlist <code>export const LATER_ALLOWED_STEPS = [&#39;dhf-miete&#39;, &#39;umzug-kosten&#39;, &#39;spenden-betrag&#39;, &#39;kv-pv-betrag&#39;, &#39;pv-betrag&#39;, &#39;kv-wahl-betrag&#39;, &#39;riester-betrag&#39;] as const</code> and function <code>laterAmountSteps(answers: Answers): readonly EntryStepId[]</code> (all steps whose answer is <code>AMOUNT_LATER</code>). Export via the existing index.</li>
+<li><code>isValidAnswer</code> accepts <code>AMOUNT_LATER</code> <strong>only</strong> for steps from <code>LATER_ALLOWED_STEPS</code>. For all other integer steps (<code>weg</code>, <code>tage</code>, <code>ch-nichtrueckkehrtage</code>, <code>abfindung-betrag</code>, <code>lohnersatz-betrag</code>, <code>nebenjob-brutto</code>, <code>riester-einnahmen-vorjahr</code>) it stays invalid.</li>
+<li>New core function <code>amountFromAnswer(value: string | undefined): number | null</code> (<code>null</code> for <code>undefined</code> and <code>AMOUNT_LATER</code>). Use it to replace the local parsing of the allowlist steps in <code>parseAmount</code> (<code>packages/core/src/domains/health-insurance.ts</code>), <code>intFrom</code> (<code>packages/core/src/domains/employee.ts</code>) and in the three API files named above. <code>null</code> → like &quot;not specified&quot;. <code>integerFrom</code> in <code>progression-clause.ts</code> stays unchanged. One test per location that <code>&#39;spaeter&#39;</code> does not become <code>NaN</code>.</li>
+<li><code>packages/core/src/interview/plausibility.ts</code>: new <strong>notice</strong> (not a conflict) <code>{ kind: &#39;betrag-spaeter&#39;, steps }</code> when <code>laterAmountSteps</code> is not empty. For this, extend <code>PlausibilityInput</code> with the catalog answers if they are missing there.</li>
+<li>Range: pure function <code>widenForLaterAmounts(result: Range, count: number): Range</code> in <code>packages/core/src/interview/cockpit.ts</code>: <code>to + count × UNCERTAINTY_PER_ITEM</code>, <code>from</code> unchanged; <code>count &lt; 0</code> → <code>RangeError</code>. <code>apps/api/src/tax-estimate/tax-estimate.service.ts</code> calls it only for <code>kind === &#39;spanne&#39;</code>, with the sum of the year&#39;s <code>AMOUNT_LATER</code> answers (for married couples, of both persons). Only <code>result</code> is widened; <code>taxableIncome</code>, <code>incomeTax</code> etc. stay. The core estimate functions stay unchanged. <code>apps/api/src/cockpit</code> is not touched.</li>
+<li><code>TaxEstimateDto</code> gets <code>laterAmounts?: number</code> (only set when &gt; 0). Then <code>pnpm --filter @steuereule/api openapi:spec</code> and <code>pnpm --filter @steuereule/api-client generate</code>, commit the generated files too.</li>
+<li><code>CatalogScreen.tsx</code>, component <code>IntegerFollowUp</code>: a second button below „Weiter“ (&quot;Continue&quot;), <strong>only for steps from <code>LATER_ALLOWED_STEPS</code></strong>, variant <code>leise</code>, text i18n <code>katalog.amountLater</code> = „Betrag später eintragen“, testID <code>katalog-later-&lt;step&gt;</code>. It answers the step with <code>AMOUNT_LATER</code>. The catalog then continues as after a normal answer.</li>
+<li>Tile status <code>⏳ Betrag offen</code>: when an answer in the tile&#39;s catalog <code>entry</code> is <code>AMOUNT_LATER</code> (takes precedence over &quot;done&quot;).</li>
+<li>When the user enters the amount later (opens the catalog with <code>revisit</code>, enters a number), the number replaces <code>AMOUNT_LATER</code>.</li>
+</ul>
+<p><strong>2.5 Tests (unit, <code>apps/mobile-web</code>):</strong> tunnel edges from 2.1; order of <code>cockpit-weiter</code> per path; status logic per tile (pure functions in <code>tiles.ts</code>); <code>katalog-later-&lt;step&gt;</code> stores <code>spaeter</code>; tile shows <code>⏳ Betrag offen</code>. <strong>Core:</strong> <code>laterAmountSteps</code>, notice <code>betrag-spaeter</code>, <code>AMOUNT_LATER</code> as €0. <code>widenForLaterAmounts</code> with <code>count</code> 0, 1, 3 and negative; <code>isValidAnswer</code> with <code>spaeter</code> for allowed and forbidden steps. <strong>API:</strong> service test that a <code>spaeter</code> answer raises <code>result.to</code> by exactly <code>UNCERTAINTY_PER_ITEM</code> and <code>result.from</code> stays the same; married couple with one <code>spaeter</code> answer each → double (style of the existing tests in <code>apps/api/test/tax-estimate.service.test.ts</code>).</p>
+<p><strong>2.6 E2E:</strong> Scenarios 01–07 and 09–18 currently run through the tunnel. Add two helpers in <code>e2e/scenarios/helpers/scenario-harness.mjs</code>:</p>
+<ul>
+<li><code>openTile(page, tileId)</code> — clicks <code>cockpit-kachel-&lt;tileId&gt;</code> and waits for the screen.</li>
+<li><code>nextStep(page)</code> — clicks <code>cockpit-weiter</code> and waits for the screen.</li>
+</ul>
+<p>Rework the scenarios so that after each screen they go to the next screen via <code>nextStep(page)</code> (or <code>openTile</code>, if the scenario needs a different order). <strong>The entered values and expected results stay identical.</strong> In Slice 2 the scenarios open plausibility and the filing type comparison via the existing routes; in Slice 3 they are switched to the gate. In scenario 06, add a case „Betrag später eintragen“ → tile shows <code>⏳ Betrag offen</code> → enter the amount → status <code>Erledigt</code>.</p>
+<hr>
+<h3 id="slice-3--submission-gate"><a class="anchor" href="#slice-3--submission-gate" aria-hidden="true" tabindex="-1">#</a>SLICE 3 — Submission gate</h3>
+<p><strong>Goal:</strong> No printout without a passed plausibility check. Warnings already appear on the tiles beforehand.</p>
+<p><strong>3.1 Hook.</strong> Pull the computation out of <code>PlausibilityScreen.tsx</code> into a hook <code>apps/mobile-web/src/screens/plausibility/usePlausibility.ts</code>: <code>usePlausibility(taxYear) → { status: &#39;loading&#39; | &#39;error&#39; | &#39;ready&#39;, conflicts, notices }</code>. It uses the same queries and <code>checkPlausibility</code> as today. <code>PlausibilityScreen</code> then uses the hook (behavior unchanged).</p>
+<p><strong>3.2 Mapping to tiles.</strong> In <code>tiles.ts</code>, a constant <code>FINDING_TILE: Record&lt;Conflict[&#39;kind&#39;] | Notice[&#39;kind&#39;], TileId | &#39;abgabe&#39;&gt;</code>. Map each <code>kind</code> from <code>plausibility.ts</code> to the tile whose screen fixes the problem (e.g. <code>lstb-offen</code> → <code>lstb</code>; <code>betrag-spaeter</code> → the tile of the <code>entry</code> that contains the step). If no tile fits: <code>&#39;abgabe&#39;</code>. Each mapping gets a unit test.</p>
+<p><strong>3.3 Live hints on the tiles.</strong> If a tile has a conflict: red hint label (theme color used for errors today), text <code>cockpit.kachel.hinweis.blocker</code> = „Muss vor der Abgabe geklärt werden“ (&quot;Must be resolved before submission&quot;). If it only has notices: label <code>cockpit.kachel.hinweis.warnung</code> = „Bitte prüfen“ (&quot;Please check&quot;). testID <code>cockpit-kachel-&lt;id&gt;-hinweis</code>.</p>
+<p><strong>3.4 Tile „Abgabe vorbereiten“.</strong> Its own wide tile below the others, testID <code>cockpit-abgabe-vorbereiten</code>, i18n <code>cockpit.abgabe.titel</code> = „Abgabe vorbereiten“. It opens the new route <code>Submission</code> (<code>/app/steuerjahr/:year/abgabe</code>, add it in <code>routes.ts</code>/<code>linking.ts</code>/<code>CockpitStack.tsx</code>, account-required via <code>RequiresAccount</code>). The screen <code>SubmissionScreen</code> (new, <code>apps/mobile-web/src/screens/submission/</code>) shows in sequence:</p>
+<ol>
+<li><strong>Plausibility:</strong> list of the conflicts and notices from <code>usePlausibility</code>, each with a button to the corresponding tile route. With conflicts, „Weiter“ is locked. With only notices: button <code>gate-warnung-bestaetigen</code>, text <code>abgabe.warnungenBestaetigen</code> = „Gelesen, trotzdem weiter“ (&quot;Read, continue anyway&quot;).</li>
+<li><strong>Filing type comparison:</strong> only for Zusammenveranlagung (joint assessment) (the same condition under which <code>FilingTypeComparisonScreen</code> makes sense today; look it up in the master data). Optional: button „Überspringen“ (&quot;Skip&quot;) (<code>abgabe-vergleich-ueberspringen</code>). Content: the existing <code>FilingTypeComparisonScreen</code> embedded.</li>
+<li><strong>Printout:</strong> button <code>abgabe-zum-ausdruck</code> opens the existing root screen <code>Printout</code>.</li>
+</ol>
+<ul>
+<li>The confirmation of the warnings is remembered in <code>ShellState</code>, per tax year and per set of notice <code>kind</code>s. If a new notice is added, it must be confirmed again. After a reload it is gone (this is intended).</li>
+<li><code>cockpit-weiter</code> points to „Abgabe vorbereiten“ when all tiles of the order from 2.3 are done.</li>
+</ul>
+<p><strong>3.5 Lock the printout.</strong></p>
+<ul>
+<li>From now on, the button <code>cockpit-ausdruck</code> opens <code>Submission</code> instead of <code>Printout</code> directly (testID stays).</li>
+<li>The root screen <code>Printout</code> (in <code>App.tsx</code>, <code>PrintoutRoute</code>) checks the gate on opening: if there are conflicts <strong>or</strong> unconfirmed notices, replace the route with <code>App</code> → <code>Cockpit</code> → <code>Submission</code> with the same year. The return from Stripe (<code>payment</code> param) stays allowed if the gate is passed.</li>
+<li>The old route <code>Plausibility</code> stays reachable (the URL stays) so nothing breaks; but the cockpit no longer links to it directly.</li>
+</ul>
+<p><strong>3.6 Tests:</strong> Unit: gate locks on a conflict; notices need confirmation; new notice → confirmation again; comparison only for Zusammenveranlagung; <code>/app/steuerjahr/2025/ausdruck</code> with a conflict → <code>Submission</code>. <strong>E2E:</strong> all scenarios that currently reach plausibility/comparison/printout (at least 01, 04, 14) go via <code>cockpit-abgabe-vorbereiten</code>. In scenario 08, add a case: direct call <code>/app/steuerjahr/2025/ausdruck</code> with an open LStB → lands on the submission page.</p>
+<hr>
+<h3 id="slice-4--sheets"><a class="anchor" href="#slice-4--sheets" aria-hidden="true" tabindex="-1">#</a>SLICE 4 — Sheets</h3>
+<p><strong>Goal:</strong> Screens open as a sheet over the cockpit. Closing saves.</p>
+<p><strong>4.1 Component <code>Sheet</code></strong> in <code>packages/ui/src/components/Sheet.tsx</code> (export in the index of <code>@steuereule/ui</code>):</p>
+<ul>
+<li>Props: <code>onClose: () =&gt; void</code>, <code>children</code>, <code>testID?</code>.</li>
+<li>Width &lt; 768 px (use <code>useBreakpoint()</code> from <code>@steuereule/ui</code>): panel across the full width, rounded at the top (<code>t.radius.*</code>), a grabber at the top (<code>sheet-grabber</code>), slides up from the bottom. Dragging the grabber down by more than 120 px → <code>onClose</code>. Use <code>PanResponder</code> from <code>react-native</code>.</li>
+<li>Width ≥ 768 px: centered panel, max width <code>WIDE_CONTENT_MAX_WIDTH</code>, no grabber.</li>
+<li>In both cases: semi-transparent background (color from the theme), click on it → <code>onClose</code>; close button at the top right <code>sheet-schliessen</code> with an i18n label (passed into <code>packages/ui</code> via a <code>closeLabel</code> prop so that <code>ui</code> needs no app i18n); <code>Escape</code> key on web → <code>onClose</code>.</li>
+<li>Set <code>accessibilityViewIsModal</code> or <code>role=&quot;dialog&quot;</code> and <code>aria-modal</code>; focus moves into the panel on opening.</li>
+<li>Style: 2px outline and hard shadow like <code>Card</code>.</li>
+<li>Storybook/gallery: add an entry in <code>packages/ui/src/gallery/Gallery.tsx</code> if all components are listed there.</li>
+</ul>
+<p><strong>4.2 Usage.</strong> In <code>CockpitStack.tsx</code> these routes are shown as a sheet: <code>Lstb</code>, <code>CrossBorder</code>, <code>Pension</code>, <code>Catalog</code>, <code>Workdays</code>, <code>Capital</code>, <code>Rental</code>, <code>Children</code>, <code>Partner</code>. Implementation:</p>
+<ul>
+<li>Put these routes in a <code>Stack.Group</code> with <code>screenOptions={{ presentation: &#39;transparentModal&#39;, animation: &#39;slide_from_bottom&#39; }}</code>.</li>
+<li>The wrapper of each of these routes renders <code>&lt;Sheet onClose={close}&gt;</code> around the screen component.</li>
+<li>Check in the browser (Playwright or <code>pnpm --filter @steuereule/mobile-web web</code>) that the cockpit stays visible behind the sheet. <strong>If not:</strong> make the sheet&#39;s background opaque and name this in the report as a deviation. Do not keep tinkering.</li>
+<li><code>renderActiveStackRoute</code> (<code>src/navigation/guards.ts</code>, from Slice 1) unmounts covered stack routes. Adapt it for sheets: <code>CockpitHome</code> stays mounted when the topmost route is one of these sheet routes. Cover this with an app test (sheet open → <code>CockpitScreen</code> present in the tree).</li>
+<li>The TabBar is hidden while one of these routes is active (add the logic in the <code>tabBar</code> function from <code>AppTabs.tsx</code>).</li>
+<li>The screen components themselves get <strong>no</strong> sheet wrapper. <code>OwlModeScreen</code> keeps embedding them inline (do not change).</li>
+</ul>
+<p><strong>4.3 Auto-save on close.</strong> Helper <code>apps/mobile-web/src/lib/blurActiveInput.ts</code>:</p>
+<ul>
+<li>Web: <code>(document.activeElement as HTMLElement | null)?.blur()</code>.</li>
+<li>Native: <code>Keyboard.dismiss()</code>.</li>
+</ul>
+<p><code>close</code> in the sheet wrappers first calls <code>blurActiveInput()</code>, then <code>navigation.navigate(&#39;CockpitHome&#39;)</code>. This triggers the existing save on leaving a field. <strong>No</strong> discard dialog. A staged LStB scan (<code>stagedDraft</code>, #444) is <strong>not</strong> applied, because <code>LstbScreen</code> does not save with a staged draft anyway. Do not work around this.</p>
+<p><strong>4.4 Tests:</strong> Unit for <code>Sheet</code> (grabber only &lt; 768 px, <code>onClose</code> on Escape, backdrop, close button; drag &gt; 120 px). App test: type an amount into <code>lstb-bruttoarbeitslohn</code>, press <code>sheet-schliessen</code> without leaving the field → a PUT was sent (MSW). App test: with a staged scan draft → <strong>no</strong> PUT. <strong>E2E:</strong> extend scenario 22 with &quot;close the sheet via the close button and via Escape, the value is saved&quot;. <code>breakpoint-layout</code> must be green at 375 px and 1280 px.</p>
+<hr>
+<h3 id="slice-5--persona-boosters--dual-cockpit"><a class="anchor" href="#slice-5--persona-boosters--dual-cockpit" aria-hidden="true" tabindex="-1">#</a>SLICE 5 — Persona boosters &amp; dual cockpit</h3>
+<p><strong>Allowed exception: <code>packages/core</code>, <code>apps/api</code> (interview catalog and tax estimate), scenario expectations only where the new deductions apply.</strong></p>
+<p><strong>5.1 Derive the persona.</strong> Pure function <code>derivePersonas(answers, masterData) → ReadonlySet&lt;Persona&gt;</code> in <code>apps/mobile-web/src/screens/cockpit/personas.ts</code>. <code>Persona = &#39;angestellt&#39; | &#39;grenzgaenger&#39; | &#39;rentner&#39; | &#39;vermieter&#39; | &#39;verheiratet&#39; | &#39;alleinerziehend&#39; | &#39;eltern&#39;</code>. Rules (values from <code>interview.ts</code>):</p>
+<ul>
+<li><code>angestellt</code>: <code>job</code> ∈ {<code>Angestellt</code>, <code>Beides</code>} and <code>ausland</code> ≠ <code>Ja, in die Schweiz</code></li>
+<li><code>grenzgaenger</code>: <code>ausland</code> = <code>Ja, in die Schweiz</code></li>
+<li><code>rentner</code>: <code>job</code> = <code>Rente</code></li>
+<li><code>vermieter</code>: answer to step <code>einkuenfte</code> ∈ {<code>Vermietung</code>, <code>Beides</code>} (<code>INCOME_VALUES</code>)</li>
+<li><code>verheiratet</code>: <code>familienstand</code> = <code>Verheiratet</code></li>
+<li><code>eltern</code>: <code>kinder</code> ≠ <code>Nein</code></li>
+<li><code>alleinerziehend</code>: <code>eltern</code> and <code>familienstand</code> ∈ {<code>Ledig</code>, <code>Geschieden oder getrennt</code>, <code>Verwitwet</code>}</li>
+</ul>
+<p>No new gate field, no new question in the minimal gate. Unit tests for each rule.</p>
+<p><strong>5.2 Visibility.</strong> Extend <code>tiles.ts</code> with a &quot;Personas&quot; column. A tile is visible in the main area if it matches one of the derived personas. <strong>All other tiles</strong> go into a collapsed area „Weitere Themen“ (&quot;More topics&quot;) (<code>cockpit-weitere-themen</code>, i18n <code>cockpit.weitereThemen</code> = „Weitere Themen“). No tile is completely unreachable.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Tile ID</th>
+<th align="left">Personas (main area)</th>
+<th align="left">Route</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>lstb</code></td>
+<td align="left">angestellt</td>
+<td align="left"><code>Lstb</code></td>
+</tr>
+<tr>
+<td align="left"><code>ch</code></td>
+<td align="left">grenzgaenger</td>
+<td align="left"><code>CrossBorder</code></td>
+</tr>
+<tr>
+<td align="left"><code>rente</code></td>
+<td align="left">rentner</td>
+<td align="left"><code>Pension</code></td>
+</tr>
+<tr>
+<td align="left"><code>lebenslagen</code></td>
+<td align="left">angestellt, grenzgaenger</td>
+<td align="left"><code>Catalog</code> lebenslagen</td>
+</tr>
+<tr>
+<td align="left"><code>einkuenfte</code></td>
+<td align="left">all</td>
+<td align="left"><code>Catalog</code> einkuenfte</td>
+</tr>
+<tr>
+<td align="left"><code>sonderausgaben</code></td>
+<td align="left">all</td>
+<td align="left"><code>Catalog</code> sonderausgaben</td>
+</tr>
+<tr>
+<td align="left"><code>arbeitsweg</code></td>
+<td align="left">angestellt, grenzgaenger</td>
+<td align="left"><code>Workdays</code></td>
+</tr>
+<tr>
+<td align="left"><code>kapital</code></td>
+<td align="left">rentner</td>
+<td align="left"><code>Capital</code></td>
+</tr>
+<tr>
+<td align="left"><code>vermietung</code></td>
+<td align="left">vermieter</td>
+<td align="left"><code>Rental</code></td>
+</tr>
+<tr>
+<td align="left"><code>kinder</code></td>
+<td align="left">eltern</td>
+<td align="left"><code>Children</code></td>
+</tr>
+<tr>
+<td align="left"><code>alleinerziehend</code> (new)</td>
+<td align="left">alleinerziehend</td>
+<td align="left"><code>Catalog</code> <code>alleinerziehend</code> (already exists in <code>CatalogScreen</code>)</td>
+</tr>
+<tr>
+<td align="left"><code>haushalt</code> (new)</td>
+<td align="left">all</td>
+<td align="left"><code>Catalog</code> <code>haushalt</code> (new, 5.4)</td>
+</tr>
+<tr>
+<td align="left"><code>gesundheit</code> (new)</td>
+<td align="left">rentner, eltern, alleinerziehend</td>
+<td align="left"><code>Catalog</code> <code>gesundheit</code> (new, 5.5)</td>
+</tr>
+</tbody></table></div>
+<p>For <code>grenzgaenger</code>, the heading above the tiles is i18n <code>cockpit.boosterUeberschrift.nachzahlung</code> = „Nachzahlung senken“ (&quot;Lower the additional payment&quot;), otherwise <code>cockpit.boosterUeberschrift.erstattung</code> = „Erstattung erhöhen“ (&quot;Increase the refund&quot;).</p>
+<p><strong>5.3 Dual cockpit (ADR-0054).</strong> For <code>verheiratet</code> <strong>and</strong> filing type &quot;joint&quot; (from the master data): two sections, i18n <code>cockpit.bereich.du</code> = „Du“ (&quot;You&quot;) and <code>cockpit.bereich.partner</code> = „{{name}}“ (partner name from the master data query, <strong>never</strong> in the URL). The partner section has the tiles <code>partner-lstb</code> and <code>partner-arbeitsweg</code> → route <code>Partner</code> with <code>area</code> <code>lstb</code> or <code>arbeitsweg</code>; before navigating, <code>setPartner({ area, name })</code> in <code>ShellState</code>. The splitting advantage appears via the <strong>existing</strong> tax estimate (<code>tax-estimate.service.ts</code> already includes Person B). No new calculation. The route via the master data (<code>onRecordPartner</code>) is kept in addition.</p>
+<p><strong>5.4 New catalog <code>haushalt</code> (§ 35a EStG).</strong> In <code>packages/core/src/interview/interview.ts</code> (type <code>EntryId</code>, constant <code>ENTRIES</code> from around line 290; the entry <code>alleinerziehend</code> serves as a template), a new entry <code>haushalt</code> with these steps:</p>
+<ol>
+<li><code>haushalt-gate</code>: „Hattest du Kosten für Handwerker, Haushaltshilfe oder Dienstleistungen rund um die Wohnung, auch aus der Nebenkostenabrechnung?“ (&quot;Did you have costs for tradespeople, household help or services around your home, including from the utility bill?&quot;) Values <code>Ja</code> / <code>Nein</code>. With <code>Nein</code> → done.</li>
+<li><code>haushalt-dienstleistung-betrag</code>: labor costs for household-related services and care (e.g. caretaker, stairwell cleaning, garden maintenance, winter service), in euros.</li>
+<li><code>haushalt-handwerker-betrag</code>: labor costs for tradesperson services (renovation, repair, maintenance), in euros.</li>
+<li><code>haushalt-minijob-betrag</code>: expenses for a marginally employed person in the household, in euros.</li>
+</ol>
+<p>Question texts in German via i18n (<code>katalog.questions.&lt;step&gt;</code>), hint below step 1: „Nur Arbeits-, Maschinen- und Fahrtkosten zählen, kein Material. Bezahlt per Überweisung, nicht bar.“ (&quot;Only labor, machine and travel costs count, no material. Paid by bank transfer, not cash.&quot;) All amounts allow <code>Betrag später eintragen</code>.</p>
+<p><strong>Calculation rule</strong> (in <code>packages/core/src/domains/household-services.ts</code>, parameters in <code>packages/core/src/math/tax-parameters.ts</code>, each with the comment <code>§ 35a EStG</code>):</p>
+<ul>
+<li>Minijob (§ 35a Abs. 1): 20 % of the expenses, at most <strong>510 €</strong>.</li>
+<li>Services and care (§ 35a Abs. 2): 20 %, at most <strong>4.000 €</strong>.</li>
+<li>Tradespeople (§ 35a Abs. 3): 20 %, at most <strong>1.200 €</strong>.</li>
+<li>The sum is a <strong>tax reduction</strong>: it reduces the tariff income tax, but never below 0 €. No refund beyond that.</li>
+<li>Calculate in cents, rounding like the rest of the core (use the existing rounding helpers).</li>
+</ul>
+<p><strong>5.5 New catalog <code>gesundheit</code> (§ 33 EStG, medical costs).</strong> Steps:</p>
+<ol>
+<li><code>gesundheit-gate</code>: „Hattest du selbst bezahlte Krankheitskosten (Zuzahlungen, Brille, Zahnersatz, Medikamente auf Rezept)?“ (&quot;Did you have self-paid medical costs (co-payments, glasses, dentures, prescription medication)?&quot;) <code>Ja</code> / <code>Nein</code>.</li>
+<li><code>gesundheit-betrag</code>: sum of the self-borne costs after reimbursements from the health insurer, in euros.</li>
+</ol>
+<p><strong>Calculation rule</strong> (<code>packages/core/src/domains/extraordinary-burdens.ts</code>, parameters in <code>tax-parameters.ts</code>, comment <code>§ 33 Abs. 3 EStG, stufenweise nach BFH VI R 75/14</code>):</p>
+<ul>
+<li>Only the part above the <strong>reasonable burden</strong> (zumutbare Belastung) is deductible. It is calculated <strong>in tiers</strong> on the total amount of income (Gesamtbetrag der Einkünfte, GdE):</li>
+</ul>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">GdE portion</th>
+<th align="left">up to 15.340 €</th>
+<th align="left">15.341 € to 51.130 €</th>
+<th align="left">over 51.130 €</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Single, no children</td>
+<td align="left">5 %</td>
+<td align="left">6 %</td>
+<td align="left">7 %</td>
+</tr>
+<tr>
+<td align="left">Jointly assessed, no children</td>
+<td align="left">4 %</td>
+<td align="left">5 %</td>
+<td align="left">6 %</td>
+</tr>
+<tr>
+<td align="left">1 or 2 children</td>
+<td align="left">2 %</td>
+<td align="left">3 %</td>
+<td align="left">4 %</td>
+</tr>
+<tr>
+<td align="left">3 or more children</td>
+<td align="left">1 %</td>
+<td align="left">1 %</td>
+<td align="left">2 %</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>Mandatory test case: GdE 51.835 €, 2 children → 15.340 × 2 % + 35.790 × 3 % + 705 × 4 % = 306,80 + 1.073,70 + 28,20 = <strong>1.408,70 €</strong> reasonable burden.</li>
+<li>The deductible amount reduces taxable income (like other deductions in the core; find and use the existing route).</li>
+<li>Where the GdE comes from: from the existing calculation in the core. If there is no GdE value you can use safely: <strong>stop rule 4</strong>.</li>
+<li>The number of children comes from the interview answer <code>kinder</code>: <code>1 Kind</code> → 1–2 children; <code>2 oder mehr</code> → <strong>1–2 children</strong> (the answer does not distinguish between 2 and 3+; confirmed by the product owner, do not report it as an open question).</li>
+</ul>
+<p><strong>5.6 Pass through.</strong> The API must store and read the entries <code>haushalt</code> and <code>gesundheit</code> like the other catalog entries. Add both values in exactly these two places: <code>ADMITTED_ENTRY_IDS</code> in <code>apps/api/src/interview/interview.service.ts</code> and the <code>enum</code> of <code>@ApiQuery({ name: &#39;eintrag&#39; … })</code> in <code>apps/api/src/interview/interview.controller.ts</code>. Then regenerate the API client and commit the generated files too:</p>
+<pre><code class="language-bash">pnpm --filter @steuereule/api openapi:spec
+</code></pre>
+<pre><code class="language-bash">pnpm --filter @steuereule/api-client generate
+</code></pre>
+<p>Never edit generated files in <code>packages/api-client/src/generated/</code> by hand. The tax estimate (<code>apps/api/src/tax-estimate/tax-estimate.service.ts</code> → core estimate functions) includes both results. List every estimate function you changed in the report. <code>CatalogScreen</code> gets the two new <code>entry</code> values.</p>
+<p><strong>5.7 Printout.</strong> Check with <code>grep -ri &quot;haushaltsnah\|aussergewoehnlich\|außergewöhnlich&quot; apps/api/src/printout</code> whether the print templates already support the forms „Haushaltsnahe Aufwendungen“ (household-related expenses) and „Außergewöhnliche Belastungen“ (extraordinary burdens).</p>
+<ul>
+<li><strong>If not:</strong> create the constant <code>HOUSEHOLD_AND_HEALTH_BOOSTERS = false</code> in <code>apps/mobile-web/src/config/features.ts</code>. As long as it is <code>false</code>, the tiles <code>haushalt</code> and <code>gesundheit</code> are invisible and the tax estimate ignores both catalogs (flag additionally as a constant in the API). Reason: nothing on screen may promise something the printout does not deliver (ADR-0032). Name it in the report as the open question &quot;Print templates for § 35a/§ 33&quot;.</li>
+<li><strong>If so:</strong> flag <code>true</code> and write the values into the existing print fields.</li>
+<li>In both cases, the calculation logic and tests are fully complete.</li>
+</ul>
+<p><strong>5.8 Tests:</strong> Core: all limits from 5.4 (below/exactly at/above the maximum per paragraph; reduction never below 0); all 12 cells of the table from 5.5 plus the mandatory test case. Mobile: <code>derivePersonas</code> per rule; visibility per persona; „Weitere Themen“ contains all remaining tiles; dual cockpit only for married + joint; partner name not in the URL. <strong>E2E:</strong> scenario 04 (Weber) via the partner tiles instead of via the master data; scenario 05 (pensioner) sees <code>kapital</code> in the main area and <code>arbeitsweg</code> under „Weitere Themen“; scenario 07 (single parent) sees <code>alleinerziehend</code>. If expected amounts change as a result, <strong>stop rule 3</strong>, unless the flag from 5.7 is <code>true</code> and the scenario enters § 35a/§ 33 costs.</p>
+<hr>
+<h3 id="slice-6--dark-mode"><a class="anchor" href="#slice-6--dark-mode" aria-hidden="true" tabindex="-1">#</a>SLICE 6 — Dark mode</h3>
+<p><strong>6.1 Token audit.</strong> Source of the colors: <code>finanzo-funke-design-system/project/tokens/colors.css</code> (light) and <code>dunkel.css</code> (dark). Afterwards <code>pnpm --filter @steuereule/tokens build</code> builds the package <code>@steuereule/tokens</code>.</p>
+<ul>
+<li>List in the report every color from <code>colors.css</code> that has <strong>no</strong> value of its own in <code>dunkel.css</code>, and for each say: stays the same (justification) or new value.</li>
+<li>Derive new dark values only from the existing palette (no new brand colors). The lime <code>funke</code> stays the accent.</li>
+<li>Hard shadows (<code>effects.css</code>): in the dark they must not be black on almost black. If <code>dunkel.css</code> has no shadow value, set the shadow in the dark to the outline color (<code>tinte</code> dark) so it stays visible.</li>
+<li><strong>Contrast test</strong> in <code>packages/tokens/src/contrast.test.ts</code>: for light <strong>and</strong> dark, every text-on-surface combination the app uses (at least <code>tinte</code> and <code>tinte2</code> on <code>grund</code>, <code>karte</code> and <code>nacht</code>, text on <code>funke</code>) must have a contrast ratio of at least <strong>4,5 : 1</strong> (WCAG formula, implement it in the test). If it fails, adjust the values in <code>dunkel.css</code>, not the test.</li>
+</ul>
+<p><strong>6.2 Wire up.</strong></p>
+<ul>
+<li><code>apps/mobile-web/src/lib/appearance.ts</code>: <code>type AppearancePreference = &#39;system&#39; | &#39;light&#39; | &#39;dark&#39;</code>, read/write in <strong>localStorage</strong> key <code>steuereule.appearance</code>, every access in <code>try/catch</code>, default <code>system</code>. It is written <strong>only</strong> when the user changes the setting.</li>
+<li><code>App.tsx</code>: <code>ThemeProvider mode</code> = preference, for <code>system</code> from <code>useColorScheme()</code> (<code>react-native</code>). <code>StatusBar style</code> = <code>light</code> in the dark, otherwise <code>dark</code>.</li>
+<li><code>packages/ui</code>: check every component for fixed colors (grep for <code>#</code> and <code>rgba(</code>); replace them with theme tokens.</li>
+<li><code>apps/mobile-web/src/icons/AppleG.tsx</code>: fill color <code>#1d1d1f</code> is invisible on a dark background; control it via a <code>color</code> prop from <code>t.color.tinte</code>. <code>GoogleG.tsx</code> (brand colors) stays.</li>
+</ul>
+<p><strong>6.3 Profile.</strong> In <code>ProfileScreen</code>, a section „Darstellung“ (&quot;Appearance&quot;) (i18n <code>profil.darstellung.titel</code>) with three options <code>System</code> / <code>Immer hell</code> (&quot;Always light&quot;) / <code>Immer dunkel</code> (&quot;Always dark&quot;) (use the existing <code>Option</code> or <code>Chip</code> component), testIDs <code>profil-darstellung-system</code>, <code>profil-darstellung-hell</code>, <code>profil-darstellung-dunkel</code>. Takes effect immediately and persists after a reload.</p>
+<p><strong>6.4 Tests:</strong> Unit: preference logic (incl. blocked storage); <code>ThemeProvider</code> gets <code>dark</code> with system dark; profile selection writes the key. <strong>E2E:</strong> new script <code>e2e/responsive/dark-mode.mjs</code> (style like <code>breakpoint-layout.mjs</code>, register it in <code>e2e/package.json</code> as <code>dark-mode</code>): emulate <code>colorScheme: &#39;dark&#39;</code>, open the cockpit, a screen, the profile, check that the body background matches the dark <code>grund</code>; choose <code>Immer hell</code>, reload, light. <code>no-client-persistence</code> must stay green. If it turns red because of <code>steuereule.appearance</code>, check whether the test flow changes the setting; the key may only be written then.</p>
+<hr>
+<h3 id="slice-7--keyboard--haptics"><a class="anchor" href="#slice-7--keyboard--haptics" aria-hidden="true" tabindex="-1">#</a>SLICE 7 — Keyboard &amp; haptics</h3>
+<p><strong>7.1 Keyboard.</strong> <code>Input</code> from <code>@steuereule/ui</code> already sets <code>keyboardType=&quot;number-pad&quot;</code> for <code>type=&quot;numeric&quot;</code>; react-native-web turns that into <code>inputmode=&quot;numeric&quot;</code>.</p>
+<ul>
+<li>Check with a unit test in <code>packages/ui</code> that <code>Input type=&quot;numeric&quot;</code> renders <code>inputmode=&quot;numeric&quot;</code> on web.</li>
+<li>Find all amount and number fields in <code>apps/mobile-web/src</code> (grep for <code>&lt;Input</code> and <code>TextInput</code>) that do <strong>not</strong> have <code>type=&quot;numeric&quot;</code> but expect numbers, and switch them over. List them in the report.</li>
+<li>Forms must stay usable with the on-screen keyboard open: screens with forms (the sheet contents from Slice 4) get <code>KeyboardAvoidingView</code> (<code>behavior=&quot;padding&quot;</code> only on iOS, otherwise without).</li>
+</ul>
+<p><strong>7.2 Haptics.</strong></p>
+<pre><code class="language-bash">pnpm --filter @steuereule/ui exec npx expo install expo-haptics
+</code></pre>
+<p>(If that does not work in the package: add <code>expo-haptics</code> with the version matching Expo SDK 53 to <code>packages/ui/package.json</code>; name the version in the report.)</p>
+<ul>
+<li><code>packages/ui/src/lib/haptics.ts</code>: <code>hapticSelection()</code>, <code>hapticLight()</code>, <code>hapticMedium()</code>, <code>hapticSuccess()</code>, <code>hapticWarning()</code>. On web a <strong>no-op</strong> (<code>Platform.OS === &#39;web&#39;</code> → return immediately, do not load <code>expo-haptics</code> at all: <code>await import(&#39;expo-haptics&#39;)</code> only on native). Off when <code>AccessibilityInfo.isReduceMotionEnabled()</code> is true or the preference is off. Always swallow errors.</li>
+<li>Preference: <code>setHapticsEnabled(boolean)</code> in <code>haptics.ts</code>; the app reads/writes it in <strong>localStorage</strong> key <code>steuereule.haptics</code> (<code>apps/mobile-web/src/lib/hapticsPreference.ts</code>, <code>try/catch</code>, write only on change) and passes it to <code>setHapticsEnabled</code> at startup.</li>
+<li>Integration: tapping <code>Option</code> → <code>hapticLight</code>; <code>TabBar</code> change and tax year switcher → <code>hapticSelection</code>; <code>Button variant=&quot;primaer&quot;</code> → <code>hapticMedium</code>; tile changes to &quot;done&quot; → <code>hapticSuccess</code>; gate shows a conflict or saving fails → <code>hapticWarning</code>.</li>
+<li>Profile: switch „Haptisches Feedback“ (&quot;Haptic feedback&quot;) (<code>profil-haptik</code>), visible <strong>only on native platforms</strong> (hide on web).</li>
+</ul>
+<p><strong>7.3 Tests:</strong> Unit: haptics is a no-op on web (the mock of <code>expo-haptics</code> is never called); on native (platform mock) <code>impactAsync(Medium)</code> is called for the primary button; not with reduce motion; preference off → not. The <code>inputmode=&quot;numeric&quot;</code> test from 7.1. E2E: no new ones needed, all existing ones green.</p>
+<hr>
+<h2 id="part-d--completing-the-batch"><a class="anchor" href="#part-d--completing-the-batch" aria-hidden="true" tabindex="-1">#</a>PART D — Completing the batch</h2>
+<p>When Slice 7 is done (or the batch was halted):</p>
+<ol>
+<li>Add a section <strong>„Gesamt“</strong> (&quot;Overall&quot;) to the report <code>docs/agent-prompts/443-batch-report.html</code>: list of the branches with the last commit hash; list of <strong>all</strong> open questions from all slices; which gate commands did not run locally.</li>
+<li>Commit the report.</li>
+<li>Push nothing.</li>
+</ol>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

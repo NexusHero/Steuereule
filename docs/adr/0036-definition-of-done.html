@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0036 — Definition of Done: vier Ebenen — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0036</p>
+        <h1>Definition of Done: vier Ebenen <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#decision-history">Decision history</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-10-23</li>
+<li><strong>Deciders:</strong> NexusHero (Stakeholder) · <strong>Review:</strong> Musti (Lead) — re-review GO (2026-10-23)</li>
+<li><strong>Introduced by:</strong> DoD grilling session 2026-10-23 (decisions D13–D20)</li>
+<li><strong>Builds on</strong> <a href="0017-public-draft-first-review-and-tiered-testing.html">ADR-0017</a> (tiered
+testing), <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a> (a control is proven by
+breaking it — not established until observed to fail), Musti&#39;s REQ-010 ruling on PR #249
+(&quot;green needs a tier&quot;), <code>docs/requirements/register.html</code> (register status semantics).</li>
+<li><strong>Context tags:</strong> process, quality, definition-of-done</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The roadmap (see <code>docs/roadmap-1.0.html</code>) sets a professional-engineering bar, but a bar without
+a definition of <em>done</em> is not checkable: &quot;Phase fertig&quot; and &quot;1.0 fertig&quot; would remain feelings.
+The grilling session therefore fixed a Definition of Done on <strong>four levels</strong> (stakeholder
+decision D13: four, explicitly including a per-REQ level). The per-REQ level is the semantic
+definition of the register&#39;s <code>Done</code> status — not a second bookkeeping.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>DoD 1 — Ticket/Slice.</strong> A slice is done when:</p>
+<ul>
+<li>TDD red→green; <code>typecheck</code> + <code>oxlint</code> green; review gate passed (draft PR → Musti).</li>
+<li>Acceptance test exists on the tier the REQ demands (PR #249 ruling).</li>
+<li>No bespoke machinery: framework/library standard first; any deviation needs an ADR.</li>
+<li>Comments explain why, never what; touched files trimmed.</li>
+<li>A <strong>security/performance posture line</strong> is present in the PR: does the slice touch these
+axes? If yes, the guarding test or measurement is linked (or a deliberately documented
+non-requirement with reason); if no, a one-sentence &quot;n/a&quot; with reason. The reviewer checks
+this line like every other gate line (D16 — a <em>checkable statement</em>, not a rubber stamp).</li>
+<li>ADR followed up where an architectural decision was made; register maintained where a REQ
+is touched.</li>
+</ul>
+<p><strong>DoD 2 — REQ (register <code>Done</code>).</strong> A REQ is <code>Done</code> when: acceptance test on the demanded tier
+· green on <code>main</code> in CI · register row cites the test location · review passed · ADR where
+required. No per-REQ demo/sign-off — that is the 1.0 level&#39;s job (D14).</p>
+<p><strong>DoD 3 — Phase.</strong> All tickets meet DoD 1; all blocking edges resolved; the phase is demoable
+on the real environment (from phase 1; the foundation itself: green gates + local
+production-shaped stack, because the real environment is the parallel infra track); roadmap
+status column and progress.db context updated to done (D17). No per-phase stakeholder sign-off.</p>
+<p><strong>DoD 4 — 1.0 (product, &quot;zeigbar&quot;).</strong></p>
+<ol>
+<li>ADR-001–042 scope implemented — or individual items consciously gated (only by
+NexusHero decision, visible in the register).</li>
+<li>One complete stakeholder walk-through without manual intervention — guest → registration →
+interview → computation → submission-ready → export — on the real URL, run by NexusHero
+<strong>and</strong> at least one external tester, recorded as evidence (D18).</li>
+<li>Deployed on k3s/Hetzner with backups/DR; REQ-010 closed; mantle REQs 007/008/009 green.</li>
+<li>DSGVO final audit before the first real account.</li>
+<li>Pre-go-live load test passed.</li>
+<li>No &quot;AI smell&quot;: the phase 0.2 bespoke list replaced, comment discipline repo-wide.</li>
+<li><del>ELSTER submission activated once the manufacturer certificate arrives (external track).</del>
+<strong>Amended by <a href="0050-paper-filing-instead-of-elster-in-1-0.html">ADR-0050</a> (2026-10-28):</strong> 1.0 files on paper —
+form printout per BMF letter of 12.08.2022, paid unlock per tax year, legal pages reviewed by a
+lawyer. ELSTER becomes a 1.x extension.</li>
+</ol>
+<p><strong>Enforcement (D19):</strong> the ticket DoD is a checkable checklist in the PR template; the
+reviewer confirms each line. Automatable parts run in CI already; &quot;why-only&quot; comments and
+&quot;no bespoke machinery&quot; are review judgements and are not simulated with lint rules. The four
+levels live in <code>docs/process/</code> and are wired into the PR template in phase 0.1.</p>
+<p><strong>Exceptions (D20):</strong> Musti may approve a DoD deviation; it is recorded visibly in the PR
+<strong>and</strong> the register with reason and a follow-up ticket; NexusHero keeps veto. The 1.0 core
+criteria (2 and 3) admit no exceptions — only a go-live deferral.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Four levels carry administration; the REQ level is anchored to the register&#39;s existing
+status semantics (Musti&#39;s PR #249 ruling), not a parallel track.</li>
+<li>The posture line forces a conscious security/performance answer on every ticket without
+mandating tests where no axis is touched (no test proliferation).</li>
+<li>The recorded stakeholder walk-through makes &quot;zeigbar&quot; provable (ADR-0021 spirit: observed,
+not claimed).</li>
+<li>Deviations stay visible: the mechanism the project already lives (REQ-010 A1, the #175
+footer note) becomes the rule instead of an ad-hoc practice.</li>
+</ul>
+<h2 id="decision-history"><a class="anchor" href="#decision-history" aria-hidden="true" tabindex="-1">#</a>Decision history</h2>
+<ul>
+<li><p>2026-10-28: Criterion 7 amended by ADR-0050 (paper filing instead of ELSTER in 1.0).</p>
+</li>
+<li><p>2026-10-23: Draft from the DoD grilling session (decisions D13–D20).</p>
+</li>
+<li><p>2026-10-23: Rev 2 — Musti review findings I1 (ADR-0021 paraphrase), M8, M9 addressed;
+re-review GO. Promoted to <code>docs/adr/</code>.</p>
+</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0035-foundation-consolidation.html"><span class="eyebrow">Previous</span><span>ADR-0035</span></a><a class="step step-next" href="0037-income-types-and-tax-year-model.html"><span class="eyebrow">Next</span><span>ADR-0037</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

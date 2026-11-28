@@ -48,7 +48,7 @@ jobs:
   # applying (ADR-0019, amendment re-measuring §5) — `.oxlintrc.json` lives at the repo
   # root specifically so it is auto-discovered.
   # Moved here from deploy.yml (ADR-0113): deploy.yml has no pull_request trigger any more, so a pull request no longer
-  # shows two skipped deploy jobs. The name is a required-check candidate (docs/ci-pipeline.md, H2-32).
+  # shows two skipped deploy jobs. The name is a required-check candidate (docs/ci-pipeline.html, H2-32).
   validate-opentofu:
     name: 'static: opentofu validate'
     runs-on: ubuntu-24.04
@@ -117,11 +117,6 @@ jobs:
         run: pnpm -r --workspace-concurrency=1 test --coverage
       - name: Web server headers (CSP, HSTS, framing) — node tests of e2e/cross-origin/static-server.mjs
         run: node --test e2e/cross-origin/static-server.test.mjs
-      # docs/site/ is built from docs/architecture.md and committed, so it can be read without a build.
-      # This fails when a change to the Markdown, the template or the tokens was not followed by
-      # `pnpm docs:site`. It runs here because it needs the Markdown parser from node_modules.
-      - name: Architecture site — docs/site/ matches its Markdown sources
-        run: node scripts/docs/build-site.mjs --check
       - name: Upload the coverage reports for SonarQube Cloud
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -370,7 +365,7 @@ jobs:
         run: pnpm --filter @steuereule/api exec vitest run --config vitest.integration.config.ts test/advisor-run-log.redis.integration.test.ts
 
   # Real gate (#221, and the register-ownership decision landing via #251) — turns
-  # docs/requirements/register.md and docs/adr/ from a
+  # docs/requirements/register.html and docs/adr/ from a
   # claim, checked only when a human happens to re-read it, into a control (ADR-0021): both
   # register-check and adr-check are proven by breaking them, not by watching them pass — see
   # scripts/checks/README.md and this job's own PR evidence block for the six break/restore
@@ -405,7 +400,7 @@ jobs:
           # job 91796590386 — exactly ADR-0021's own defect class: a declared-but-not-connected
           # default). Explicitly opted out rather than adding an unneeded pnpm/install step.
           package-manager-cache: false
-      - name: register-check — docs/requirements/register.md against the real repo (checks 1-5)
+      - name: register-check — docs/requirements/register.html against the real repo (checks 1-5)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/checks/register-check.mjs

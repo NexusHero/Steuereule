@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// register-check — turns docs/requirements/register.md from a claim into a control
+// register-check — turns docs/requirements/register.html from a claim into a control
 // (ADR-0021 and the register-ownership decision landing via #251). Mechanical checks, run
 // against the real repo tree:
 //
@@ -61,6 +61,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Findings } from './lib/findings.mjs'
+import { markdownLinesOfHtml } from './lib/html-doc.mjs'
 import { parseTables, citationColumnIndex, statusColumnIndex, reqColumnIndex, extractCitations } from './lib/register.mjs'
 import { walk, buildBasenameIndex, resolveCitedPath } from './lib/paths.mjs'
 import { matchAnyGlob } from './lib/glob.mjs'
@@ -69,7 +70,7 @@ import { isIssueOpen } from './lib/github.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = path.resolve(__dirname, '..', '..')
-const REGISTER_PATH = path.join(REPO_ROOT, 'docs/requirements/register.md')
+const REGISTER_PATH = path.join(REPO_ROOT, 'docs/requirements/register.html')
 const WORKFLOWS_DIR = path.join(REPO_ROOT, '.github/workflows')
 
 const TEST_FILE_RE = /\.test\.tsx?$/
@@ -124,7 +125,7 @@ export function lineRangeFindings(registerLines, lineCountOf) {
         const lineCount = lineCountOf(p)
         if (lineCount == null) continue
         for (const problem of lineRangeProblems(citation.lineRange, lineCount)) {
-          out.push({ check: '1c-line-range-bounds', message: `register.md:${i + 1} cites \`${p}:${citation.lineRange}\` — ${problem}.` })
+          out.push({ check: '1c-line-range-bounds', message: `register.html:${i + 1} cites \`${p}:${citation.lineRange}\` — ${problem}.` })
         }
       }
     }
@@ -134,8 +135,10 @@ export function lineRangeFindings(registerLines, lineCountOf) {
 
 async function main() {
   const findings = new Findings()
-  const registerText = fs.readFileSync(REGISTER_PATH, 'utf8')
-  const registerLines = registerText.split('\n')
+  // The register is a page of docs/ (ADR-0116). It is read as Markdown-like lines, one per line of the
+  // HTML file, so every `register.html:N` below is the line to open in the page's source.
+  const registerLines = markdownLinesOfHtml(fs.readFileSync(REGISTER_PATH, 'utf8'))
+  const registerText = registerLines.join('\n')
 
   const allFiles = walk(REPO_ROOT, REPO_ROOT)
   const basenameIndex = buildBasenameIndex(allFiles)
@@ -150,12 +153,12 @@ async function main() {
         resolvedByRaw.set(p, resolution)
         if (!resolution.exists) {
           const where = resolution.kind === 'basename-ambiguous' ? `ambiguous — matches ${resolution.candidates.join(', ')}` : 'no such file'
-          findings.add('1-path-exists', `register.md:${i + 1} cites \`${p}\` — ${where}.`)
+          findings.add('1-path-exists', `register.html:${i + 1} cites \`${p}\` — ${where}.`)
         } else if (resolution.kind === 'basename-unique') {
           // Low severity, own class (Musti's F5 review on #252): real evidence, resolved by
           // basename only, not a citation error — but under-qualified. Spelling these out is
           // meant to get them fixed and this fallback deleted, not to live here permanently.
-          findings.add('1b-under-qualified-citation', `register.md:${i + 1} cites \`${p}\` — resolves only by filename, to \`${resolution.resolved}\`; spell out the full path.`)
+          findings.add('1b-under-qualified-citation', `register.html:${i + 1} cites \`${p}\` — resolves only by filename, to \`${resolution.resolved}\`; spell out the full path.`)
         }
       }
     }
@@ -277,7 +280,7 @@ async function main() {
       if (!c.exists) continue // already reported by check 1
       const result = isRunByCI(c.resolved)
       if (!result.run) {
-        findings.add('2-executed-by-ci', `register.md:${row.lineNumber} (${row.req}, ${row.table}) cites \`${c.raw}\` — ${result.reason}.`)
+        findings.add('2-executed-by-ci', `register.html:${row.lineNumber} (${row.req}, ${row.table}) cites \`${c.raw}\` — ${result.reason}.`)
       }
     }
   }
@@ -369,7 +372,7 @@ async function main() {
       if (r.citations.length === 0) {
         findings.add(
           '3b-cross-table-citation-gap',
-          `register.md:${r.lineNumber} (${req}, ${r.table} table) has an empty citation column while ${req} carries citations in its other table — a citation column can sit empty in one table indefinitely under check 3's cross-table union; this checks each table's own column.`,
+          `register.html:${r.lineNumber} (${req}, ${r.table} table) has an empty citation column while ${req} carries citations in its other table — a citation column can sit empty in one table indefinitely under check 3's cross-table union; this checks each table's own column.`,
         )
       }
     }
@@ -430,7 +433,7 @@ async function main() {
       if (text == null) continue
       const germanMatch = text.match(GERMAN_BLOCKLIST)
       if (germanMatch) {
-        findings.add('4-status-vocabulary', `register.md:${line} ${req}'s ${col} column contains a German word ("${germanMatch[0]}") — the register is English throughout (docs/process/README.md).`)
+        findings.add('4-status-vocabulary', `register.html:${line} ${req}'s ${col} column contains a German word ("${germanMatch[0]}") — the register is English throughout (docs/process/README.html).`)
       }
     }
     if (entry.status != null && entry.state != null) {
@@ -438,12 +441,12 @@ async function main() {
       const stateNotMet = [...entry.state.matchAll(NOT_MET_RE)].map((m) => m[0].toLowerCase().replace(/\s+/g, ' '))
       for (const clause of statusNotMet) {
         if (!stateNotMet.includes(clause)) {
-          findings.add('4-status-vocabulary', `register.md:${entry.statusLine} ${req}'s Status column has ${clause}, but the traceability State column (register.md:${entry.stateLine}) doesn't carry the identical qualifier — Status and State must describe the same fact in the same words (the REQ-010/F5 defect).`)
+          findings.add('4-status-vocabulary', `register.html:${entry.statusLine} ${req}'s Status column has ${clause}, but the traceability State column (register.html:${entry.stateLine}) doesn't carry the identical qualifier — Status and State must describe the same fact in the same words (the REQ-010/F5 defect).`)
         }
       }
       for (const clause of stateNotMet) {
         if (!statusNotMet.includes(clause)) {
-          findings.add('4-status-vocabulary', `register.md:${entry.stateLine} ${req}'s State column has ${clause}, but the Status column (register.md:${entry.statusLine}) doesn't carry the identical qualifier.`)
+          findings.add('4-status-vocabulary', `register.html:${entry.stateLine} ${req}'s State column has ${clause}, but the Status column (register.html:${entry.statusLine}) doesn't carry the identical qualifier.`)
         }
       }
     }
@@ -467,7 +470,7 @@ async function main() {
         if (!tierMatch) {
           findings.add(
             '4-status-vocabulary',
-            `register.md:${entry.stateLine} ${req}'s State column ("${entry.state}") carries no \`green (tier)\` marker at all — every REQ named in the "Applied consistently ... to" sentence must state its evidence tier; a missing tier is a finding, not silence (#258).`,
+            `register.html:${entry.stateLine} ${req}'s State column ("${entry.state}") carries no \`green (tier)\` marker at all — every REQ named in the "Applied consistently ... to" sentence must state its evidence tier; a missing tier is a finding, not silence (#258).`,
           )
         } else {
           const tokens = tierMatch[1]
@@ -475,7 +478,7 @@ async function main() {
             .map((t) => t.trim())
           for (const token of tokens) {
             if (!TIER_WORDS.has(token)) {
-              findings.add('4-status-vocabulary', `register.md:${entry.stateLine} ${req}'s State column tier "${token}" is not one of the declared tiers (unit, integration, acceptance).`)
+              findings.add('4-status-vocabulary', `register.html:${entry.stateLine} ${req}'s State column tier "${token}" is not one of the declared tiers (unit, integration, acceptance).`)
             }
           }
         }
@@ -499,13 +502,13 @@ async function checkDocumentsDefect(findings, markers, rows) {
     }
     // Every row that cites the file must carry the flag, not just one of them — the summary
     // table and the traceability table both cite the same file independently, and this
-    // convention (the register.md REQ-010 rows already do it for #248's rate-limit
+    // convention (the register.html REQ-010 rows already do it for #248's rate-limit
     // annotation) is exactly meant to survive one table getting fixed/annotated while its
     // sibling is forgotten.
     for (const row of citingRows) {
       const rowCarriesFlag = row.citations.some((c) => c.cellText.includes(markerText))
       if (!rowCarriesFlag) {
-        findings.add('5-documents-defect', `${file} carries \`${markerText}\`, but the register row citing it at register.md:${row.lineNumber} (${row.req}, ${row.table}) doesn't repeat that marker in its citation cell.`)
+        findings.add('5-documents-defect', `${file} carries \`${markerText}\`, but the register row citing it at register.html:${row.lineNumber} (${row.req}, ${row.table}) doesn't repeat that marker in its citation cell.`)
       }
     }
     let open

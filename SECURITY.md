@@ -19,4 +19,4 @@ are reachable through this application.
 
 Every pull request runs secret scanning (gitleaks), static analysis (Semgrep with rules for NestJS and data
 protection, SonarQube Cloud), a dependency audit, container and infrastructure scans (Trivy), and a dynamic scan
-of the production containers (OWASP ZAP). `docs/ci-pipeline.md` lists the checks and what each one proves.
+of the production containers (OWASP ZAP). `docs/ci-pipeline.html` lists the checks and what each one proves.

@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Test coverage #450 part 4: #443 features, #451 and #452 — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Testing</p>
+        <h1>Test coverage #450 part 4: #443 features, #451 and #452</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#443-acceptance-criterion--persona">#443: acceptance criterion × persona</a></li><li><a class="chip" href="#451-input-aids-and-chat-experience">#451: input aids and chat experience</a></li><li><a class="chip" href="#452-household-and-carry-over-from-the-previous-year">#452: household and carry-over from the previous year</a></li><li><a class="chip" href="#findings-from-part-4-follow-up-work">Findings from part 4 (follow-up work)</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 11.11.2026. Each row names the file that checks the item. <strong>Gap</strong> means there is no test yet; the follow-up work is listed below.</p>
+<h2 id="443-acceptance-criterion--persona"><a class="anchor" href="#443-acceptance-criterion--persona" aria-hidden="true" tabindex="-1">#</a>#443: acceptance criterion × persona</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">AC</th>
+<th align="left">What</th>
+<th align="left">Personas / gates</th>
+<th align="left">Kind</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">1</td>
+<td align="left">No data loss on tab switch</td>
+<td align="left">Single, employed: <code>e2e/navigation/hub-acceptance.mjs</code> (master data, input and scroll position after cockpit → documents → cockpit)</td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">2</td>
+<td align="left">URL per screen, reload, back/forward</td>
+<td align="left">Married couple with Zusammenveranlagung (joint assessment): <code>e2e/navigation/deep-links.mjs</code> (all 30 paths from <code>linking.ts</code>)</td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">3</td>
+<td align="left">Guest deep link → lands exactly there after sign-in</td>
+<td align="left"><code>deep-links.mjs</code> (LStB, children, security via the account wall)</td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">4</td>
+<td align="left">Cockpit after the primary document, „Nächster Schritt“ (&quot;Next step&quot;)</td>
+<td align="left">Lena (01), Markus (02), Hans (05, pension), Sarah (06), Carlos (12): <code>e2e/scenarios/*</code> via <code>nextStep()</code></td>
+<td align="left">E2E, matrix</td>
+</tr>
+<tr>
+<td align="left">5</td>
+<td align="left">„Betrag später eintragen“ (&quot;Enter amount later&quot;)</td>
+<td align="left">Sarah (06, move), <code>hub-acceptance.mjs</code> (gate warning), <code>apps/api/test/tax-estimate.service.test.ts</code> (<code>result.to</code> + 60 per amount, <code>from</code> unchanged, also for the couple)</td>
+<td align="left">E2E + unit</td>
+</tr>
+<tr>
+<td align="left">6</td>
+<td align="left">Submission gate: blocker locks, warning after a one-time confirmation, a new warning again</td>
+<td align="left"><code>hub-acceptance.mjs</code> (blocker LStB open → leads to the LStB; confirm „Betrag später“; new warning „Werbungskosten über Einnahmen“ (&quot;work-related expenses above income&quot;) locks again); <code>deep-links.mjs</code> (<code>/ausdruck</code> → <code>/abgabe</code> on blocker)</td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">7</td>
+<td align="left">Closing the sheet saves the typed amount</td>
+<td align="left">LStB sheet: <code>hub-acceptance.mjs</code>. <strong>Gap:</strong> catalog amounts and working days only save via „Weiter“ (&quot;Continue&quot;) (see findings)</td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">8</td>
+<td align="left">Persona booster: pensioner sees medical costs instead of the commuter allowance</td>
+<td align="left">Hans (05): commute under „Weitere Themen“ (&quot;Further topics&quot;). Other pensioner personas (11 Klaus) do not check this separately</td>
+<td align="left">E2E, matrix</td>
+</tr>
+<tr>
+<td align="left">9</td>
+<td align="left">Dual cockpit, partner screens without an own account</td>
+<td align="left">Weber (04), Brenner (02/03), Keller (14), <code>household.mjs</code></td>
+<td align="left">E2E</td>
+</tr>
+<tr>
+<td align="left">10</td>
+<td align="left">Dark mode, system / always light / always dark, after reload</td>
+<td align="left"><code>e2e/responsive/dark-mode.mjs</code></td>
+<td align="left">E2E, CI</td>
+</tr>
+<tr>
+<td align="left">11</td>
+<td align="left">Numeric keyboard</td>
+<td align="left"><code>e2e/advisor/input-aids.mjs</code> row E (amount fields carry <code>inputmode=&quot;numeric&quot;</code>)</td>
+<td align="left">E2E</td>
+</tr>
+<tr>
+<td align="left">12</td>
+<td align="left">All scenarios green</td>
+<td align="left"><code>e2e/scenarios/run-all-scenarios.mjs</code> (4 shards) and <code>four-scenarios.mjs</code></td>
+<td align="left">E2E, CI</td>
+</tr>
+</tbody></table></div>
+<p><strong>Domain edge cases:</strong></p>
+<ul>
+<li><strong>„Betrag später“:</strong> <code>tax-estimate.service.test.ts</code> checks that the range shifts by exactly <code>UNCERTAINTY_PER_ITEM</code> per amount.</li>
+<li><strong>Thresholds of § 35a and § 33:</strong> <code>packages/core/src/domains/household-services.test.ts</code> and <code>extraordinary-burdens.test.ts</code>.</li>
+</ul>
+<h2 id="451-input-aids-and-chat-experience"><a class="anchor" href="#451-input-aids-and-chat-experience" aria-hidden="true" tabindex="-1">#</a>#451: input aids and chat experience</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Item from „Tests“</th>
+<th align="left">File</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Enter handling (Shift, platform)</td>
+<td align="left">unit <code>chat/chatKeys.test.tsx</code>; E2E <code>advisor/chat-experience.mjs</code> row A/B</td>
+</tr>
+<tr>
+<td align="left">Abort logic (partial text, incomplete action)</td>
+<td align="left">unit <code>advisor/CopilotBridgeAbort.test.tsx</code>; E2E <code>chat-experience.mjs</code> (stop in the middle of the answer)</td>
+</tr>
+<tr>
+<td align="left">Rotation of the thinking texts, reduced motion</td>
+<td align="left">unit <code>chat/thinkingLabel.test.tsx</code>; E2E <code>chat-experience.mjs</code> (<code>emulateMedia</code>)</td>
+</tr>
+<tr>
+<td align="left"><code>lookupPostalCode</code> incl. ambiguous postal codes</td>
+<td align="left">unit <code>packages/core/src/common/postal-codes.test.ts</code>; E2E <code>input-aids.mjs</code> row C/D</td>
+</tr>
+<tr>
+<td align="left">Checksum of the dictation model</td>
+<td align="left"><code>apps/mobile-web/scripts/dictation-model-lock.mjs</code> (build), unit <code>lib/dictation/modelStore.test.tsx</code></td>
+</tr>
+<tr>
+<td align="left">Postal code prefill and change, autofill attributes</td>
+<td align="left">E2E <code>input-aids.mjs</code> row A–E</td>
+</tr>
+<tr>
+<td align="left">Enter does not send on the phone</td>
+<td align="left">unit <code>chatKeys.test.tsx</code> (platform „mobil“), E2E <code>advisor/chat-experience.mjs</code> row G. Since #476 there is no dock any more; what is checked is the chat&#39;s own input</td>
+</tr>
+<tr>
+<td align="left">No external host for postal code lookup and dictation level 1; level 2 only Hugging Face after consent</td>
+<td align="left">E2E <code>input-aids.mjs</code> row G, <code>advisor/dictation.mjs</code></td>
+</tr>
+<tr>
+<td align="left">Plan in the chat (checklist, collapse, stop, no PUT without a click)</td>
+<td align="left">E2E <code>advisor/plan-in-chat.mjs</code>, engine test <code>apps/api/test/langgraph-advisor.plan.test.ts</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="452-household-and-carry-over-from-the-previous-year"><a class="anchor" href="#452-household-and-carry-over-from-the-previous-year" aria-hidden="true" tabindex="-1">#</a>#452: household and carry-over from the previous year</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Item from „Tests“</th>
+<th align="left">File</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Merging in the migration, repeatable, typo exactly one question</td>
+<td align="left">unit <code>packages/core/src/common/household.test.ts</code>; API <code>apps/api/test/household.service.test.ts</code>; E2E <code>household.mjs</code> row B</td>
+</tr>
+<tr>
+<td align="left">Age rules (18, 25)</td>
+<td align="left">unit <code>household.test.ts</code>; API <code>household.service.test.ts</code></td>
+</tr>
+<tr>
+<td align="left">Bank code (BLZ) lookup, Steuer-ID check</td>
+<td align="left">unit <code>bank-codes.test.ts</code>, <code>steuer-id.test.ts</code></td>
+</tr>
+<tr>
+<td align="left">Familienkasse (family benefits office) from the Kindergeld number</td>
+<td align="left">dropped (Decision #452: no official mapping)</td>
+</tr>
+<tr>
+<td align="left">Gnadensplitting (widow&#39;s splitting) selection</td>
+<td align="left"><strong>Gap:</strong> no dedicated test found</td>
+</tr>
+<tr>
+<td align="left">Permissions for shared editing, someone else&#39;s household</td>
+<td align="left">API <code>household.service.test.ts</code> („refuses a person from someone else’s household“, „stops sharing once the link has ended“)</td>
+</tr>
+<tr>
+<td align="left">Crypto-shredding per person</td>
+<td align="left">API <code>household.service.test.ts</code> („endgültig löschen … destroys the person’s key“)</td>
+</tr>
+<tr>
+<td align="left">Ending from year X</td>
+<td align="left">API <code>household.link.test.ts</code>; E2E <code>household.mjs</code> row F</td>
+</tr>
+<tr>
+<td align="left">Weber sets up 2025, starts 2026 → only confirm</td>
+<td align="left">E2E <code>household.mjs</code> row C/D (same structure as persona 04)</td>
+</tr>
+<tr>
+<td align="left">Richter with a child over the years</td>
+<td align="left">E2E <code>household.mjs</code> row C</td>
+</tr>
+<tr>
+<td align="left">Regression: all scenarios the same before and after the migration</td>
+<td align="left">E2E <code>household.mjs</code> row A; <code>run-all-scenarios.mjs</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="findings-from-part-4-follow-up-work"><a class="anchor" href="#findings-from-part-4-follow-up-work" aria-hidden="true" tabindex="-1">#</a>Findings from part 4 (follow-up work)</h2>
+<ol>
+<li><strong>Sheet closes without saving:</strong> The catalog amount fields and the working-days screen only save via „Weiter“. Anyone who types an amount and closes the sheet loses it. This contradicts #443 AC 7. The LStB screen, by contrast, saves when the field is left, and AC 7 holds there.</li>
+<li><strong>Back trap after the interview:</strong> Once the interview is complete, <code>/interview</code> jumps to the next screen via <code>navigate</code>. Browser back lands in the interview again and therefore in the LStB again. With <code>replace</code> the trap would be gone.</li>
+<li><strong>Gaps without a test:</strong> Gnadensplitting selection (#452). (Enter on the phone has been covered by <code>chat-experience.mjs</code> row G since #476.)</li>
+<li><strong>Still open in part 4:</strong> Visual regression (375 px and 1280 px, light and dark) and axe per screen in both themes with keyboard operation of the sheets. They follow as a separate PR.</li>
+</ol>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

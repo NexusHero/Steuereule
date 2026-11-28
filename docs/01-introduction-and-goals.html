@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Introduction and goals — SteuerEule</title>
+  <link rel="icon" href="../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item is-active" href="01-introduction-and-goals.html" aria-current="page"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 1 of 12</p>
+        <h1 id="1-introduction-and-goals">Introduction and goals</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#11-purpose">1.1 Purpose</a></li><li><a class="chip" href="#12-quality-goals">1.2 Quality goals</a></li><li><a class="chip" href="#13-stakeholders">1.3 Stakeholders</a></li></ul>
+      </header>
+      <article class="prose">
+<h2 id="11-purpose"><a class="anchor" href="#11-purpose" aria-hidden="true" tabindex="-1">#</a>1.1 Purpose</h2>
+<p>SteuerEule guides private individuals in Germany through their income tax return. The app asks questions in an interview, computes the expected refund as a range, reads receipts, and prints the return onto the official tax forms. An AI assistant, the owl (<em>Eule</em>), advises in a chat and prepares entries as drafts.</p>
+<p>The governing principle (<a href="adr/0038-calculation-core-and-ai-port.html">ADR-0038</a>):</p>
+<blockquote>
+<p><strong>The core computes, the language model phrases.</strong> Every tax amount is produced by pure functions in <code>@steuereule/core</code>. A language model proposes and explains. It never writes to the return itself: a proposal becomes an entry only when the user confirms it.</p>
+</blockquote>
+<p><strong>Who is served</strong></p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Group</th>
+<th align="left">Scope</th>
+<th align="left">Decision</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Employees</td>
+<td align="left">wage tax certificate (<em>Lohnsteuerbescheinigung</em>), commute, home office, special expenses, household services</td>
+<td align="left"><a href="adr/0041-employee-vertical-lstb.html">ADR-0041</a></td>
+</tr>
+<tr>
+<td align="left">Cross-border commuters to Switzerland</td>
+<td align="left">Swiss salary certificate, the 60-day rule, exchange rates, the form <em>Anlage N-Gre</em></td>
+<td align="left"><a href="adr/0042-grenzgaenger-ch-vertical.html">ADR-0042</a></td>
+</tr>
+<tr>
+<td align="left">Pensioners</td>
+<td align="left">statutory and private pensions</td>
+<td align="left"><a href="adr/0044-pensioner-vertical.html">ADR-0044</a></td>
+</tr>
+<tr>
+<td align="left">Investors, landlords</td>
+<td align="left">securities accounts, the most-favourable-taxation check, rental properties with depreciation</td>
+<td align="left"><a href="adr/0048-capital-income-vertical.html">ADR-0048</a>, <a href="adr/0046-rental-vertical.html">ADR-0046</a></td>
+</tr>
+<tr>
+<td align="left">Married couples</td>
+<td align="left">one joint return, comparison of filing types</td>
+<td align="left"><a href="adr/0054-joint-assessment-one-return.html">ADR-0054</a>, <a href="adr/0034-veranlagungsartenvergleich-returns-a-bounded-comparison.html">ADR-0034</a></td>
+</tr>
+<tr>
+<td align="left">Self-employed</td>
+<td align="left">cash-basis accounting, bookkeeping, balance sheet, VAT and trade tax</td>
+<td align="left"><a href="adr/0101-self-employed.html">ADR-0101</a></td>
+</tr>
+</tbody></table></div>
+<p><strong>How a return is filed.</strong> The return is printed and sent by post (<a href="adr/0050-paper-filing-instead-of-elster-in-1-0.html">ADR-0050</a>). Official forms are available for tax years 2022 to 2025; the core computes 2022 to 2026. For self-employed users who must file electronically there is code that transmits through an ERiC process (<code>apps/api/src/business/elster-transmission.ts</code>). It needs an operator certificate and is listed as open in §11.</p>
+<h2 id="12-quality-goals"><a class="anchor" href="#12-quality-goals" aria-hidden="true" tabindex="-1">#</a>1.2 Quality goals</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="center">#</th>
+<th align="left">Goal</th>
+<th align="left">What that means</th>
+<th align="left">How it is checked</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="left"><strong>Correct arithmetic</strong></td>
+<td align="left">Tariff, solidarity surcharge, allowances and deadlines match the law for each tax year. No estimated amount on the calculation or print path.</td>
+<td align="left">Unit tests of the core against statutory values; fuzzing across all interview paths (<code>packages/core/src/interview/matrix-fuzzing.test.ts</code>)</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="left"><strong>Confidentiality</strong></td>
+<td align="left">Fields marked <code>@encrypted</code> are stored only as ciphertext. Receipt files are encrypted per user and can be destroyed by deleting the key.</td>
+<td align="left">Acceptance tests against a real PostgreSQL (<code>req-003-encryption-at-rest.test.ts</code>, <code>req-003-key-rotation.test.ts</code>); <code>account-deletion-coverage.test.ts</code> checks that deletion covers every table that references a user</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="left"><strong>Print fidelity</strong></td>
+<td align="left">Every value sits in the right box of the official form. A value that does not fit aborts the print.</td>
+<td align="left">Measurement gates in the CI workflow <em>Quality</em> (<code>scripts/vordrucke/vermessen.mjs --check</code>)</td>
+</tr>
+<tr>
+<td align="center">4</td>
+<td align="left"><strong>Usable without an account</strong></td>
+<td align="left">A guest answers the first questions and sees the cockpit. On sign-up the answers move to the account.</td>
+<td align="left">Acceptance test <code>req-006-guest-upgrade.test.ts</code>, E2E scenario 23</td>
+</tr>
+<tr>
+<td align="center">5</td>
+<td align="left"><strong>Changeability</strong></td>
+<td align="left">The database and external SDKs are reachable only from named places. New coupling between modules is a visible decision.</td>
+<td align="left">two architecture tests, §4.1.3</td>
+</tr>
+</tbody></table></div>
+<h2 id="13-stakeholders"><a class="anchor" href="#13-stakeholders" aria-hidden="true" tabindex="-1">#</a>1.3 Stakeholders</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Who</th>
+<th align="left">Expectation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Users</td>
+<td align="left">a correct return, questions they understand, control over every entry</td>
+</tr>
+<tr>
+<td align="left">Product owner</td>
+<td align="left">a product that sells: payment is taken at print time, per tax year</td>
+</tr>
+<tr>
+<td align="left">Tax office</td>
+<td align="left">formally correct forms with legible values</td>
+</tr>
+<tr>
+<td align="left">Engineering and operations</td>
+<td align="left">clear boundaries, fast tests, traceable decisions</td>
+</tr>
+</tbody></table></div>
+<hr>
+
+      </article>
+      
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="index.html"><span class="eyebrow">Previous</span><span>Overview</span></a><a class="step step-next" href="02-constraints.html"><span class="eyebrow">Next</span><span>Constraints</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

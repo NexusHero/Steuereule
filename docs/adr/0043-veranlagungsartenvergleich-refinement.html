@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0043 — Veranlagungsartenvergleich refinement: Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0043</p>
+        <h1>Veranlagungsartenvergleich refinement: Soli/KiSt folded in, the uncertainty is now only the Progressionsvorbehalt <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Robin (backend, ticket 10.2) — refinement of ADR-0034, triggered by Musti&#39;s
+review of the 10.2 branch (REQUEST-CHANGES F2).</li>
+<li><strong>Refines</strong> <a href="0034-veranlagungsartenvergleich-returns-a-bounded-comparison.html">ADR-0034</a> Decision 3
+(and its Consequences paragraph &quot;until Soli and Kirchensteuer are computed …&quot;).</li>
+<li><strong>Applies</strong> <a href="0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.html">ADR-0032</a> (no
+fabricated zero) and <a href="0033-the-question-graph-lives-in-packages-core.html">ADR-0033</a> § <em>citation
+form</em> — the PV bound is a new, citable derivation and belongs in the ADR log, not only in a
+module-header note.</li>
+<li><strong>Context tags:</strong> architecture, determinism boundary, honesty principle, tax computation</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>ADR-0034 defined the Veranlagungsartenvergleich (comparison of assessment types) as a <strong>bounded
+comparison</strong> and explicitly left three factors <strong>uncomputed</strong> — Solidaritätszuschlag (solidarity
+surcharge), church tax and Progressionsvorbehalt (progression proviso).
+Decision 3 modeled Soli and KiSt as a (computable) upper bound over numbers the module
+&quot;already holds&quot;, and the Progressionsvorbehalt as <strong>unboundable</strong>: without input, <code>unschaerfe</code> is
+<code>unbestimmt</code> and <code>aussage</code> can never become <code>eindeutig</code>.</p>
+<p>Ticket 10.2 (M1) closed two of these three gaps, and did so differently from how ADR-0034 had
+anticipated:</p>
+<ol>
+<li><strong>Soli and KiSt are now computed</strong> (<code>packages/core/src/tarif.ts</code> — §4 SolZG with exemption limit +
+phase-in zone, §51a as a caller factor <code>0 | 0.08 | 0.09</code>), and folded into <code>einzel</code>/<code>zusammen</code>/<code>delta</code>.
+ADR-0034&#39;s Decision 3 text (&quot;an upper bound … arithmetic over numbers this module
+already holds&quot;) therefore describes a mechanism that no longer exists: Soli/KiSt are no
+longer part of <code>unschaerfe</code>.</li>
+<li><strong>The Progressionsvorbehalt becomes boundable</strong>, via a new input object
+(<code>ProgressionsvorbehaltEingabe</code>) with a bound that ADR-0034 called non-derivable.
+The core invariant (bounded comparison, <code>aussage</code> first, <code>empfehlung</code> only on
+<code>eindeutig</code>) is fully preserved — this is a refinement, not a silent
+contradiction, and ADR-0034&#39;s Consequences paragraph (&quot;until Soli and Kirchensteuer are computed and
+Progressionsvorbehalt is an input&quot;) anticipated exactly this step. But the ADR text on
+Decision 3 is now <strong>stale</strong>, and the new PV bound is a derivation that is missing from the
+ADR log (ADR-0033: citation form).</li>
+</ol>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>Decision 3 of ADR-0034 is made more precise as follows (not rewritten retroactively — see
+Consequences):</p>
+<ol>
+<li><p><strong><code>einzel</code>/<code>zusammen</code>/<code>delta</code> carry the full assessed tax.</strong> The numbers are
+income tax <strong>plus</strong> Solidaritätszuschlag <strong>plus</strong> (optional) church tax — exact to the
+euro, for the two zvE (taxable income) bases passed in. Soli and KiSt are <strong>no longer</strong> part of
+the uncertainty: they are monotone surcharges on an income tax that differs between the
+assessment types, and cannot flip the sign of <code>delta</code> — an excluded factor that cannot tip the
+result does not belong in the error bound.</p>
+</li>
+<li><p><strong><code>unschaerfe</code> is exclusively the Progressionsvorbehalt (§32b EStG).</strong> The only
+excluded factor that can tip the result. Its upper bound is
+<code>45 % × Lohnersatzleistungen</code> (wage replacement benefits), rounded up to the whole euro
+(<code>Math.ceil(MAX_GRENZSTEUERSATZ * betrag)</code>, <code>MAX_GRENZSTEUERSATZ = 0.45</code> from §32a Abs. 1 Nr. 5
+EStG). Derivation: the PV effect is <code>y·[s(y+P)−s(y)]</code> with <code>s′(u)=(T′(u)−s(u))/u ≤ 45 %/u</code>,
+hence <code>≤ 45 %·y·ln(1+P/y) ≤ 45 %·P</code>; since the PV only increases both sides (einzel/zusammen),
+<code>|Δdelta| ≤ 45 %·P</code> holds. This is a <strong>conservative, citable</strong> upper limit — the top marginal
+tax rate as the ceiling, not a threshold chosen by feel (in the spirit of ADR-0034
+&quot;computed, not chosen&quot;).</p>
+</li>
+<li><p><strong><code>nicht-angegeben</code> remains the honest indeterminate case.</strong> If the Progressionsvorbehalt
+is not (or not fully) captured — <code>ProgressionsvorbehaltEingabe</code> with <code>art: &#39;nicht-angegeben&#39;</code> —, <code>unschaerfe</code> is <code>unbestimmt</code> and <code>aussage</code> can <strong>never</strong> become
+<code>eindeutig</code>. This also applies at the service level: a <code>lohnersatz === &#39;Ja&#39;</code> without a captured
+(positive) amount is mapped to <code>nicht-angegeben</code>, <strong>not</strong> to <code>lohnersatzleistungen</code> with <code>betrag: 0</code>
+(a fabricated zero would produce <code>obergrenze: 0</code> and make a false <code>eindeutig</code> possible
+— ADR-0032).</p>
+</li>
+</ol>
+<p><code>aussage === &#39;eindeutig&#39;</code> if and only if <code>unschaerfe.kind === &#39;bestimmt&#39; &amp;&amp; |delta| &gt; unschaerfe.obergrenze</code> — the same invariant as in ADR-0034 Decision 3, with the refined
+meaning of the two terms.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>ADR-0034 remains the source of the invariant; Decision 3 there is no longer literally current.</strong>
+This ADR <strong>supersedes</strong> the Soli/KiSt bound part and the &quot;PV is unboundable&quot; part of
+ADR-0034 Decision 3. The rest of ADR-0034 (Decision 1 naming discipline, Decision 2 type enforcement,
+Decision 4 conclusion table) stays in force unchanged. ADR-0034 is not rewritten
+retroactively (log rule: an ADR that replaces another supersedes it, it does not rewrite
+history).</li>
+<li><strong><code>unschaerfe</code> becomes narrower and more honest.</strong> Instead of a bound over three uncomputed
+factors, it is now the bound over exactly the one that can actually tip the result. The
+<code>zu-knapp</code> case is therefore wrong less often than under ADR-0034: a delta within the
+PV noise bound is no longer additionally burdened with the Soli/KiSt uncertainty.</li>
+<li><strong>The PV bound is a number someone must be able to defend.</strong> That is why it is stated here with
+its derivation, not as a comment in the module header. A caller reading <code>unschaerfe.obergrenze</code>
+can point to this ADR instead of justifying a constant.</li>
+<li><strong>Level 3 stays open.</strong> As in ADR-0034 §4, this module asserts nothing about the correctness
+of the zvE bases entered; in the M1 slice <code>zveA</code>/<code>zveB</code> are an income basis, not a real
+taxable income. This refinement does not change that.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Keep modeling Soli/KiSt in <code>unschaerfe</code> instead of computing them.</strong> Rejected: ticket 10.2
+computes them anyway (tarif.ts); treating them as an &quot;uncomputable&quot; bound would be a
+self-report about a factor the module now knows exactly, and would keep burdening <code>einzel</code>/
+<code>zusammen</code> with an uncertainty that no longer exists.</li>
+<li><strong>Document the PV bound retroactively as part of ADR-0034 instead of creating a follow-up ADR.</strong>
+Rejected: the ADR log is append-only (4-digit, sequential, immutable); a retroactive
+change to Decision 3 would rewrite history. A follow-up ADR that references and
+refines is the rule.</li>
+<li><strong>Leave the PV bound as a comment in the module header.</strong> Rejected on ADR-0021&#39;s thesis: a
+note that nobody is required to read is not a control and not an ADR log entry
+(ADR-0033 citation form). The derivation belongs in the document that justifies architecture
+decisions.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0042-grenzgaenger-ch-vertical.html"><span class="eyebrow">Previous</span><span>ADR-0042</span></a><a class="step step-next" href="0044-pensioner-vertical.html"><span class="eyebrow">Next</span><span>ADR-0044</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

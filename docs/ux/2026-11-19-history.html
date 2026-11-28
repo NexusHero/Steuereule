@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>History: state after the trimming (19.11.2026) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">UX</p>
+        <h1>History: state after the trimming (19.11.2026)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#after">After</a></li><li><a class="chip" href="#before">Before</a></li><li><a class="chip" href="#words-per-page-on-the-phone">Words per page on the phone</a></li><li><a class="chip" href="#open">Open</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>State:</strong> branch <code>docs/verlauf-ideen-mock</code> @ <code>613e79d8</code> (PR NexusHero/Steuereule#533, ADR-0099 §10).
+<strong>Method:</strong> app started locally (API and web export), fresh account with <code>seed:year-history &lt;email&gt; --luecke</code>, clicked through in the built-in browser at phone width (375 px). All persons and amounts are made up.
+<strong>Screenshots:</strong> <a href="2026-11-19-verlauf"><code>2026-11-19-verlauf/</code></a>. <code>NN-…</code> is the state after the trimming, <code>vN-vorher-…</code> the state earlier on the same day.</p>
+<h2 id="after"><a class="anchor" href="#after" aria-hidden="true" tabindex="-1">#</a>After</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>No.</th>
+<th>Page</th>
+<th>What you see</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>01</td>
+<td>„Verlauf“ (&quot;History&quot;) tab</td>
+<td>„Jetzt wichtig“ (&quot;Important now&quot;), one row per year, event markers without the year, 2022 after the answer „Nein“ (&quot;No&quot;)</td>
+</tr>
+<tr>
+<td>02</td>
+<td>2026, open</td>
+<td>Checklist „Kommt jedes Jahr wieder“ (&quot;Comes back every year&quot;); done items collapsed, home office stays visible because of the cuts</td>
+</tr>
+<tr>
+<td>03</td>
+<td>2025, filed</td>
+<td>Estimate as a range, the two items that were cut in 2024</td>
+</tr>
+<tr>
+<td>04</td>
+<td>2024, Bescheid (tax assessment)</td>
+<td>Comparison as a diff: sign, item, effect; pattern and couple comparison as one row each</td>
+</tr>
+<tr>
+<td>05</td>
+<td>2024, expanded</td>
+<td>One diff row open: values, reason, quote from the Finanzamt (tax office), hint</td>
+</tr>
+<tr>
+<td>06</td>
+<td>2023, Bescheid</td>
+<td>Change without an effect on the refund</td>
+</tr>
+<tr>
+<td>07</td>
+<td>2022, gap</td>
+<td>Year without data after „Nein“: one sentence, one button</td>
+</tr>
+<tr>
+<td>08</td>
+<td>2021, Bescheid only</td>
+<td>Additional payment according to the Bescheid and the hint about the advance tax payments</td>
+</tr>
+<tr>
+<td>09</td>
+<td>„Entwicklung“ (&quot;Development&quot;), selection</td>
+<td>Key figures and „Deine Bereiche“ (&quot;Your areas&quot;) as two rows</td>
+</tr>
+<tr>
+<td>10</td>
+<td>„Entwicklung“, chart</td>
+<td>Bars, cut, estimate; additional payment labeled below the bar</td>
+</tr>
+<tr>
+<td>11–14</td>
+<td>„Entwicklung“, areas</td>
+<td>Advance tax payments, Switzerland, rental income, capital</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Documents</td>
+<td>Bescheide per year, weeks until the Bescheid</td>
+</tr>
+</tbody></table></div>
+<h2 id="before"><a class="anchor" href="#before" aria-hidden="true" tabindex="-1">#</a>Before</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>No.</th>
+<th>Page</th>
+<th>What changed</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>v1</td>
+<td>„Verlauf“ tab</td>
+<td>Markers repeated the year; 2022 still asks „Schon abgegeben?“ (&quot;Already filed?&quot;) here</td>
+</tr>
+<tr>
+<td>v2</td>
+<td>2026, open</td>
+<td>Ten rows with an „offen“ (&quot;open&quot;) label, the home office row entirely in red</td>
+</tr>
+<tr>
+<td>v3</td>
+<td>2024, Bescheid</td>
+<td>Six details per diff row, colored boxes below (136 words, now 59)</td>
+</tr>
+<tr>
+<td>v4</td>
+<td>„Entwicklung“</td>
+<td>Eight chips in a swipeable row, chart with a line, a box for open years and text in the image</td>
+</tr>
+<tr>
+<td>v5</td>
+<td>„Verlauf“ tab, desktop</td>
+<td>Table with four columns (1280 px)</td>
+</tr>
+</tbody></table></div>
+<h2 id="words-per-page-on-the-phone"><a class="anchor" href="#words-per-page-on-the-phone" aria-hidden="true" tabindex="-1">#</a>Words per page on the phone</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Page</th>
+<th>before</th>
+<th>after</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2024 Bescheid</td>
+<td>136</td>
+<td>59</td>
+</tr>
+<tr>
+<td>2026 open</td>
+<td>126</td>
+<td>61</td>
+</tr>
+<tr>
+<td>2023 Bescheid</td>
+<td>88</td>
+<td>48</td>
+</tr>
+<tr>
+<td>2025 filed</td>
+<td>49</td>
+<td>41</td>
+</tr>
+<tr>
+<td>2021 Bescheid only</td>
+<td>44</td>
+<td>30</td>
+</tr>
+<tr>
+<td>„Verlauf“ tab</td>
+<td>104</td>
+<td>93</td>
+</tr>
+</tbody></table></div>
+<h2 id="open"><a class="anchor" href="#open" aria-hidden="true" tabindex="-1">#</a>Open</h2>
+<ul>
+<li>On „Entwicklung“ the chart only starts in the lower third on the phone, because the two chip rows need height.</li>
+<li>The expanded pattern row repeats its title in the first sentence of the detail (image 05).</li>
+<li>The desktop view is only stored in the &quot;before&quot; state.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

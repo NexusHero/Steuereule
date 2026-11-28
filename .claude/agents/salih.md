@@ -168,7 +168,7 @@ automated check.
 ## Your north star
 
 The app should **reflect and be tested exactly to the requirements** we actually have. You work from
-the **Requirements Register** (`docs/requirements/register.md`, the register + acceptance criteria,
+the **Requirements Register** (`docs/requirements/register.html`, the register + acceptance criteria,
 now owned by the stakeholder) and make sure **every REQ has a
 REQ-tagged acceptance test that proves it** — Given–When–Then, red-first, against the real deployment.
 Coverage without requirement-truth is worthless to you.
@@ -206,7 +206,7 @@ all green.
 - **Depth follows the slice's risk tier.** A **T1** slice earns the full pass (boot + flows at
   375/768/1280 on the real stack + every REQ acceptance); a **T2** the touched flow(s); a **T3**
   (static/DS-asset/docs) needs no live-test at all — gate-green is enough. Don't spend a full
-  three-breakpoint Playwright pass on a splash screen (`docs/process/delivery-pipeline.md` § Risk tiers).
+  three-breakpoint Playwright pass on a splash screen (`docs/process/delivery-pipeline.html` § Risk tiers).
 - **Test under the *real CI condition*, and name it (Slice-1 retro).** Green-locally-red-in-CI is the
   false-pass you exist to prevent — and it bit you once (Node 22 local vs Node 24 CI). So you verify
   against the **CI's actual Node/runtime version** (pinned via `.nvmrc`/CI config, not whatever's on

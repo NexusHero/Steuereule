@@ -63,7 +63,7 @@ jobs:
             # A cancelled job proved nothing either way: it is neither passing nor failing, and is counted apart.
             CANCELLED=$(printf '%s\n' "$RUNS" | jq -rs '[.[] | select(.conclusion=="cancelled")] | length')
             # shellcheck disable=SC2016  # backticks are literal Markdown in the comment body, not command substitution
-            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_This panel groups every check by what it proves. Which of them the `main` ruleset requires is listed in `docs/ci-pipeline.md` (Required checks)._\n\n%s\n\n**Failing gates: %s** · cancelled: %s · commit `%s` · see [`docs/ci-pipeline.md`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
+            BODY=$(printf '<!-- ci-overview -->\n## CI Overview — by category\n\n_This panel groups every check by what it proves. Which of them the `main` ruleset requires is listed in `docs/ci-pipeline.html` (Required checks)._\n\n%s\n\n**Failing gates: %s** · cancelled: %s · commit `%s` · see [`docs/ci-pipeline.html`](https://github.com/%s/blob/main/docs/ci-pipeline.md) for what each gate proves and its evidence tier.\n' \
               "$TABLE" "$FAILS" "$CANCELLED" "${SHA:0:9}" "$REPO")
             CID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
               --jq '.[] | select(.body|startswith("<!-- ci-overview -->")) | .id' | head -1)

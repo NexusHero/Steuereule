@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0049 — Year carry-over: source uebernahme, unconfirmed items count toward the range, marking layer (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0049</p>
+        <h1>Year carry-over: source <code>uebernahme</code>, unconfirmed items count toward the range, marking layer (Draft) <span class="status status-open">Draft</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Draft — promotion needs Musti review (ticket 10.8 review)</li>
+<li><strong>Date:</strong> 2026-10-25 (M2: carry-over of ALL facts; M3: year selection + notice + 4-prior-years validation)</li>
+<li><strong>Deciders:</strong> Suhay (agent, ticket 10.8) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-021 (year carry-over: copy everything, but marked as &quot;unconfirmed&quot;),
+product ADR-022 (year reference of the provenance)</li>
+<li><strong>Builds on</strong> ADR-0038 (<code>berechne</code>/<code>Posten</code>/<code>Quelle</code>), ADR-0037 (tax year model),
+ADR-0014/015 (provenance/partial truth), ADR-0008 (field encryption)</li>
+<li><strong>Context tags:</strong> architecture, uebernahme, determinism boundary, honesty principle, security</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Product ADR-021: a new tax year COPIES everything from the prior year, but every copied item
+carries the provenance „Übernahme aus {Vorjahr}&quot; (&quot;Carried over from {prior year}&quot;) and counts as <strong>unconfirmed</strong> until it is tapped or
+covered by a document; unconfirmed items count toward the range, not toward the point value — a
+calm, grey tone, never a conflict (ADR-008 is there for contradictions). The ticket scope
+(year carry-over + up to 4 prior years + prominent year selection + annual rule sets) is too large for
+one slice — this draft fixes the slices: M1 (LStB tracer, merged) → M2 (all
+facts + cockpit sums, this state) → rest (ADR-022 UI, named follow-ups).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong>The core carries the carry-over state (<code>berechnung.ts</code>)</strong> — <code>Quelle</code> grows by
+<code>{ art: &#39;uebernahme&#39;; vorjahr: number }</code> (the provenance with year reference, ADR-022), <code>Posten</code> by
+<code>unbestaetigt?: boolean</code> (absent = confirmed). <code>berechne</code> COUNTS unconfirmed items in the
+buckets (they are real numbers), but withholds the point value and names them calmly in the <code>offen</code> branch:
+<code>unbestaetigte</code> (count) + <code>unbestaetigteSumme</code> (income sum) — never as a conflict.
+<code>cockpitSpanne</code> carries <code>unbestaetigteSumme</code> as uncertainty into the range.</p>
+</li>
+<li><p><strong>The copy/confirmation contract (<code>uebernahme.ts</code>)</strong> — <code>uebernommenerPosten(posten, vorjahr)</code> (source <code>uebernahme</code>, <code>unbestaetigt: true</code>), <code>bestaetigePosten(posten)</code> (flag removed,
+provenance STAYS — a confirmed fact does not change its provenance, ADR-0012 §4 instinct),
+<code>uebernahmeHerkunft(vorjahr)</code> (the provenance chip).</p>
+</li>
+<li><p><strong>One generic marking layer instead of unbestaetigt columns in every fact model</strong>
+— <code>UebernahmeKennzeichnung { userId, steuerjahr, vorjahr, postenKey, bestaetigt }</code> with
+<code>@@unique([userId, steuerjahr, postenKey])</code>. The facts stay in their models (Lstb/…);
+the marking is the layer that says what was copied from where and whether it is confirmed.
+A second copy attempt is a 409 (DB unique as a second control), a confirmation without
+a marking is a 404.</p>
+</li>
+<li><p><strong>M2 (the carry-over of ALL facts):</strong> <code>POST …/uebernahme</code> copies LStB, pension, capital and
+every rental property — one marking per fact (<code>lstb</code>, <code>rente</code>, <code>kapital</code>,
+<code>vermietung-&lt;objektId&gt;</code>); a year already carried over is a 409 (never a half copy), a
+prior year without A SINGLE fact that can be carried over is a 404 (&quot;Nothing to take over&quot; — the fact
+counts, not the form). The cockpit range sums ALL unconfirmed captured amounts
+(LStB gross + pension annual amount + capital income + rental income per property); an open
+copied field carries no sum — open stays open, never a fabricated zero (ADR-032).</p>
+</li>
+<li><p><strong>M3 (ADR-022 UI):</strong> the cockpit app bar carries a prominent year selection (chips, current
+year + up to 4 prior years) — screen state, the cockpit query runs per selected year (never
+&quot;current&quot; values); the calm carry-over notice appears in the cockpit as soon as unconfirmed
+markings exist — the sum carried by the range is quoted honestly, every row
+carries its provenance with year reference („Lohnsteuerbescheinigung · Übernahme aus 2025&quot;
+(&quot;wage tax certificate · carried over from 2025&quot;),
+<code>uebernahmeHerkunft</code> from the core) and is confirmed individually (PUT bestaetigen → refetch,
+the notice disappears honestly). The carry-over validates <code>von &gt;= steuerjahr - 4</code>
+(MAX_RUECKJAHRE = 4, an older year is a 400 — never a silent old copy).</p>
+</li>
+<li><p><strong>Remaining limit (named honestly):</strong> the year-selection entry in ONBOARDING (the chips live
+only in the cockpit so far), the collected review-screen collection, the provenance chips in the
+detail screens (LStB/pension/capital/rental income) and the annual-rule-set UI (lump sums/
+allowances per year — the pattern has been in place since 10.7: per-year tables, never &quot;current&quot; values)
+are named follow-ups; the marking layer already carries their keys.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Honest limit, named once:</strong> unconfirmed items are neither &quot;open required fields&quot; nor
+conflicts — a third, calm state; the point value stays withheld, the range carries the
+carried-over sum as uncertainty (ADR-021 verbatim).</li>
+<li><strong>No denormalized unbestaetigt columns:</strong> a new fact model needs no
+schema change — it needs a <code>postenKey</code> and the service read path.</li>
+<li><strong>Security posture:</strong> the marking carries no amounts/PII (only userId + years + key),
+plaintext is justifiable (like Beleg.art); the copied facts stay in their
+field-encrypted columns (ADR-0008) — the copy moves encrypted field strings unchanged,
+never recomputed; WRITE audited (REQ-004).</li>
+<li><strong>Register:</strong> REQ-028 (next free number after 027).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong><code>unbestaetigt</code> column in every fact model.</strong> Rejected: five schema changes for a
+state that lives more cheaply, generically and with a year reference via the marking layer.</li>
+<li><strong>Treat unconfirmed items like conflicts.</strong> Rejected: ADR-021 prescribes the calm tone; a
+conflict hard-blocks the submission, a carry-over only waits for a tap.</li>
+<li><strong>The carry-over ignores the open/unclear state of the prior year.</strong> Rejected: the copied
+field strings travel UNCHANGED — open stays open (no fabricated zero, ADR-032).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0048-capital-income-vertical.html"><span class="eyebrow">Previous</span><span>ADR-0048</span></a><a class="step step-next" href="0050-paper-filing-instead-of-elster-in-1-0.html"><span class="eyebrow">Next</span><span>ADR-0050</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

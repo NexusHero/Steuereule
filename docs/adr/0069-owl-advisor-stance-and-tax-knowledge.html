@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0069 — Owl: advisor stance always, tax knowledge to look up, all tax topics — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0069</p>
+        <h1>Owl: advisor stance always, tax knowledge to look up, all tax topics <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#outward-topic-boundary-added-2026-11-13">Outward topic boundary (added 2026-11-13)</a></li><li><a class="chip" href="#skills-as-files-added-2026-11-13">Skills as files (added 2026-11-13)</a></li><li><a class="chip" href="#calculating-instead-of-rough-estimates-added-2026-11-13">Calculating instead of rough estimates (added 2026-11-13)</a></li><li><a class="chip" href="#deadlines-dates-and-checks-added-2026-11-13">Deadlines, dates and checks (added 2026-11-13)</a></li><li><a class="chip" href="#gifts-self-employed-key-figures-added-2026-11-13">Gifts, self-employed, key figures (added 2026-11-13)</a></li><li><a class="chip" href="#laws-change-added-2026-11-13">Laws change (added 2026-11-13)</a></li><li><a class="chip" href="#advising-itself-instead-of-referring-added-2026-11-13">Advising itself instead of referring (added 2026-11-13)</a></li><li><a class="chip" href="#open-points-and-risks">Open points and risks</a></li><li><a class="chip" href="#rejected">Rejected</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-12</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #499; <code>.agents/skills/steuerberater/</code>, <code>apps/api/src/ki/{advisor-stance,advisor-knowledge.generated,advisor-income-tax,advisor-tools,advisor-tool-round,advisor-prompt,advisor-topic-guard,ai-runtime-config.service}.ts</code>, <code>packages/core/src/interview/{advisor,advisor-answer-check,advisor-topic}.ts</code></li>
+<li><strong>Supplemented:</strong> 2026-11-13, section &quot;Outward topic boundary&quot;</li>
+<li><strong>Amends:</strong> ADR-0038 and ADR-0066, insofar as they limit the owl to the private income tax return</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The Product Owner wrote a skill &quot;steuerberater&quot; (tax advisor): the stance and workflow of a
+thorough tax advisor, eight knowledge files and a tariff calculator. It is meant to always apply in the owl.
+The skill is built for a coding agent (reads files, runs a Python script,
+looks things up on the web); the owl can do none of that.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong>The stance is in the fixed part of the prompt of every answer</strong> (<code>ADVISOR_STANCE</code>): ask first,
+cite the source, pin down the tax year, never calculate in one&#39;s head, two ways where there is leeway, plan
+legally, be honest about limits. It is not a skill that can be switched off.</p>
+</li>
+<li><p><strong>The knowledge is looked up, not sent along.</strong> <code>lookup_tax_knowledge</code> returns one
+of the sections. The source is the skill folder <code>apps/api/skills/steuerberater/</code>; how it gets into
+the code is governed by &quot;Skills as files&quot; below. <code>quellen.md</code> (looking things up on the web) is
+not shipped.</p>
+</li>
+<li><p><strong>Calculations use the calculation core.</strong> <code>compute_income_tax</code> calculates tariff, Soli and
+church tax with <code>packages/core/src/math</code>, not with the Python script. The core rounds Soli
+and church tax down to full euros, the script to cents; the income tax is identical.</p>
+</li>
+<li><p><strong>The app&#39;s numbers apply.</strong> The table <code>kennzahlen</code> supplements what the app does not calculate.
+A value marked &quot;prüfen&quot; (&quot;check&quot;) is named as uncertain. A test compares the
+Grundfreibetrag (basic tax-free allowance) in the table with the core.</p>
+</li>
+<li><p><strong>The topic boundary within tax is dropped.</strong> The owl also advises, by explanation, on VAT, the self-employed
+and trade, inheritance and gifts, procedure. Drafts still exist only for the app&#39;s
+fields, and zero-write applies unchanged. Removed are the rejection of such questions before the
+model call and the notice „gehört nicht zur privaten Einkommensteuererklärung“ (&quot;does not belong to the private income tax return&quot;).</p>
+</li>
+<li><p><strong>What remains:</strong> no binding legal information (still rejected before the model), no
+help with evasion, the protection against prompt injection, the PII check and the check
+&quot;amount not calculated by the app&quot;. The referral to a tax advisor in the cases from B8
+is dropped (point 37).</p>
+</li>
+<li><p><strong>The yardstick is the owl for paying users.</strong> Every knowledge file carries „Stand: Datum,
+geprüft für die Steuerjahre X–Y“ (&quot;As of: date, checked for tax years X–Y&quot;). The amounts of current law have been reconciled against the statute text
+(12 November 2026: 109 places in EStG, UStG, AO, GewStG, ErbStG, SolZG). What is not backed by the
+statute (administrative practice, case law) stays marked &quot;(nicht belegt)&quot; (&quot;(not verified)&quot;), and
+the owl names it as uncertain. A test fires as soon as the calculation core knows a tax year
+for which the knowledge has not been checked.</p>
+</li>
+<li><p><strong>Proving by hand.</strong> <code>pnpm --filter @steuereule/api test:eval</code> asks the real model 21 typical
+advisory questions and checks what a good answer must contain (norm,
+amount, follow-up question, looked up, calculated). No gate, no nightly run: it runs when
+the skill or the prompt changes.</p>
+</li>
+</ol>
+<h2 id="outward-topic-boundary-added-2026-11-13"><a class="anchor" href="#outward-topic-boundary-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Outward topic boundary (added 2026-11-13)</h2>
+<p>Point 5 opens the owl to all tax topics. For everything else it was easy to
+misuse up to this point: before the model there were only three word patterns (cake recipe, „schreibe ein Gedicht“ (&quot;write a poem&quot;),
+evasion), the prompt said nothing. „Schreib mir ein Gedicht“ (&quot;Write me a poem&quot;), every English question and every
+paraphrase got through. Decisions of the Product Owner from 13 November 2026:</p>
+<ol start="9">
+<li><strong>Boundary: tax and what directly reaches into it.</strong> Allowed are one&#39;s own tax affairs
+(all tax types from point 5), operating the app and what directly reaches into tax:
+documents, mail from the Finanzamt (tax office), Riester/Rürup, Kindergeld, Elterngeld, payslip. Everything else
+is rejected, including general financial, legal and health questions.</li>
+<li><strong>A pre-checker decides, not a word list.</strong> A small model in its own AI slot
+<code>advisor_guard</code> (<code>AI_GUARD_PROVIDER</code>/<code>_MODEL</code>/<code>_API_KEY</code>/<code>_TIMEOUT_MS</code>; default: the small
+model of the chat provider, temperature 0, 5 s) classifies every typed message as <code>tax</code>, <code>gray</code>
+or <code>off_topic</code>, with a rough category and language. It sees the message and the last
+two rounds, so that „Und 2025?“ (&quot;And 2025?&quot;) is recognized as a tax question, and treats the message as
+data, not as an instruction. It first ran before the main model, so that a rejection only
+costs a small call; since ADR-0100 it runs alongside it, and until its verdict
+nothing from the main model reaches the user or a tool. The slot becomes configurable in the admin panel with #445; until
+then via the environment like the other slots.</li>
+<li><strong>What the checker says, and what follows.</strong><ul>
+<li><code>off_topic</code>: a fixed sentence („Dabei kann ich dir nicht helfen – ich bin nur für deine
+Steuern da.“ (&quot;I can&#39;t help you with that – I&#39;m only here for your taxes.&quot;)) in the language of the question (de, en, tr, fr, it, es, pl; otherwise German) and up to
+three suggestions from the open hints of the case. No main model, so it cannot be
+talked round and costs nothing.</li>
+<li><code>gray</code> (e.g. „ETF oder Bausparvertrag?“ (&quot;ETF or building savings contract?&quot;)): the main model answers with the addition of only answering the
+tax part.</li>
+<li><code>tax</code>: as before.</li>
+<li><strong>No verdict</strong> (outage, timeout, unreadable answer, not configured): the message goes
+through (fail-open). The second line of defense is the topic rule in the prompt (guardrail 0) and the
+attack patterns (<code>PROMPT_INJECTION_PATTERNS</code>), which take effect before any model at no cost.</li>
+</ul>
+</li>
+<li><strong>Only typed text is checked.</strong> An opening (the server replaces its text) and a
+tapped suggestion or an answer to a question round of the last answer, character for
+character, skip the checker. The server does the matching, not a client flag.
+Quick starts and skills are checked, because their text comes from the client.</li>
+<li><strong>The owl does not talk about itself.</strong> Questions about instructions, rules, prompt,
+tools and also about its capabilities („Was kannst du?“ (&quot;What can you do?&quot;)) count as <code>off_topic</code> (category
+<code>meta</code>) and get the fixed sentence.</li>
+<li><strong>Evasion is explained, never supported.</strong> The word patterns for it have been removed. An
+honest question („Ist das schon Hinterziehung, wenn ich die Zinsen vergessen habe?“ (&quot;Is it already evasion if I forgot the interest?&quot;)) goes to the
+main model, which explains the legal situation, consequences, correction (§ 153 AO) and voluntary disclosure (§ 371 AO)
+and refuses any help with concealment.</li>
+<li><strong>Language:</strong> The owl answers in the language of the question; forms, Anlagen (schedules), lines and
+technical terms stay German. Its reasoning stays German.</li>
+<li><strong>Counting without text.</strong> The verdict (verdict, category, language, the reason in case of an outage)
+is in the internal <code>engine</code> info of the answer, which the client never sees, and in the log
+<code>advisor_turn</code>. From this follows the count per user and day. Nobody is blocked or
+throttled.</li>
+<li><strong>Proving.</strong> Unit tests with fixed verdicts check the wiring in every CI run
+(<code>advisor-topic-guard.test.ts</code>, <code>advisor-topic-boundary.test.ts</code>). <code>test/eval/topic-guard.eval.test.ts</code>
+measures against the real model, nightly and before every model change: at least 90% of around
+40 misuse attempts rejected, at most 5% of around 40 tax and
+gray-zone questions wrongly rejected, and with the checker down the rule in the prompt holds.
+The finished answer is not re-checked: it has already been read during streaming.</li>
+</ol>
+<h2 id="skills-as-files-added-2026-11-13"><a class="anchor" href="#skills-as-files-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Skills as files (added 2026-11-13)</h2>
+<p>Decision of the Product Owner: a skill of the owl lives, as with Claude, as a folder of text files
+in the repo and is read in verbatim at build time, not copied by hand into TypeScript.</p>
+<ol start="18">
+<li><strong>Location:</strong> <code>apps/api/skills/&lt;id&gt;/SKILL.md</code> (front matter <code>name</code>, <code>description</code>, <code>activation</code>,
+<code>command</code>, <code>references</code>; below it the instructions) and <code>references/*.md</code>. The stance is the
+skill <code>steuerberater</code> with <code>activation: always</code>; the advisor interview is <code>berater-interview</code>
+with <code>activation: user</code> and <code>command: grill-me</code>. <code>advisor-stance.ts</code> and the hand-written
+interview text are dropped.</li>
+<li><strong>At build time, not at runtime:</strong> <code>scripts/generate-skills.ts</code> writes
+<code>src/ki/skills.generated.ts</code> (not checked in). It runs on <code>install</code>, <code>build</code>,
+<code>typecheck</code> and <code>test</code>. Only the built module is shipped; at runtime the API reads
+no skill file. The drift test between skill and checked-in module is thereby dropped.</li>
+<li><strong>The build fails if a skill is not right:</strong> front matter missing or unreadable, <code>name</code>
+not equal to the folder, unknown <code>activation</code>, empty instructions, a reference without a file, not
+exactly one <code>always</code> skill, or the <code>user</code> skills and their commands deviate from
+<code>ADVISOR_SKILL_IDS</code>/<code>ADVISOR_SKILL_COMMANDS</code> in <code>packages/core</code>. The list there remains the
+typed source for API schema and UI.</li>
+<li><strong>Coding agent and owl share the knowledge, not the instructions.</strong> <code>.agents/skills/steuerberater/</code>
+keeps its own <code>SKILL.md</code> (Python script, web search) and reads <code>references/</code> via symlink
+from the owl&#39;s folder.</li>
+</ol>
+<h2 id="calculating-instead-of-rough-estimates-added-2026-11-13"><a class="anchor" href="#calculating-instead-of-rough-estimates-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Calculating instead of rough estimates (added 2026-11-13)</h2>
+<ol start="22">
+<li><strong>New tools on the checked core.</strong> <code>compare_filing_types</code> (Zusammenveranlagung (joint assessment) versus
+Einzelveranlagung (separate assessment), <code>filingTypeComparison</code>) and <code>check_capital_taxation</code> (Günstigerprüfung (most-favorable check)
+§ 32d Abs. 6, <code>mostFavourableCheck</code>). If it is unknown whether there were wage replacement benefits, the result is
+<code>open</code> instead of a guessed recommendation.</li>
+<li><strong>Progressionsvorbehalt (progression clause) exact.</strong> <code>progressionClauseTax</code> in the core applies the special
+tax rate (§ 32b Abs. 2 EStG); <code>compute_income_tax</code> takes <code>wageReplacementEur</code>. The old
+instruction in the knowledge (&quot;calculate twice&quot;) was wrong and has been replaced. How the Finanzamt rounds the
+rate is not backed by the statute; the core calculates it unrounded.</li>
+<li><strong>Bug in the core fixed:</strong> the Günstigerprüfung deducted the Sparer-Pauschbetrag (saver&#39;s lump-sum allowance) only on the
+Abgeltungsteuer (flat-rate withholding tax) side. § 20 Abs. 9 EStG applies to both sides; the personal rate
+therefore appeared too expensive, also in the screen „Kapital“ (&quot;Capital&quot;).</li>
+<li><strong>§ 35a and § 33 honest.</strong> The fields for them exist, but the estimate does not count them
+as long as <code>HOUSEHOLD_AND_HEALTH_BOOSTERS</code> is off (#443 slice 5, paused: GdE and
+print mappings are missing). A draft there therefore shows „nicht berechenbar“ (&quot;not calculable&quot;) instead of €0, and the
+savings plan asks about it if nothing has been entered.</li>
+</ol>
+<h2 id="deadlines-dates-and-checks-added-2026-11-13"><a class="anchor" href="#deadlines-dates-and-checks-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Deadlines, dates and checks (added 2026-11-13)</h2>
+<ol start="26">
+<li><strong>Appeal deadline exact.</strong> <code>appealDeadlineEnd</code> calculates from the notification: date of the Bescheid (tax assessment notice)
+plus four days (from 2025, previously three; § 122 Abs. 2 AO), a day on a weekend or public holiday
+moves to the next working day, then one month, the end moved the same way (§ 108 Abs. 3 AO).
+Without a federal state, only nationwide public holidays count, so that the deadline is never later than the
+real one. Previously: date of the Bescheid plus one month, i.e. up to a week too early.</li>
+<li><strong>Dates.</strong> The owl receives the fixed dates of the next 90 days
+(<code>upcomingTaxDates</code>: advance tax payments, loss certificate 15 Dec, payments by 31 Dec,
+filing deadlines), nothing assumed about the case.</li>
+<li><strong>Savings levers with thresholds.</strong> If the entered Werbungskosten (work-related expenses) are up to €300 below the
+lump sum, the savings plan asks about forgotten items; more than €600 above it, it suggests the
+wage tax allowance (§ 39a). Wage replacement benefits over €410 are named as a mandatory assessment.</li>
+<li><strong>New tools.</strong> <code>check_holding_period</code> (§ 23 EStG: deadlines to the day, own home,
+exemption limit €600/€1,000) and <code>check_rental_repairs</code> (15% limit, § 6 Abs. 1 Nr. 1a EStG).</li>
+</ol>
+<h2 id="gifts-self-employed-key-figures-added-2026-11-13"><a class="anchor" href="#gifts-self-employed-key-figures-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Gifts, self-employed, key figures (added 2026-11-13)</h2>
+<ol start="30">
+<li><strong>New calculators in the core, as tools of the owl:</strong> <code>compute_gift_tax</code> (ErbStG: class,
+allowances §§ 16, 17, rates with hardship equalization § 19 Abs. 3, ten years § 14; exemptions and
+valuation remain a follow-up question), <code>check_small_business</code> (§ 19 UStG, limits until 2024 and from 2025)
+and <code>estimate_trade_tax</code> (rough estimate GewStG with credit § 35 EStG, without capping at the
+proportional income tax). This drops the rough estimate for these topics.</li>
+<li><strong>Key figures against the core.</strong> <code>advisor-kennzahlen.test.ts</code> reads the skill&#39;s table and
+compares Soli exemption limits, Kindergeld, child and BEA allowance, single-parent relief amount,
+lump-sum allowances, Entfernungspauschale (distance allowance), home office, § 35a, other provident expenses and the filing deadlines
+2023–2026 with <code>getTaxYearParameters</code>. Today everything matches. Point 4 and &quot;Rejected:
+skill table as the authoritative source of numbers&quot; still apply: the core calculates, the test only finds
+deviations.</li>
+<li><strong>Verified on 13 November 2026</strong> (gesetze-im-internet.de): childcare 80%, at most €4,800
+(§ 10 Abs. 1 Nr. 5), Übungsleiter (coach/instructor allowance) €3,300 (§ 3 Nr. 26), volunteering €960 (§ 3 Nr. 26a),
+party donations at most €1,650/€3,300 (§ 34g). It remains open from which year § 34g applies at this
+level, and whether „in allen offenen Fällen“ (&quot;in all open cases&quot;) (§ 52 Abs. 4 S. 10) also covers the amounts of § 3
+Nr. 26, 26a for earlier years.</li>
+</ol>
+<h2 id="laws-change-added-2026-11-13"><a class="anchor" href="#laws-change-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Laws change (added 2026-11-13)</h2>
+<ol start="33">
+<li><strong>Guard.</strong> <code>apps/api/scripts/check-law-changes.ts</code> reads every norm the skill cites
+or the source catalog names (102 today) from gesetze-im-internet.de and compares wording
+and footnotes with the fingerprint in <code>skills/steuerberater/law-watch.json</code>. Nightly in CI
+(<code>law-watch.yml</code>); on a change it opens an issue or adds to the open one. Skill and calculation core
+are adjusted by hand, then <code>laws:check --update</code>. A test fires when
+the skill cites a norm the guard does not know yet.</li>
+<li><strong>The owl reads the wording.</strong> <code>read_law_text</code> fetches a norm (or a paragraph, a
+number) from gesetze-im-internet.de: only this site, only the listed tax laws, the
+server builds the address. The text comes back as data with a notice, cached for one day,
+truncated to 4,000 characters, with the site&#39;s application notes. B3 makes reading
+mandatory when a norm carries the answer. This lifts point 2 (&quot;no web&quot;) for this one
+source.</li>
+<li><strong>Today is not the tax year.</strong> The site only shows the current version. For an earlier
+year the owl says so; which version applies is governed by § 52 EStG and Art. 97 EGAO. Amounts
+of the tax return remain those of the app: if a law changes, the calculation core must follow first
+(point 33), otherwise the owl says something different from what the app calculates.</li>
+<li><strong>Source catalog checked.</strong> The nine summaries were read against the wording on 13 November 2026
+(<code>LEGAL_SOURCES_CHECKED_ON</code>); childcare now states 80%/€4,800. The
+legal-status date of the owl cards (<code>LEGAL_STATUS_DATE</code>, 01.01.2025) is separate from this and
+has not been re-checked.</li>
+</ol>
+<h2 id="advising-itself-instead-of-referring-added-2026-11-13"><a class="anchor" href="#advising-itself-instead-of-referring-added-2026-11-13" aria-hidden="true" tabindex="-1">#</a>Advising itself instead of referring (added 2026-11-13)</h2>
+<ol start="37">
+<li><strong>Decision of the Product Owner: the owl sends nobody to another advisor.</strong> It also
+explains and calculates tax audits, business sales, inheritances with business assets, emigration, GmbH structuring
+and a dispute before the fiscal court itself (B8). It says openly where a lot of
+money or liability is at stake and what it cannot check (valuation, contracts, unseen
+documents); it names a notary as a step where the law requires one.</li>
+<li><strong>Two exceptions remain.</strong> Voluntary disclosure and tax criminal law: referral to a specialist lawyer for
+tax criminal law (B7), because a faulty voluntary disclosure loses immunity from prosecution. And still
+no binding legal information, no representation before the Finanzamt, the sentence „kein zugelassener
+Steuerberater“ (&quot;not a licensed tax advisor&quot;) remains; the fixed rejection before it, however, no longer refers elsewhere but offers
+to explain the legal situation and to prepare the letter to the Finanzamt.</li>
+<li><strong>Golden set.</strong> The <code>stberg</code> cases now require the owl&#39;s own advice without referral (metric
+&quot;advice instead of referral&quot;, D1 stays ≥ 95%); plus one case each for the two exceptions.</li>
+</ol>
+<h2 id="open-points-and-risks"><a class="anchor" href="#open-points-and-risks" aria-hidden="true" tabindex="-1">#</a>Open points and risks</h2>
+<ul>
+<li><strong>Not legally reviewed.</strong> Commercial assistance in tax matters is reserved under the
+StBerG (Tax Advisory Act) to licensed persons. Point 5 and point 37 are decisions of the
+Product Owner from 12/13 November 2026; a legal review before sale is pending. Without
+referral in serious cases this weighs more heavily.</li>
+<li>For VAT and inheritance tax there is no calculator in the app. There the owl shows
+formula and steps and calls it a rough estimate; the answer check flags
+effect amounts that no tool calculated.</li>
+<li>The knowledge is as current as the skill; the build reads it in afresh every time.</li>
+<li>Not tested against a real model: whether the model reliably looks things up before it answers.</li>
+<li>The topic boundary has not yet been measured against the real model; the thresholds (90% / 5%) are
+starting values. The checker costs a small call per typed message and about 0.3–1 s until
+the first word.</li>
+<li>With tricks in the message, the checker can also be fooled. Then the rule in the prompt remains.</li>
+<li><code>read_law_text</code> depends on a third-party site: if it changes its structure, tool and guard fail (the guard reports „nicht erreichbar“ (&quot;not reachable&quot;)). Whether the model really reads before every load-bearing norm has not yet been measured against the real model.</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>All knowledge fixed in the prompt:</strong> around 40 KB per answer, slower, more expensive.</li>
+<li><strong>Running the Python script on the server:</strong> a second calculation path alongside the checked core.</li>
+<li><strong>Topic boundary only via word list or only in the prompt:</strong> word lists have gaps and reject
+honest questions; a rule only in the prompt can be talked away.</li>
+<li><strong>Checker in parallel with the main model:</strong> faster, but every rejection also pays for the large call. With ADR-0100, after measurement, decided this way after all (1.3 to 3 s per answer).</li>
+<li><strong>Skill table as the authoritative source of numbers:</strong> two sources that can drift apart.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0068-owl-skills.html"><span class="eyebrow">Previous</span><span>ADR-0068</span></a><a class="step step-next" href="0070-owl-advises-proactively-and-knows-the-situation.html"><span class="eyebrow">Next</span><span>ADR-0070</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

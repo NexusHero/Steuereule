@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0041 — Employee vertical: LStB scan fallback form + on-demand catalog entries (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0041</p>
+        <h1>Employee vertical: LStB scan fallback form + on-demand catalog entries (Draft) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted — promoted 2026-10-24 (reviewed as part of the ticket reviews; Musti)</li>
+<li><strong>Date:</strong> 2026-10-24</li>
+<li><strong>Deciders:</strong> Kaan (backend/FE, Ticket 08) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-036 (scan fallback form instead of OCR), product ADR-031 (5 life situations),
+product ADR-016/035 (on-demand Sonderausgaben (special expenses) catalog), product ADR-008 (visible conflict,
+never silent overwriting)</li>
+<li><strong>Builds on</strong> ADR-0008 (field encryption), ADR-0007/0012 (userId seam), REQ-004 (audit),
+ADR-0031 §3 (one catalog walker, no second code path), ADR-0033 (graph in <code>packages/core</code>,
+server validates), ADR-0032 (nothing promises more than the slice delivers)</li>
+<li><strong>Context tags:</strong> architecture, lstb, interview, catalog, honesty principle, encryption</li>
+</ul>
+<blockquote>
+<p><strong>⚠ Number collision (open — do NOT resolve here):</strong> <code>0041</code> is also taken by the parallel
+Grenzgänger (cross-border commuter) CH branch (Ticket 09), which in its own worktree (not in this branch)
+holds the draft <code>0041-grenzgaenger-ch-vertikale.md</code>. On merge, this draft and the
+t09 draft are to be resolved to <code>0041</code>/<code>0042</code>; the final number is THEN to be carried into this title and all
+references. This draft deliberately keeps <code>0041</code> so that both branches stay textually
+mergeable; the <code>adr-check-ignore</code> marker in the title carries the draft through the ADR number check until this
+renumbering.</p>
+</blockquote>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Phase 1a (Ticket 08) builds the employee vertical on the shared core (Phase 0.4). Two
+data intakes are new and need an architecture decision, because both have to implement the
+honesty principle (ADR-0032/ADR-032) on the persistence side:</p>
+<ol>
+<li><strong>LStB data intake</strong> (product ADR-036): The user transfers the three printed LStB (Lohnsteuerbescheinigung, wage tax certificate) values
+field by field into a guided form. Scan/OCR is deliberately NOT here (product ADR-045, later).
+The form must represent three honest states per field — <code>erfasst</code>, <code>offen</code>, <code>unklar</code>
+(&quot;looked at, not readable&quot;) — and a visible contradiction (product ADR-008), never a
+silent correction.</li>
+<li><strong>Interview segment 2 / catalog</strong> (product ADR-031/016/035): The 5 life situations and the
+Sonderausgaben (donations, KV/PV (health/long-term care insurance), Riester) come as FURTHER catalog entries via the SAME
+engine that already runs the minimal gate (ADR-0031 §3). Server admission must not become a second
+code path.</li>
+</ol>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong><code>packages/core/lstb.ts</code> — the pure LStB model.</strong> Three fields, each one of
+<code>erfasst</code> (integer euros) | <code>offen</code> | <code>unklar</code>. The derived <code>LstbZustand</code>
+(<code>unvollstaendig</code> | <code>widerspruch</code> | <code>vollstaendig</code>) is a pure function of the three
+field states and is recomputed on every read, <strong>never stored</strong> (ADR-014/048:
+a stored copy of a derivable state can only drift). The contradiction
+(&quot;Lohnsteuer/SV exceeds gross&quot;) is named, never silently corrected (ADR-008).</p>
+</li>
+<li><p><strong>Persistence: three nullable string columns, one encoding point.</strong> <code>null</code> = <code>offen</code>, the
+reserved marker <code>unklar</code> = &quot;not readable&quot;, any other string = integer euros
+(<code>erfasst</code>). The mapping field state ↔ string lives in EXACTLY one place
+(<code>serialisiereLstbFeld</code>/<code>deserialisiereLstbFeld</code> in <code>packages/core/lstb.ts</code>), so that the
+API repository and its tests do not drift apart (ADR-0033 instinct). The marker can
+never collide with a real value, because captured values are integers and the marker
+is not a number. <strong>Why a string, not three columns per state:</strong> one column per field
+carries the state including the amount, without a &quot;state column&quot; next to an
+&quot;amount column&quot; being able to diverge.</p>
+</li>
+<li><p><strong>All three values are field-encrypted at rest</strong> (ADR-0008). Actual income is the
+most sensitive personal fact a tax app holds — linkable via the same <code>userId</code>
+with the Steuer-ID (tax identification number) in the <code>Profile</code> — unlike <code>TaxYear</code> (counters only) or the
+<code>Beleg</code> data (which the suggestion rule needs in plaintext). The <code>Lstb</code> model (<code>schema.prisma</code>)
+documents this rationale on the model.</p>
+</li>
+<li><p><strong>API: <code>GET /v1/steuerjahre/{jahr}/lstb</code> + <code>PUT .../lstb/{feld}</code>.</strong> One row per
+<code>(userId, steuerjahr)</code>; the GET returns the three field states plus the derived <code>zustand</code>
+(re-entry, the same &quot;server decides what is true&quot; seam as the interview). The PUT
+is an upsert of ONE field. <code>@RequiresAccount()</code> (no guest path), WRITE audit atomic with the
+upsert (REQ-004), READ audit only when a row exists.</p>
+</li>
+<li><p><strong>Catalog entries: one walker, one registry (ADR-0031 §3).</strong> <code>ENTRIES[&#39;lebenslagen&#39;]</code> and
+<code>ENTRIES[&#39;sonderausgaben&#39;]</code> are entries of the same <code>CatalogueEntry</code> type; only the
+amount follow-ups carry name prefixes (<code>dhf-miete</code>, <code>umzug-kosten</code>, <code>spenden-betrag</code>, …), the
+top-level ids (<code>dhf</code>, <code>umzug</code>, <code>spenden</code>, …) are deliberately bare — that is a naming trait,
+not a namespace. Collision safety against the parallel Grenzgänger CH vertical (Ticket 09) comes
+structurally from the closed <code>EntryStepId</code> union plus the <code>buildStepIndex</code> throw (D3), not
+from the naming: a second claim of the same id cannot be built that way. The server derives the
+owning entry from the bare <code>questionId</code> (<code>entryForStep</code>, D3 in <code>interview.ts</code>),
+instead of trusting a client-supplied scope — the same admission, only the entry
+differs. The <code>eintrag</code> query on the GET is the re-entry surface; an
+unknown id is a 400.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Honesty is structural:</strong> an unreadable LStB value cannot be
+presented as &quot;forgotten&quot; and a contradiction cannot be presented as corrected — both are a named state,
+not a default.</li>
+<li><strong>One calculation path:</strong> the <code>LstbZustand</code> (and later the <code>AngestelltenStand</code>/the
+<code>Plausibilitäts-Prüfung</code>) is computed exclusively in <code>packages/core</code>; the API only maps.</li>
+<li><strong>The client stays dumb:</strong> mobile-web renders the form from the GET; no second state logic in the
+client (ADR-0033). MSW handlers are generated (orval), never handwritten.</li>
+<li><strong>Deliberately NOT here:</strong> scan/OCR (product ADR-045), the tax formulas (tariff, Fünftelregelung (one-fifth rule),
+Progressionsvorbehalt (progression proviso), zumutbare Belastung (reasonable burden)), wiring the working days / Pendlerpauschale (commuter allowance) to the
+API, and the real cockpit data — those are later slices; this slice captures and folds honestly
+what can be captured and folded (the same &quot;partial truth as partial truth&quot; cut as
+<code>berechnung.ts</code>).</li>
+<li><strong>Migration:</strong> one additive <code>Lstb</code> table, <code>@@unique([userId, steuerjahr])</code>; no change to
+existing tables (Interview/TaxYear/Beleg untouched) — the interview changes (R2) are
+purely additive in the catalog layer.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0040-document-inbox.html"><span class="eyebrow">Previous</span><span>ADR-0040</span></a><a class="step step-next" href="0042-grenzgaenger-ch-vertical.html"><span class="eyebrow">Next</span><span>ADR-0042</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

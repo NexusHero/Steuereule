@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Self-employed: extension 2022–2026 — sources — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Research</p>
+        <h1>Self-employed: extension 2022–2026 — sources</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#1-private-car-use-trips-between-home-and-business">1. Private car use, trips between home and business</a></li><li><a class="chip" href="#2-minijob-in-the-commercial-sector-employer-contributions">2. Minijob in the commercial sector (employer contributions)</a></li><li><a class="chip" href="#3-umsatzsteuer-voranmeldung-advance-vat-return-ust-1-a">3. Umsatzsteuer-Voranmeldung (advance VAT return, USt 1 A)</a></li><li><a class="chip" href="#4-zusammenfassende-meldung-ec-sales-list--18a-ustghttpswwwgesetze-im-internetdeustg198018ahtml">4. Zusammenfassende Meldung (EC sales list, <a href="https://www.gesetze-im-internet.de/ustg_1980/__18a.html">§ 18a UStG</a>)</a></li><li><a class="chip" href="#5-lohnsteuer-anmeldung-wage-tax-return">5. Lohnsteuer-Anmeldung (wage tax return)</a></li><li><a class="chip" href="#6-sale-and-discontinuation-of-a-business">6. Sale and discontinuation of a business</a></li><li><a class="chip" href="#7-thesaurierung-retained-profits--34a-estghttpswwwgesetze-im-internetdeestg34ahtml">7. Thesaurierung (retained profits, <a href="https://www.gesetze-im-internet.de/estg/__34a.html">§ 34a EStG</a>)</a></li><li><a class="chip" href="#8-e-invoice">8. E-invoice</a></li><li><a class="chip" href="#9-e-bilanz-element-names-taxonomy-69">9. E-Bilanz: element names (taxonomy 6.9)</a></li><li><a class="chip" href="#10-kleinunternehmer-in-the-year-of-founding">10. Kleinunternehmer in the year of founding</a></li><li><a class="chip" href="#11-vorsorgeaufwendungen-provision-expenses-of-the-self-employed">11. Vorsorgeaufwendungen (provision expenses) of the self-employed</a></li><li><a class="chip" href="#12-re-check-of-20112026-open-points">12. Re-check of 20.11.2026 (open points)</a></li><li><a class="chip" href="#13-statutory-review-of-20112026">13. Statutory review of 20.11.2026</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 20.11.2026. Supplements <code>self-employed-tax-rules.html</code> (what was already checked there is not repeated here). &quot;Checked&quot; means: read in the statutory text on gesetze-im-internet.de, in the BMF letter, in the BMF&#39;s official Handausgabe (annotated edition), on minijob-zentrale.de or in the taxonomy package of esteuer.de itself. gesetze-im-internet.de only shows the current version; earlier values are therefore marked as checked only where a transitional provision, a BMF letter or a handbook of the respective years names them.</p>
+<h2 id="1-private-car-use-trips-between-home-and-business"><a class="anchor" href="#1-private-car-use-trips-between-home-and-business" aria-hidden="true" tabindex="-1">#</a>1. Private car use, trips between home and business</h2>
+<p>Provisions: <a href="https://www.gesetze-im-internet.de/estg/__6.html">§ 6 Abs. 1 Nr. 4 Satz 2, 3 EStG</a>, <a href="https://www.gesetze-im-internet.de/estg/__52.html">§ 52 Abs. 12 Sätze 5, 6 EStG</a>, <a href="https://www.gesetze-im-internet.de/estg/__4.html">§ 4 Abs. 5 Satz 1 Nr. 6 EStG</a>.</p>
+<ul>
+<li>1 % per month of the domestic gross list price at first registration plus optional extras including VAT, only if the vehicle is used for business <strong>more than 50 %</strong> (§ 6 Abs. 1 Nr. 4 Satz 2). Checked.</li>
+<li>Logbook instead of the flat rate: actual costs of the private trips with documents and a proper logbook (Satz 3); electric/hybrid there with a quarter/half of the acquisition costs. Checked.</li>
+<li>List-price fraction per acquisition date (Satz 2 Nr. 2–5; rounding down to full €100 happens after applying the fraction, BMF 05.11.2021, BStBl I S. 2205, Rn. 12):</li>
+</ul>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Acquisition</th>
+<th>Vehicle</th>
+<th>Condition</th>
+<th>Rate</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.1.2019–31.12.2030</td>
+<td>pure electric vehicle (0 g CO₂/km)</td>
+<td>gross list price ≤ €60,000 (acquisition until 31.12.2023)</td>
+<td>1/4 (= 0.25 %)</td>
+<td>BMF 05.11.2021 Rn. 11 in <a href="https://lsth.bundesfinanzministerium.de/lsth/2025/B-Anhaenge/Anhang-24/IV/IV-6/inhalt.html">LStH 2025 Anhang 24 IV 6</a>. Checked</td>
+</tr>
+<tr>
+<td>1.1.2024–30.6.2025</td>
+<td>same</td>
+<td>≤ €70,000</td>
+<td>1/4</td>
+<td>footnote to Rn. 11 ibid.; § 52 Abs. 12 Satz 5 EStG (act of 27.3.2024, BGBl. 2024 I Nr. 108). Checked</td>
+</tr>
+<tr>
+<td>from 1.7.2025</td>
+<td>same</td>
+<td>≤ €100,000</td>
+<td>1/4</td>
+<td>current Satz 2 Nr. 3; § 52 Abs. 12 Satz 6 EStG (act of 14.7.2025, BGBl. 2025 I Nr. 161). Checked</td>
+</tr>
+<tr>
+<td>1.1.2019–31.12.2030</td>
+<td>electric vehicle above the price limit</td>
+<td>—</td>
+<td>1/2 (= 0.5 %)</td>
+<td>BMF 05.11.2021 Rn. 11 (table „Listenpreis mehr als 60.000 €“); applied analogously for the later limits, not read explicitly</td>
+</tr>
+<tr>
+<td>1.1.2022–31.12.2024</td>
+<td>plug-in hybrid</td>
+<td>≤ 50 g CO₂/km <strong>or</strong> ≥ 60 km electric range</td>
+<td>1/2</td>
+<td>Satz 2 Nr. 4. Checked</td>
+</tr>
+<tr>
+<td>1.1.2025–31.12.2030</td>
+<td>same</td>
+<td>≤ 50 g CO₂/km <strong>or</strong> ≥ 80 km</td>
+<td>1/2</td>
+<td>Satz 2 Nr. 5. Checked</td>
+</tr>
+<tr>
+<td>until 31.12.2021</td>
+<td>hybrid</td>
+<td>≤ 50 g <strong>or</strong> ≥ 40 km (§ 3 Abs. 2 EmoG)</td>
+<td>1/2</td>
+<td>Satz 2 Nr. 2; table Rn. 11. Checked</td>
+</tr>
+</tbody></table></div>
+<p>  The fraction also applies to used vehicles (Rn. 11). CO₂ and range from the certificate of conformity (end of Satz 2). Checked.</p>
+<ul>
+<li>Cost cap: the usage value and the non-deductible costs of trips between home and business together at most the total costs of the vehicle, permitted per vehicle; total costs including AfA (depreciation), for electric/hybrid with the reduced AfA base. BMF 18.11.2009, BStBl I S. 1326, Rn. 18 (amended by BMF 15.11.2012, BStBl I S. 1099), in <a href="https://esth.bundesfinanzministerium.de/esth/2024/C-Anhaenge/Anhang-16/III/anhang-16-III.html">EStH 2024 Anhang 16 III</a>; BMF 05.11.2021 Rn. 13. Checked. No cap at 50 % of the total costs (H note there, BFH 15.05.2018, BStBl II S. 712). Spread a special leasing payment over the periods it relates to (BFH 17.05.2022, BStBl II S. 829). Checked. I did not find a newer income-tax letter that replaces 18.11.2009; BMF 21.07.2026 (IV C 6 - S 2177/00016/042/056) only changes Rn. 19, 20 of the letter of 05.11.2021 (charging power, flat-rate electricity price from financial years after 31.12.2025). Checked.</li>
+<li>Proof of &gt; 50 %: Rn. 4–7 of BMF 18.11.2009 (e.g. records over three months; presumption for typical travel activity only for the vehicle with the highest annual mileage; trips between home and business count as business). Checked (EStH 2024 Anhang 16 III).</li>
+<li>The business owner&#39;s trips between home and business with the business car (§ 4 Abs. 5 Satz 1 Nr. 6 Satz 3 EStG): non-deductible is the positive difference between <strong>0.03 % × list price × distance km × months</strong> and the Entfernungspauschale (distance allowance) (§ 9 Abs. 1 Satz 3 Nr. 4 Satz 2–6, rates: see <code>self-employed-tax-rules.html</code>); trips home for double housekeeping 0.002 % per km. With a logbook or individual valuation under § 6 Abs. 1 Nr. 4 Satz 1 or 3, the actual expenses. Checked. The list-price fraction for electric/hybrid also applies here (BMF 05.11.2021 Rn. 12). Checked. Worked example with 0.03 % under the cost cap: BMF 18.11.2009 Rn. 18 example. Checked.</li>
+<li>Umsatzsteuer (VAT) on private use (unentgeltliche Wertabgabe, free supply, § 3 Abs. 9a Nr. 1, § 10 Abs. 4 Satz 1 Nr. 2 UStG), <a href="https://usth.bundesfinanzministerium.de/usth/2023/A-Umsatzsteuergesetz/IV-Steuer-und-Vorsteuer/Paragraf-15/ae-15-23.html">Abschnitt 15.23 Abs. 5 UStAE (UStH 2023)</a>: under the 1 % rule the income-tax value may be taken as the starting point; the electric/hybrid special rules (Satz 2 Nr. 1–5) do <strong>not</strong> apply for VAT (so the full list price); for costs not burdened with input tax a flat <strong>20 % deduction</strong>; the rest is the net value, 19 % on top. Gives taxable amount = 80 % of the 1 % value. Checked. That trips between home and business count as business for VAT (no free supply): not checked against the primary text.</li>
+</ul>
+<h2 id="2-minijob-in-the-commercial-sector-employer-contributions"><a class="anchor" href="#2-minijob-in-the-commercial-sector-employer-contributions" aria-hidden="true" tabindex="-1">#</a>2. Minijob in the commercial sector (employer contributions)</h2>
+<p>Marginal employment limit: <a href="https://www.gesetze-im-internet.de/sgb_4/__8.html">§ 8 Abs. 1a SGB IV</a> — minimum wage × 130 / 3, rounded up to full euros; a footnote names the announcements (BAnz AT 05.09.2022 B1 from 1.10.2022; BAnz AT 07.12.2023 B1 for 2024 and 2025). Checked.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Year</th>
+<th>Limit/month</th>
+<th>KV flat rate</th>
+<th>RV employer</th>
+<th>Flat-rate tax</th>
+<th>U1</th>
+<th>U2</th>
+<th>Insolvency levy</th>
+<th>Source of levies</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2022</td>
+<td>€450 until 30.9., €520 from 1.10.</td>
+<td>13 %</td>
+<td>15 %</td>
+<td>2 %</td>
+<td>0.9 %</td>
+<td>0.29 %</td>
+<td>0.09 %</td>
+<td><a href="https://magazin.minijob-zentrale.de/aenderungen-2022/">Magazin 2022</a></td>
+</tr>
+<tr>
+<td>2023</td>
+<td>€520</td>
+<td>13 %</td>
+<td>15 %</td>
+<td>2 %</td>
+<td>1.1 %</td>
+<td>0.24 %</td>
+<td>0.06 %</td>
+<td><a href="https://magazin.minijob-zentrale.de/faelligkeiten-minijob-2024/">Magazin 2024</a> („unverändert gegenüber 2023“)</td>
+</tr>
+<tr>
+<td>2024</td>
+<td>€538</td>
+<td>13 %</td>
+<td>15 %</td>
+<td>2 %</td>
+<td>1.1 %</td>
+<td>0.24 %</td>
+<td>0.06 %</td>
+<td>ibid.</td>
+</tr>
+<tr>
+<td>2025</td>
+<td>€556</td>
+<td>13 %</td>
+<td>15 %</td>
+<td>2 %</td>
+<td>1.1 %</td>
+<td>0.22 %</td>
+<td>0.15 %</td>
+<td><a href="https://magazin.minijob-zentrale.de/minijob-abgaben-2025/">Magazin 2025</a></td>
+</tr>
+<tr>
+<td>2026</td>
+<td>€603</td>
+<td>13 %</td>
+<td>15 %</td>
+<td>2 %</td>
+<td>0.8 %</td>
+<td>0.22 %</td>
+<td>0.15 %</td>
+<td><a href="https://www.minijob-zentrale.de/DE/fuer-gewerbetreibende/abgaben-und-steuern">Abgaben &amp; Steuern</a>, <a href="https://magazin.minijob-zentrale.de/minijob-beitraege-2026/">Magazin 2026</a></td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>RV (pension insurance) 15 % employer share with compulsory insurance: <a href="https://www.gesetze-im-internet.de/sgb_6/__168.html">§ 168 Abs. 1 Nr. 1b SGB VI</a>; with exemption also 15 %: <a href="https://www.gesetze-im-internet.de/sgb_6/__172.html">§ 172 Abs. 3 SGB VI</a>. Minijobber&#39;s share 3.6 % (minijob-zentrale.de). KV (health insurance) 13 %: <a href="https://www.gesetze-im-internet.de/sgb_5/__249b.html">§ 249b Satz 1 SGB V</a>. Flat-rate tax 2 %: <a href="https://www.gesetze-im-internet.de/estg/__40a.html">§ 40a Abs. 2 EStG</a>. All checked; in addition there is the individual contribution to accident insurance.</li>
+<li>Limits €538/€556/€603 checked on minijob-zentrale.de (<a href="https://magazin.minijob-zentrale.de/mindestlohn-minijob-2024/">2024</a>, <a href="https://magazin.minijob-zentrale.de/minijob-mindestlohn-2025/">2025</a>, 2026 on the contributions page). €520 from 1.10.2022 only via the BAnz citation in § 8 SGB IV and the then minimum wage of €12 in <a href="https://www.gesetze-im-internet.de/milog/__1.html">§ 1 Abs. 2 MiLoG</a> (12 × 130 / 3 = 520). The announcements themselves not read.</li>
+<li>The levy rates come from the Minijob-Zentrale&#39;s magazine, not from the statutes of the Knappschaft or the Insolvenzgeldumlage-Verordnung. 2023 only supported indirectly. U1 only for employers with up to 30 employees (§ 1 AAG): not checked against the primary text.</li>
+</ul>
+<h2 id="3-umsatzsteuer-voranmeldung-advance-vat-return-ust-1-a"><a class="anchor" href="#3-umsatzsteuer-voranmeldung-advance-vat-return-ust-1-a" aria-hidden="true" tabindex="-1">#</a>3. Umsatzsteuer-Voranmeldung (advance VAT return, USt 1 A)</h2>
+<p>Forms (BMF, „Muster der Vordrucke im Umsatzsteuer-Voranmeldungs- und -Vorauszahlungsverfahren“):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Year</th>
+<th>BMF letter</th>
+<th>URL</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2026</td>
+<td>29.12.2025, III C 3 - S 7344/00039/007/036</td>
+<td><a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/2025-12-29-vordruckmuster-USt-voranmeldung-2026.pdf?__blob=publicationFile&amp;v=7">PDF</a></td>
+<td>read</td>
+</tr>
+<tr>
+<td>2025</td>
+<td>09.12.2024</td>
+<td><code>…/Umsatzsteuer/2024-12-09-voranmeldungs-vorauszahlungsverf-2025.pdf</code></td>
+<td>in the search index, returns HTTP 404 on 20.11.2026</td>
+</tr>
+<tr>
+<td>2024</td>
+<td>01.11.2023</td>
+<td><code>…/Umsatzsteuer/2023-11-01-muster-der-vordrucke-im-umsatzsteuer-voranmeldungs-und-vorauszahlungsverfahren-fuer-das-kalenderjahr-2024.pdf</code></td>
+<td>in the search index, HTTP 404</td>
+</tr>
+<tr>
+<td>2023, 2022</td>
+<td>—</td>
+<td>—</td>
+<td>not found</td>
+</tr>
+</tbody></table></div>
+<p>The BMF apparently only keeps the current year available. Kennzahlen (field codes) according to USt 1 A 2026 (line → Kz); whether they were the same in 2022–2025 I could not check for lack of the old PDFs (the line numbers were renumbered from 2023 — not checked):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Content</th>
+<th>Taxable amount</th>
+<th>Tax</th>
+<th>Line 2026</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>taxable supplies 19 %</td>
+<td>81</td>
+<td>(calculated)</td>
+<td>13</td>
+</tr>
+<tr>
+<td>7 %</td>
+<td>86</td>
+<td>(calculated)</td>
+<td>14</td>
+</tr>
+<tr>
+<td>0 % (PV, § 12 Abs. 3)</td>
+<td>87</td>
+<td>—</td>
+<td>15</td>
+</tr>
+<tr>
+<td>other tax rates</td>
+<td>35</td>
+<td>36</td>
+<td>16</td>
+</tr>
+<tr>
+<td>intra-EU supplies to customers with a VAT ID</td>
+<td>41</td>
+<td>—</td>
+<td>19</td>
+</tr>
+<tr>
+<td>other tax-exempt supplies with input tax deduction (export …)</td>
+<td>43</td>
+<td>—</td>
+<td>22</td>
+</tr>
+<tr>
+<td>tax-exempt supplies without input tax deduction (§ 4 Nr. 8–29, § 19 Abs. 1)</td>
+<td>48</td>
+<td>—</td>
+<td>23</td>
+</tr>
+<tr>
+<td>intra-EU acquisitions 19 % / 7 %</td>
+<td>89 / 93</td>
+<td>(calculated)</td>
+<td>25 / 26</td>
+</tr>
+<tr>
+<td>§ 13b Abs. 1 (other service by an EU business)</td>
+<td>46</td>
+<td>47</td>
+<td>30</td>
+</tr>
+<tr>
+<td>§ 13b Abs. 2 Nr. 3 (GrEStG)</td>
+<td>73</td>
+<td>74</td>
+<td>31</td>
+</tr>
+<tr>
+<td>§ 13b other services (Abs. 2 Nr. 1, 2, 4–12)</td>
+<td>84</td>
+<td>85</td>
+<td>32</td>
+</tr>
+<tr>
+<td>supplies for which the recipient is liable under § 13b Abs. 5 (supplying business)</td>
+<td>60</td>
+<td>—</td>
+<td>34</td>
+</tr>
+<tr>
+<td>non-taxable other services § 18b Satz 1 Nr. 2</td>
+<td>21</td>
+<td>—</td>
+<td>35</td>
+</tr>
+<tr>
+<td>input tax from invoices</td>
+<td>—</td>
+<td>66</td>
+<td>38</td>
+</tr>
+<tr>
+<td>input tax from intra-EU acquisition</td>
+<td>—</td>
+<td>61</td>
+<td>39</td>
+</tr>
+<tr>
+<td>import VAT</td>
+<td>—</td>
+<td>62</td>
+<td>40</td>
+</tr>
+<tr>
+<td>input tax § 13b</td>
+<td>—</td>
+<td>67</td>
+<td>41</td>
+</tr>
+<tr>
+<td>adjustment § 15a</td>
+<td>—</td>
+<td>64</td>
+<td>44</td>
+</tr>
+<tr>
+<td>§ 14c / § 17 Abs. 1 Satz 7 etc.</td>
+<td>—</td>
+<td>69</td>
+<td>47</td>
+</tr>
+<tr>
+<td>deduction of the special advance payment</td>
+<td>—</td>
+<td>39</td>
+<td>49</td>
+</tr>
+<tr>
+<td>remaining advance payment / surplus</td>
+<td>—</td>
+<td>83</td>
+<td>50</td>
+</tr>
+<tr>
+<td>reduction of taxable amount / input tax (§ 17 Abs. 2 Nr. 1)</td>
+<td>50</td>
+<td>37</td>
+<td>51 / 52</td>
+</tr>
+</tbody></table></div>
+<p>Further fields 2026: Kz 10 corrected return, Kz 22 documents, Kz 70 date of the switch from § 19 to standard taxation, Kz 29/26 offsetting/direct debit. USt 1 H 2026: special advance payment Kz 38 (line 9). Checked.</p>
+<p>Advance return period (<a href="https://www.gesetze-im-internet.de/ustg_1980/__18.html">§ 18 Abs. 2, 2a UStG</a>):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Tax period</th>
+<th>Monthly if previous-year tax &gt;</th>
+<th>Exemption possible up to</th>
+<th>Monthly option if previous-year surplus &gt;</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2022–2024</td>
+<td>€7,500</td>
+<td>€1,000</td>
+<td>€7,500</td>
+<td>BMF 08.07.2025 (below), old values only named there</td>
+</tr>
+<tr>
+<td>2025–2026</td>
+<td>€9,000</td>
+<td>€2,000</td>
+<td>€9,000</td>
+<td>current § 18 Abs. 2 Sätze 2, 3, Abs. 2a Satz 1. Checked</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>Increase €7,500 → €9,000 by the BEG IV of 23.10.2024 (BGBl. I Nr. 323), €1,000 → €2,000 by the Wachstumschancengesetz (BGBl. 2024 I Nr. 108); UStAE 18.2 adjusted, applicable from 1.1.2025: <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/Umsatzsteuer-Anwendungserlass/2025-07-08-aenderungen-UStAE.pdf?__blob=publicationFile&amp;v=3">BMF 08.07.2025, III C 2 - S 7295/00005/003/080</a>, Rn. 1, 2, 13. Checked.</li>
+<li>New businesses: monthly in the year of founding and the following year (§ 18 Abs. 2 Satz 4), likewise shelf companies and corporate shells (Satz 5). <strong>Suspended for 2021 to 2026</strong> (Satz 6): for a partial year, annualize the previous-year tax; in the year of founding, the expected tax of the current year. Applies correspondingly to Abs. 2a. Checked. From 2027 the monthly obligation revives according to the wording.</li>
+<li>Dauerfristverlängerung (permanent deadline extension): a one-month extension on application (<a href="https://www.gesetze-im-internet.de/ustdv_1980/__46.html">§ 46 UStDV</a>); for monthly filers a special advance payment = 1/11 of the previous year&#39;s advance payments (<a href="https://www.gesetze-im-internet.de/ustdv_1980/__47.html">§ 47 Abs. 1 UStDV</a>), annualize a partial year counting started months as full (Abs. 2), year of founding based on expected advance payments (Abs. 3); declare and pay annually by the statutory date of the first advance return (10 February) (<a href="https://www.gesetze-im-internet.de/ustdv_1980/__48.html">§ 48 UStDV</a>); quarterly filers no special advance payment, application need not be repeated annually (USt 1 H 2026). The basis is the sum of the advance payments <strong>without</strong> deducting the special advance payment (USt 5 E 2026, example: €39,000 + €5,000 = €44,000, 1/11 of which = €4,000). Checked.</li>
+<li>Change to the special advance payment from 2025: none in the current § 47 UStDV. Checked (only the current text; I did not find a planned abolition).</li>
+</ul>
+<h2 id="4-zusammenfassende-meldung-ec-sales-list--18a-ustghttpswwwgesetze-im-internetdeustg198018ahtml"><a class="anchor" href="#4-zusammenfassende-meldung-ec-sales-list--18a-ustghttpswwwgesetze-im-internetdeustg198018ahtml" aria-hidden="true" tabindex="-1">#</a>4. Zusammenfassende Meldung (EC sales list, <a href="https://www.gesetze-im-internet.de/ustg_1980/__18a.html">§ 18a UStG</a>)</h2>
+<ul>
+<li>Reporting period calendar month, filing by the 25th day after it with the BZSt, for intra-EU supplies of goods and triangular transactions (§ 25b Abs. 2) (Abs. 1 Satz 1). Quarterly if their total exceeds €50,000 neither in the current quarter nor in any of the four preceding quarters (Satz 2); if exceeded in the quarter, report for the month and the elapsed months of the quarter (Satz 3). Checked; 2022–2026 unchanged according to the wording (last special rule €100,000 only 7/2010–12/2011).</li>
+<li>Other services under § 3a Abs. 2 (reverse charge in another EU country): reporting period quarter (Abs. 2), for monthly filers in the last month of the quarter; monthly reporting optional (Abs. 3). Checked.</li>
+<li>Content (Abs. 7): per acquirer the foreign VAT ID and the total of the taxable amounts; transfers with one&#39;s own VAT ID; consignment stock § 6b; other services per recipient; triangular transactions. Checked.</li>
+</ul>
+<h2 id="5-lohnsteuer-anmeldung-wage-tax-return"><a class="anchor" href="#5-lohnsteuer-anmeldung-wage-tax-return" aria-hidden="true" tabindex="-1">#</a>5. Lohnsteuer-Anmeldung (wage tax return)</h2>
+<ul>
+<li>Filing period (<a href="https://www.gesetze-im-internet.de/estg/__41a.html">§ 41a Abs. 2 EStG</a>): month as a rule; quarter if previous-year Lohnsteuer &gt; €1,080 up to €5,000; year up to €1,080; annualize a partial year, new business: first full month annualized. Checked against the current text; the notes to the 2026 form name the same limits. For 2022–2025 no deviating value in § 52 EStG (Abs. 40a concerns other paragraphs). Checked.</li>
+<li>Kennzahlen according to the <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Lohnsteuer/2025-08-14-Muster-Lohnsteuer-Anmeldung-2026.pdf?__blob=publicationFile&amp;v=6">LStA 2026 form (BMF 14./21.08.2025)</a>: Kz 10 corrected, 86 number of employees, 90 number of employees with BAV-Förderbetrag (occupational pension subsidy), 92 negative total from annual adjustment, <strong>42</strong> Lohnsteuer to be withheld, <strong>41</strong> flat-rate Lohnsteuer excluding § 37b, <strong>44</strong> flat-rate Lohnsteuer § 37b, 33 reduction for merchant ships, 45 BAV-Förderbetrag § 100, <strong>48</strong> remainder, <strong>49</strong> Solidaritätszuschlag, <strong>47</strong> flat-rate church tax, <strong>61</strong> Protestant church tax, <strong>62</strong> Roman Catholic church tax, state-specific 63–78 (e.g. 63 ak, 64 is/jh/jd), <strong>83</strong> total amount. The 2 % flat-rate tax for minijobs does not belong here (it goes to the Knappschaft), note no. 2. Checked. Forms 2022–2025: not read.</li>
+</ul>
+<h2 id="6-sale-and-discontinuation-of-a-business"><a class="anchor" href="#6-sale-and-discontinuation-of-a-business" aria-hidden="true" tabindex="-1">#</a>6. Sale and discontinuation of a business</h2>
+<ul>
+<li><a href="https://www.gesetze-im-internet.de/estg/__16.html">§ 16 Abs. 4 EStG</a>: on application an allowance of <strong>€45,000</strong> if the person has completed their 55th year of life or is permanently unable to work under social security law; once in a lifetime; reduced by the amount by which the gain exceeds <strong>€136,000</strong> (so zero at €181,000). Checked against the current text; whether the same in 2022–2026: no transitional rule found, not checked further.</li>
+<li><a href="https://www.gesetze-im-internet.de/estg/__34.html">§ 34 Abs. 1 EStG</a> one-fifth rule: tax = 5 × (ESt(taxable income excluding extraordinary income + 1/5 extraordinary) − ESt(taxable income excluding extraordinary)). Checked.</li>
+<li>§ 34 Abs. 3 EStG: on application, portion up to <strong>€5 million</strong>, age 55 or inability to work; <strong>56 %</strong> of the average tax rate on the whole taxable income including Progressionsvorbehalt (progression clause), <strong>at least 14 %</strong>; once in a lifetime, with several gains in one VZ only for one of them. Checked against the current text. The minimum rate is in the statute as a fixed value „14 Prozent“, not as a reference to the entry tax rate; since when: not checked.</li>
+<li>§ 34a Abs. 1 Satz 1 last half-sentence: no § 34a to the extent that § 16 Abs. 4 or § 34 Abs. 3 is used. Checked.</li>
+</ul>
+<h2 id="7-thesaurierung-retained-profits--34a-estghttpswwwgesetze-im-internetdeestg34ahtml"><a class="anchor" href="#7-thesaurierung-retained-profits--34a-estghttpswwwgesetze-im-internetdeestg34ahtml" aria-hidden="true" tabindex="-1">#</a>7. Thesaurierung (retained profits, <a href="https://www.gesetze-im-internet.de/estg/__34a.html">§ 34a EStG</a>)</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>VZ</th>
+<th>Retention rate</th>
+<th>Subsequent taxation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>until 2027</td>
+<td>28.25 %</td>
+<td>25 %</td>
+</tr>
+<tr>
+<td>2028, 2029</td>
+<td>27 %</td>
+<td>25 %</td>
+</tr>
+<tr>
+<td>2030, 2031</td>
+<td>26 %</td>
+<td>25 %</td>
+</tr>
+<tr>
+<td>from 2032</td>
+<td>25 %</td>
+<td>25 %</td>
+</tr>
+</tbody></table></div>
+<p>Checked against the current Abs. 1 Satz 1, Abs. 4 Satz 2. Act introducing the reduction from 2028: not looked up (presumably the Investitionssofortprogramm of 14.7.2025).</p>
+<ul>
+<li>Application per business/co-entrepreneur share and VZ; co-entrepreneurs only with &gt; 10 % profit share or &gt; €10,000 (Abs. 1 Sätze 2, 4). Checked.</li>
+<li>Non-withdrawn profit = profit under § 4 Abs. 1 / § 5 − positive balance of withdrawals/contributions <strong>+ Gewerbesteuer</strong> (Abs. 2 Satz 1). New from VZ 2024 (§ 52 Abs. 34 Satz 3 EStG, version BGBl. 2024 I Nr. 108): withdrawals to pay the retention income tax and the Soli on it are disregarded (Abs. 2 Satz 2), and withdrawals are deemed to have been used primarily for that (Satz 3). Checked against the text; the version until 2023 not read.</li>
+<li>Amount subject to subsequent taxation = preferential amount − tax under Abs. 1 and Soli on it + previous-year amount (+/− transfers under Abs. 5) − subsequent taxation amount; to be assessed separately each year (Abs. 3). Subsequent taxation when the excess of withdrawals exceeds the profit, at 25 %, reduced by withdrawals for inheritance/gift tax (Abs. 4). Checked.</li>
+<li>Only with balance-sheet accounting (reference to § 4 Abs. 1 / § 5), so not for those filing an EÜR. Follows from the wording; a BMF letter on this not read.</li>
+</ul>
+<h2 id="8-e-invoice"><a class="anchor" href="#8-e-invoice" aria-hidden="true" tabindex="-1">#</a>8. E-invoice</h2>
+<ul>
+<li><a href="https://www.gesetze-im-internet.de/ustg_1980/__14.html">§ 14 Abs. 1 UStG</a> from 1.1.2025: e-invoice = structured electronic format that is issued, transmitted <strong>and received</strong> and can be processed electronically; format under EN 16931 (Satz 6 Nr. 1) or agreed, if it can be extracted losslessly into an EN 16931-compliant format (Nr. 2). Obligation to use e-invoices between domestic businesses (Abs. 2 Satz 2 Nr. 1). Checked.</li>
+<li>Receipt: all domestic businesses must be able to receive e-invoices, including Kleinunternehmer; an email inbox is sufficient, no right to a substitute invoice (Abschnitt 14.1 Abs. 5 UStAE as amended by <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/Umsatzsteuer-Anwendungserlass/2025-10-15-einfuehrung-obligatorische-e-rechnung.pdf?__blob=publicationFile&amp;v=5">BMF 15.10.2025, III C 2 - S 7287-a/00019/007/243</a>, which amends BMF 15.10.2024, BStBl I S. 1320). Checked.</li>
+<li>Formats (Abschnitt 14.1 Abs. 12–15 UStAE ibid.): XRechnung (purely structured, EN 16931, also extension), ZUGFeRD <strong>from 2.0.1 without the MINIMUM and BASIC-WL profiles</strong>, other EN 16931 formats, EDI by agreement. Format errors turn the file into an other invoice (Rn. 6a); business-rule errors are to be distinguished from these (Rn. 6b, 35a). Checked. Concrete syntax UBL/CII: only in the statute via Directive 2014/55/EU; not read literally in the letter.</li>
+<li>Small-amount invoices up to €250 (§ 33 UStDV), tickets, invoices from Kleinunternehmer (§ 34a UStDV) may always be other invoices; an e-invoice is possible there even without consent (Abschnitt 14.1 Abs. 6 Satz 4 UStAE as amended by BMF 15.10.2025). Checked.</li>
+<li>Transition for <strong>issuing</strong> (<a href="https://www.gesetze-im-internet.de/ustg_1980/__27.html">§ 27 Abs. 38 UStG</a>):</li>
+</ul>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Supply made</th>
+<th>Allowed until</th>
+<th>Condition</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2025, 2026</td>
+<td>31.12.2026</td>
+<td>paper or (with consent) another electronic format, e.g. PDF</td>
+</tr>
+<tr>
+<td>2027</td>
+<td>31.12.2027</td>
+<td>only if previous-year total turnover (§ 19 Abs. 2) ≤ €800,000</td>
+</tr>
+<tr>
+<td>2027</td>
+<td>31.12.2027</td>
+<td>EDI procedure with consent, without turnover limit</td>
+</tr>
+</tbody></table></div>
+<p>  Checked. In addition <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/Umsatzsteuer-Anwendungserlass/2026-10-15-obligatorische-elektronische-rechnung.pdf?__blob=publicationFile&amp;v=2">BMF 15.10.2026, III C 5 - S 7287-a/00019/021/017</a> (advance/final invoices, mandatory details, construction services, discounts, gross prices, correction): only the table of contents read.</p>
+<h2 id="9-e-bilanz-element-names-taxonomy-69"><a class="anchor" href="#9-e-bilanz-element-names-taxonomy-69" aria-hidden="true" tabindex="-1">#</a>9. E-Bilanz: element names (taxonomy 6.9)</h2>
+<p>Source: <a href="https://www.esteuer.de/">esteuer.de</a> → <code>download/taxonomie_20250618/german-gaap-taxonomy-v6.9-2025-04-01-xbrl.zip</code>, files <code>de-gaap-ci-2025-04-01.xsd</code>, <code>…-dimensions.xsd</code>, <code>…-label-de.xml</code>, <code>…-dimensions-definition-notesTableStmOfChgInFAssGross.xml</code>. Checked against the schema. Comparison with <code>packages/core/src/domains/ledger/e-bilanz.ts</code> lines 35–60:</p>
+<p><strong>Kontennachweis (account breakdown)</strong> — the guesses in the code are <strong>all wrong</strong>. Correct is a tuple (<code>xbrli:tuple</code>) with four items in a fixed order:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Code key</th>
+<th>in the code</th>
+<th>correct (6.9)</th>
+<th>Type</th>
+<th>Label</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>accountTuple</td>
+<td><code>accountBalances.detail</code></td>
+<td><code>de-gaap-ci:detailedInformation.accountBalances</code></td>
+<td>tuple</td>
+<td>Kontensalden zu einer Position</td>
+</tr>
+<tr>
+<td>accountPosition</td>
+<td><code>accountBalances.detail.position</code></td>
+<td><code>de-gaap-ci:detailedInformation.accountbalances.positionName</code></td>
+<td>QNameItemType (QName of the balance sheet / P&amp;L item)</td>
+<td>Name der Position</td>
+</tr>
+<tr>
+<td>accountNumber</td>
+<td><code>accountBalances.detail.accountNo</code></td>
+<td><code>de-gaap-ci:detailedInformation.accountbalances.accountNumber</code></td>
+<td>stringItemType</td>
+<td>Kontonummer</td>
+</tr>
+<tr>
+<td>accountLabel</td>
+<td><code>accountBalances.detail.accountName</code></td>
+<td><code>de-gaap-ci:detailedInformation.accountbalances.accountDescription</code></td>
+<td>stringItemType</td>
+<td>Kontobeschreibung</td>
+</tr>
+<tr>
+<td>accountBalance</td>
+<td><code>accountBalances.detail.balance</code></td>
+<td><code>de-gaap-ci:detailedInformation.accountbalances.amount</code></td>
+<td>monetaryItemType</td>
+<td>Kontosaldo</td>
+</tr>
+<tr>
+<td>explanation</td>
+<td><code>accountBalances.explanationNotTransmitted</code></td>
+<td><strong>does not exist in 6.9</strong></td>
+<td>—</td>
+<td>—</td>
+</tr>
+</tbody></table></div>
+<p>Note the spelling: the tuple is called <code>accountBalances</code> (capital B), the children <code>accountbalances.</code> (lowercase b). In 6.10 (<code>taxonomie_20260615</code>, 2026-04-01) a fifth tuple element <code>detailedInformation.accountbalances.notPossible</code> (booleanItemType, „Konto nicht vorhanden oder nicht übermittelbar“) is added. Checked against the 6.10 schema. The BMF letters on 6.10 not read.</p>
+<p><strong>Anlagenspiegel (fixed-asset schedule)</strong> — the code model (suffix on the item names, e.g. <code>bs.ass.fixAss.tan.gross.addition</code>) is <strong>wrong</strong>. The taxonomy models the fixed-asset schedule dimensionally (hypercube <code>cube_.nt.ass.gross</code>, table <code>table.nt.ass.gross</code>): the columns are separate primary elements (monetaryItemType, in <code>de-gaap-ci-2025-04-01-dimensions.xsd</code>), the item is a member of the explicit dimension <code>de-gaap-ci:dim_changes.nt.ass.gross</code> (domain <code>bs.ass.fixAss</code> and sub-items); second dimension <code>dim_taxTrans</code> (commercial balance sheet value <code>dim_comBal</code>, reconciliation <code>dim_diffComToTaxBal</code>, domain <code>dim_taxBal</code>). Correct column names:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Code column</th>
+<th>in the code (suffix)</th>
+<th>correct (primary element)</th>
+<th>Label</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>acquisitionCostOpening</td>
+<td><code>.gross.beginning</code></td>
+<td><code>de-gaap-ci:grossCost.beginning</code></td>
+<td>AHK zum Anfang der Periode</td>
+</tr>
+<tr>
+<td>additions</td>
+<td><code>.gross.addition</code></td>
+<td><code>de-gaap-ci:gross.addition</code></td>
+<td>AHK, Zugänge</td>
+</tr>
+<tr>
+<td>disposalsAtCost</td>
+<td><code>.gross.disposal</code></td>
+<td><code>de-gaap-ci:gross.release</code></td>
+<td>AHK, Abgänge</td>
+</tr>
+<tr>
+<td>acquisitionCostClosing</td>
+<td><code>.gross.end</code></td>
+<td><code>de-gaap-ci:gross</code></td>
+<td>AHK zum Ende der Periode</td>
+</tr>
+<tr>
+<td>depreciationOpening</td>
+<td><code>.accDepr.beginning</code></td>
+<td><code>de-gaap-ci:accDepr.beginning</code></td>
+<td>Kumulierte Abschreibungen zum Anfang</td>
+</tr>
+<tr>
+<td>depreciationOfYear</td>
+<td><code>.accDepr.DeprPeriod</code></td>
+<td><code>de-gaap-ci:accDepr.DeprPeriod</code> (of which <code>.regular</code>, <code>.extraordinary</code>, <code>.impairment</code> = special AfA, <code>.EStG7g_2</code>, <code>.EStG6b_3</code>, <code>.misc</code>)</td>
+<td>Abschreibungen der Periode</td>
+</tr>
+<tr>
+<td>depreciationOnDisposals</td>
+<td><code>.accDepr.disposal</code></td>
+<td><code>de-gaap-ci:accDepr.release</code></td>
+<td>Kum. Abschreibungen, erfolgsneutrale Abgänge</td>
+</tr>
+<tr>
+<td>depreciationClosing</td>
+<td><code>.accDepr.end</code></td>
+<td><code>de-gaap-ci:accDepr</code></td>
+<td>Kum. Abschreibungen zum Ende</td>
+</tr>
+<tr>
+<td>bookValueOpening</td>
+<td><code>.net.beginning</code></td>
+<td><code>de-gaap-ci:all_Prev_period</code></td>
+<td>Buchwert zum Ende der Vorperiode</td>
+</tr>
+<tr>
+<td>bookValueClosing</td>
+<td><code>.net.end</code></td>
+<td><code>de-gaap-ci:all</code></td>
+<td>Buchwert zum Ende der Periode</td>
+</tr>
+</tbody></table></div>
+<p>Further columns: <code>gross.movements</code> / <code>accDepr.movements</code> (reclassifications), <code>revaluation</code> (write-ups), <code>accDepr.addition</code>, <code>gross.diff*</code>, <code>gross.currChanges</code>. All ten names exist unchanged in 6.10. Checked. Whether ERiC/ELSTER requires or merely permits the fixed-asset schedule for sole proprietors, and which context (period type: the columns are <code>duration</code>) is expected: not checked.</p>
+<h2 id="10-kleinunternehmer-in-the-year-of-founding"><a class="anchor" href="#10-kleinunternehmer-in-the-year-of-founding" aria-hidden="true" tabindex="-1">#</a>10. Kleinunternehmer in the year of founding</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Year</th>
+<th>Limit in the year of founding</th>
+<th>Measure</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>until 2024</td>
+<td>€22,000 (not €50,000)</td>
+<td><strong>expected</strong> turnover of the current year, gross amounts received</td>
+<td>Abschnitt 19.1 Abs. 4 Sätze 1–3, Abs. 2 UStAE, <a href="https://usth.bundesfinanzministerium.de/usth/2024/A-Umsatzsteuergesetz/V-Besteuerung/Paragraf-19/ae-19-1.html">UStH 2024</a>. Checked</td>
+</tr>
+<tr>
+<td>from 2025</td>
+<td>€25,000 (not €100,000)</td>
+<td><strong>actual</strong> domestic total turnover of the current year; the turnover that exceeds the limit is already subject to standard taxation</td>
+<td>Abschnitt 19.1 Abs. 3 UStAE as amended by <a href="https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten/Umsatzsteuer/Umsatzsteuer-Anwendungserlass/2025-03-18-sonderregelung-kleinunternehmer.pdf?__blob=publicationFile&amp;v=3">BMF 18.03.2025, III C 3 - S 7360/00027/044/105</a> (BFH 19.02.1976 V R 23/73; 22.11.1984 V R 170/83). Checked</td>
+</tr>
+</tbody></table></div>
+<p>The statutory text (<a href="https://www.gesetze-im-internet.de/ustg_1980/__19.html">§ 19 Abs. 1 UStG</a>) does not mention the year-of-founding rule; it is the administration&#39;s view. Checked.</p>
+<h2 id="11-vorsorgeaufwendungen-provision-expenses-of-the-self-employed"><a class="anchor" href="#11-vorsorgeaufwendungen-provision-expenses-of-the-self-employed" aria-hidden="true" tabindex="-1">#</a>11. Vorsorgeaufwendungen (provision expenses) of the self-employed</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>VZ</th>
+<th>Maximum for retirement provision (§ 10 Abs. 3) single / joint</th>
+<th>deductible share</th>
+<th>other provision (§ 10 Abs. 4)</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>2022</td>
+<td>€25,639 / €51,278</td>
+<td>94 %</td>
+<td>€2,800 / €1,900</td>
+<td><a href="https://esth.bundesfinanzministerium.de/esth/2024/tabellarische-Uebersicht/Vorsorgeaufwendunge.html">EStH 2024 overview</a></td>
+</tr>
+<tr>
+<td>2023</td>
+<td>€26,528 / €53,056</td>
+<td>100 %</td>
+<td>€2,800 / €1,900</td>
+<td><a href="https://erbsth.bundesfinanzministerium.de/esth/2025/tabellarische-Uebersicht/Vorsorgeaufwendunge.html">EStH 2025 overview</a></td>
+</tr>
+<tr>
+<td>2024</td>
+<td>€27,566 / €55,132</td>
+<td>100 %</td>
+<td>€2,800 / €1,900</td>
+<td>ibid.</td>
+</tr>
+<tr>
+<td>2025</td>
+<td>€29,344 / €58,688</td>
+<td>100 %</td>
+<td>€2,800 / €1,900</td>
+<td>ibid.</td>
+</tr>
+<tr>
+<td>2026</td>
+<td>€30,826 / €61,652 (derived)</td>
+<td>100 %</td>
+<td>€2,800 / €1,900</td>
+<td>see below</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li><a href="https://www.gesetze-im-internet.de/estg/__10.html">§ 10 Abs. 3 EStG</a>: maximum contribution to the miners&#39; pension insurance (knappschaftliche RV), rounded up; doubled for Zusammenveranlagung (joint assessment); reduction under Satz 3 only for civil servants and similar (not for self-employed persons without pension entitlement); 76 % in 2013, +2 points per year until 2022 (= 94 %), from 2023 100 % (Sätze 4, 6). Checked.</li>
+<li>2026: contribution assessment ceiling KnRV €124,800 (<a href="https://www.gesetze-im-internet.de/svbezgrv_2026/__4.html">§ 4 Abs. 1 Nr. 2 SV-Rechengrößen-VO 2026</a>, checked) × KnRV contribution rate 24.7 % = €30,825.60 → €30,826. I did not read the contribution rate of 24.7 % in the primary text; it does reproduce 2025, however (€118,800 × 24.7 % = €29,344). I did not find an official table for 2026.</li>
+<li>Retirement provision includes the self-employed person&#39;s statutory RV contributions (also voluntary), professional pension schemes, Rürup (§ 10 Abs. 1 Nr. 2 a, b). Checked against the wording only via Abs. 3; Nr. 2 itself not read out.</li>
+<li>§ 10 Abs. 4 EStG: Nr. 3 and 3a together up to <strong>€2,800</strong>; <strong>€1,900</strong> for anyone who has a claim to reimbursement of medical costs without their own expenses or receives tax-free subsidies (§ 3 Nr. 9, 14, 57, 62). Self-employed persons without such subsidies: €2,800. Basic health and compulsory long-term care insurance (Nr. 3 a, b) are always fully deductible; if they exceed the maximum, Nr. 3a is dropped (Abs. 4 Satz 4). Checked.</li>
+<li>§ 10 Abs. 1 Nr. 3 Satz 4 EStG: if GKV (statutory health insurance) contributions give rise to a claim to sickness benefit (or a substitute benefit), the contribution is reduced by <strong>4 %</strong>; with PKV (private health insurance), sickness-benefit portions do not count as basic coverage (Satz 3). Compulsory long-term care insurance in full (Nr. 3 b). Checked. That self-employed persons with an optional tariff/declaration for sickness benefit are affected: follows from the wording, administrative instruction not read.</li>
+</ul>
+<h2 id="12-re-check-of-20112026-open-points"><a class="anchor" href="#12-re-check-of-20112026-open-points" aria-hidden="true" tabindex="-1">#</a>12. Re-check of 20.11.2026 (open points)</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Point</th>
+<th>Result</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Kennzahlen USt 1 A 2022–2025</td>
+<td>All Kennzahlen used by the app exist in every year with the same meaning. <strong>Kz 87</strong> (0 %, photovoltaics, § 12 Abs. 3) exists only from 2023, <strong>Kz 70</strong> (date of the switch from § 19) only from 2025; from 2025 Kz 48 also takes the tax-exempt supplies under § 19 Abs. 1. 2022 was read line by line; for 2023–2025 only checked that every Kennzahl occurs, plus the lines for Kz 87, 70 and 48.</td>
+<td>Wayback copies of the BMF PDFs (<code>?__blob=publicationFile</code>): 2022 of 11.10.2021, 2023 of 21.12.2022, 2024 of 01.11.2023, 2025 of 09.12.2024. Checked</td>
+</tr>
+<tr>
+<td>Minijob levies 2022–2026</td>
+<td>All values confirmed. U1/U2 2024 only indirectly („bisher 0,24 %“, „bisher 1,1 %“ in the announcements for 2025/2026). Insolvency levy 2025/2026: no ordinance, so the statutory rate of 0.15 % applies (§ 360 SGB III).</td>
+<td>KBS statutes Anlage 6 (§ 9 Abs. 3, § 10 Abs. 3), KBS announcements 23.11.2021, 21.12.2022, 06.12.2024, 09.12.2025; InsoGeldFestV 2022–2024. Checked</td>
+</tr>
+<tr>
+<td>Maximum for retirement provision 2026</td>
+<td>€30,826 / €61,652 confirmed: BBG (contribution assessment ceiling) of the miners&#39; pension insurance €124,800 × 24.7 %.</td>
+<td>SVBezGrV 2026 § 4 Abs. 1 Nr. 2; RVBeitrSBek 2026; DRV announcement 20.04.2026. Checked</td>
+</tr>
+<tr>
+<td>§ 19 partial year in the previous year</td>
+<td>Until 2024 the turnover is annualized (§ 19 Abs. 3 Satz 3 old version, Abschnitt 19.3 Abs. 3 UStAE old version). From 2025 the actual turnover counts; the sentence on conversion has been dropped.</td>
+<td>gesetze-im-internet.de (Wayback 2024 and current); BMF 18.03.2025. Checked</td>
+</tr>
+<tr>
+<td>§ 34a Gewerbesteuer</td>
+<td>Before VZ 2024 not added back; as a non-deductible business expense the Gewerbesteuer reduced the profit eligible for the preferential treatment (BMF 11.08.2008 Rz. 16). Only the current version adds it back.</td>
+<td>§ 34a (Wayback 2023, current); EStH 2023 Anhang 27c. Checked; the BGBl citation of the amendment not read</td>
+</tr>
+<tr>
+<td>§ 47 UStDV</td>
+<td>1/11 of the <strong>sum of the advance payments</strong> of the previous year, not of the annual tax.</td>
+<td>§ 47 Abs. 1 Satz 2 UStDV; USt 1 H 2026 line 8. Checked</td>
+</tr>
+</tbody></table></div>
+<h2 id="13-statutory-review-of-20112026"><a class="anchor" href="#13-statutory-review-of-20112026" aria-hidden="true" tabindex="-1">#</a>13. Statutory review of 20.11.2026</h2>
+<p>The rules in <code>packages/core/src/domains/business</code> and the provision expenses were checked against the official texts: gesetze-im-internet.de, BGBl, BMF letters, the 2026 Lohnsteuer-Anmeldung form and the Minijob-Zentrale.</p>
+<p><strong>Fixed:</strong></p>
+<ul>
+<li><strong>§ 34a Abs. 2 Satz 3 EStG (from VZ 2024):</strong> Withdrawals are deemed to be primarily payment of the retention tax and its Soli. The app sets this itself, as a fixed point, because the tax depends on the exempted amount. The input field now only applies to tax from earlier years.</li>
+<li><strong>§ 34a Abs. 6 Nr. 1 EStG:</strong> A sale or discontinuation subjects the entire amount subject to subsequent taxation to subsequent taxation at 25 %. Previously § 34a was dropped entirely in the year of the sale. Abs. 1, however, only excludes the preferential sale gain („soweit“).</li>
+<li><strong>BMF 05.11.2021 Rn. 13:</strong> In the cost cap for electric and hybrid cars, the AfA counts in the total costs with the same fraction as the list price.</li>
+<li><strong>Lohnsteuer-Anmeldung 2026, Kz 86:</strong> It counts all employees, including temporary workers and minijobbers (note no. 11).</li>
+<li><strong>§ 18 Abs. 2 Satz 3 UStG:</strong> A founder who expects a refund is not exempt.</li>
+<li><strong>Citations corrected:</strong> § 34 Abs. 3 Satz 5 instead of Satz 4; § 19 Abs. 1 Satz 4 UStG only applies until 2024, from 2025 § 15 Abs. 2 Satz 1 Nr. 1 excludes the input tax deduction.</li>
+</ul>
+<p><strong>Checked and correct:</strong></p>
+<ul>
+<li>Gewerbesteuer: §§ 8 Nr. 1, 9 Nr. 1 (from 2025 Grundsteuer), 10a, 11 GewStG</li>
+<li>§ 35 EStG</li>
+<li>§§ 16 Abs. 4, 34 Abs. 1 and 3, 34a rates EStG</li>
+<li>catalog professions under § 18 EStG</li>
+<li>provision maximums 2022–2026</li>
+<li>declining-balance AfA: all three windows</li>
+<li>GWG and Sammelposten</li>
+<li>§ 7g EStG</li>
+<li>§ 10d EStG</li>
+<li>§ 4 Abs. 5 EStG: business entertainment, gifts, meals, home office</li>
+<li>price limits and hybrid ranges for the company car</li>
+<li>§ 18 Abs. 2/2a UStG and § 47 UStDV</li>
+<li>Kennzahlen of the USt 1 A</li>
+<li>limits under § 19 and § 20 UStG</li>
+<li>minijob limits, rates and levies 2022–2026, RV minimum assessment base €175</li>
+<li>periods under § 41a EStG</li>
+<li><strong>Not wrong, but different from what was first reported:</strong> Kleinunternehmer and acquisition threshold (§ 1a Abs. 3 UStG). Anyone who books with an acquisition tax code has used their VAT ID; that counts as a waiver under Abs. 4.</li>
+</ul>
+<p><strong>Rebuilt on 20.11.2026:</strong></p>
+<ul>
+<li><strong>Company car:</strong><ul>
+<li>battery deduction for cars acquired before 2023 without a fraction (§ 6 Abs. 1 Nr. 4 Satz 2 Nr. 1 EStG; €500/kWh until 2013, €50 less each year, at most €10,000, €500 less each year)</li>
+<li>with a logbook, the leasing installments with the fraction; fields „Batteriekapazität“ (&quot;battery capacity&quot;) and „Leasingraten“ (&quot;leasing installments&quot;) on the page</li>
+</ul>
+</li>
+<li><strong>AfA:</strong><ul>
+<li>§ 7 Abs. 2a EStG as the method „E-Fahrzeug 75 %“ (&quot;electric vehicle 75 %&quot;) (75/10/5/5/3/2 %, without months, without special AfA)</li>
+<li>buildings: 3 % under Abs. 4 Nr. 1 only with a building application after 31.3.1985; Abs. 5a only for residential purposes, also on purchase with a contract within the window</li>
+<li>§ 7g Abs. 6 Nr. 1: profit limit of the previous year</li>
+<li>An asset whose schedule cannot be calculated is no longer saved (previously saved first, then checked).</li>
+</ul>
+</li>
+<li><strong>Payroll:</strong><ul>
+<li>§ 41a Abs. 2 Satz 4 EStG (new permanent establishment: first month × 12)</li>
+<li>U1 can be switched off (§ 1 Abs. 1 AAG)</li>
+<li>flat-rate Lohnsteuer (Kz 41, 44), remainder (Kz 48), flat-rate church tax (Kz 47); booked as personnel expense</li>
+<li>church tax of other communities on the line of the state (2026 form, page 3); the state comes from the municipality key. Without a line it only appears in Kz 83, and the page says so.</li>
+</ul>
+</li>
+<li><strong>Umsatzsteuer:</strong><ul>
+<li>Zusammenfassende Meldung: switch within the quarter (§ 18a Abs. 1 Satz 3 UStG)</li>
+<li>§ 19 from 2025: date of the supply that exceeds the limit, on the Umsatzsteuer page</li>
+<li>§ 20 Satz 1 Nr. 2 UStG in the core</li>
+<li>input tax adjustment under § 15a UStG with §§ 44, 45 UStDV in the core (<code>inputVatCorrection</code>)</li>
+<li>§ 13b with 7 % in the calculation of the advance return</li>
+</ul>
+</li>
+<li><strong>Gewerbesteuer:</strong> minimum multiplier 280 % from 2027.</li>
+</ul>
+<p><strong>Closed on 20.11.2026 (second part):</strong></p>
+<ul>
+<li><strong>§ 13b with 7 % can be booked:</strong> tax codes <code>rc13b7</code> and <code>rcEu7</code> on the accounts without a tax rate. According to the DATEV chart of accounts 2026 (Art.-Nr. 11174 / 11175, read) there is no separate 7 % account for § 13b:<ul>
+<li>Umsatzsteuer nach § 13b UStG: SKR03 1785, SKR04 3835</li>
+<li>Abziehbare Vorsteuer nach § 13b UStG: SKR03 1578, SKR04 1408</li>
+<li>The advance return taxes the 7 % portion at 7 %.</li>
+</ul>
+</li>
+<li><strong>Flat-rate Lohnsteuer:</strong> booked to „Pauschale Steuer für Arbeitnehmer“ (SKR03 4198, SKR04 6039, DATEV 2026).</li>
+<li><strong>§ 20 Satz 1 Nr. 2 UStG:</strong> The exemption under § 148 AO appears in the profile as soon as one selects „Ist“ (&quot;cash basis&quot;).</li>
+<li><strong>Buildings via API and page:</strong><ul>
+<li>use, completion, building application</li>
+<li>for 5 % declining balance, start of construction or purchase contract</li>
+<li>new column <code>Anlagegut.gebaeude</code>, encrypted</li>
+</ul>
+</li>
+<li><strong>§ 7g special AfA</strong> with the previous year&#39;s profit when creating the asset.</li>
+<li><strong>§ 15a UStG per asset:</strong><ul>
+<li>inputs: input tax, original share, share per year</li>
+<li>new column <code>Anlagegut.vorsteuerberichtigung</code>, encrypted</li>
+<li>The year&#39;s adjustment flows into the annual Umsatzsteuer; the page lists it per asset.</li>
+<li>The Kennzahl of the line „Berichtigung des Vorsteuerabzugs (§ 15a UStG)“ in USt 2 A is not in the generated form catalog. The app therefore names the line by name instead of with an unchecked Kennzahl.</li>
+</ul>
+</li>
+<li><strong>Lohnsteuer-Anmeldung:</strong><ul>
+<li>Kz 45 BAV-Förderbetrag (§ 100 EStG, at most €288 per employee and year)</li>
+<li>Kz 90 number of employees with Förderbetrag</li>
+<li>Kz 48 = 42 + 41 + 44 − 45</li>
+<li>Kz 33 (merchant ships, § 41a Abs. 4) does not occur in the app.</li>
+</ul>
+</li>
+<li><strong>Filling aid USt 2 A:</strong> EU services (§ 13b Abs. 1) and other § 13b services each have their own line. Input tax is shown separately for invoices, EU acquisition and § 13b; previously everything was in „Vorsteuer aus Rechnungen“.</li>
+</ul>
+<p><strong>Still open (interpretation, cannot be decided without a BMF letter):</strong></p>
+<ul>
+<li>Does the exception under Abs. 2 Satz 2 also apply to the excess of withdrawals under § 34a Abs. 4?</li>
+<li>Is the maximum for the loss carry-back (§ 10d Abs. 1 Satz 2) for both years together?</li>
+<li>The BAV-Förderbetrag reduces the Lohnsteuer to be paid, but is not booked separately. The user books the payment to the Finanzamt (tax office) at the amount paid.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

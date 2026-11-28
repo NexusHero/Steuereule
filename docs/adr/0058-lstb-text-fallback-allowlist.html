@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0058 — LStB text fallback: allowlist, evidence check, never green — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0058</p>
+        <h1>LStB text fallback: allowlist, evidence check, never green <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-10</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/domains/lstb-parser.ts</code>, <code>apps/api/src/lstb-scan/</code></li>
+<li><strong>Supplements:</strong> ADR-0051 (owl mode, document isolation §5), ticket #444 (guiding decision 2)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>#444 originally planned purely deterministic LStB (Lohnsteuerbescheinigung, wage tax
+certificate) parsing. Scanned or poorly typeset certificates, however, leave fields open for the
+parser. A text fallback via the language model can help there. The review of PR #448 found three
+gaps in it:</p>
+<ol>
+<li>Values from the model could turn <strong>green</strong> and <strong>overwrite</strong> deterministically green values.
+That made AC 4 („niemals ein falscher grüner Wert“, &quot;never a wrong green value&quot;) impossible to hold.</li>
+<li>Invented amounts (not in the text) were accepted.</li>
+<li>The redaction worked with a <strong>blocklist</strong> over the whole document text. A name and
+address block without a label, or an employer without a legal-form suffix, went to the provider.</li>
+</ol>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>The text fallback stays, but only under these rules:</p>
+<ol>
+<li><strong>Allowlist instead of blocklist.</strong> <code>selectLstbRelevantLines()</code> lets through only lines 3, 4, 23a/b,
+25, 26 and 27 (plus a pure amount continuation line) and a synthetic year line.
+Everything else does not leave the server. Redaction (<code>scrubDocumentTextPii</code>) and
+<code>checkPiiFree</code> then run as the second and third lines of defense. If
+<code>checkPiiFree</code> triggers, the call is skipped (<code>securityBlocked: true</code>).</li>
+<li><strong>Evidence check.</strong> A proposed amount only counts if it appears verbatim in exactly the text
+the model saw. Otherwise it is discarded.</li>
+<li><strong>Only fill gaps.</strong> The fallback fills only fields that the deterministic
+parser left empty. It never overwrites a value that was read and cannot supply a tax year.</li>
+<li><strong>Never green.</strong> Every field filled by the fallback is <code>pruefen</code> with reason <code>llm_suggested</code> and
+must be confirmed individually by the user. Deterministic fields are never upgraded. They
+are only downgraded if the merged values contradict each other (shared
+plausibility rule).</li>
+<li><strong>Traceable.</strong> Every external call creates an audit entry
+<code>ki_lstb_textfallback</code> (without content).</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>AC 4 is secured by core tests (<code>lstb-text-fallback.test.ts</code>): invented values,
+overwriting and green fallback fields are ruled out.</li>
+<li>The benefit of the fallback is deliberately narrow. It helps when a line was recognized but its
+amount was not reliably assigned by the parser. Whatever is not in the permitted text stays open and
+is entered by hand.</li>
+<li>Without an unlocked AI slot, or with the kill switch active, the scan runs purely deterministically.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0056-asynchronous-pdf-generation-job-queue.html"><span class="eyebrow">Previous</span><span>ADR-0056</span></a><a class="step step-next" href="0059-document-keystore-crypto-shredding.html"><span class="eyebrow">Next</span><span>ADR-0059</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

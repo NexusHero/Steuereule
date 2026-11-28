@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0010 — Postgres in CI: service-container for the test/smoke jobs, compose service for the local/e2e stack — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0010</p>
+        <h1>Postgres in CI: service-container for the test/smoke jobs, compose service for the local/e2e stack <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> Accepted · 2026-07-23 · realises #66/#69, honours ADR-0004 (testing), ADR-0003 (seed),
+ADR-0008 (encryption-at-rest), the &quot;milestone yields a testable artifact + compliance tests run in CI
+against a real service&quot; retro rule.</p>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Two DSGVO-critical guarantees — REQ-003 field-encryption at rest and REQ-004 append-only audit log —
+are proven <strong>only</strong> by <code>apps/api/test/profile.integration.test.ts</code>, which reads raw ciphertext via
+<code>prisma.$queryRaw</code> to bypass the <code>prisma-field-encryption</code> client extension. That test needs a real,
+migrated Postgres and runs only behind <code>pnpm --filter @steuereule/api test:integration</code>
+(<code>vitest.integration.config.ts</code>) — a command no pipeline calls today. CI&#39;s <code>test</code> job runs only the
+no-DB <code>pnpm -r test</code>; none of the three compose files define a Postgres service (still the idle
+<code>baseline</code> alpine container). So the compliance claim is asserted by a real test that never runs
+anywhere repeatable, and &quot;Done&quot; per the requirements register is not met.</p>
+<p>Separately (#69), no CI stage boots the <strong>real</strong> HTTP server — every test uses Fastify <code>.inject()</code>,
+which never exercises the real adapter/plugin stack. That blind spot hid a missing <code>@fastify/static</code>
+dependency (crashed <code>SwaggerModule.setup()</code> on real boot) and the CORS gap (#57) until a human hit
+them by hand.</p>
+<p>Two questions had to be settled: <strong>(a)</strong> how Postgres reaches the integration tests in CI, and
+<strong>(b)</strong> how the compose stack becomes the &quot;one-command local stack&quot; the PO can bring up.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>Separate the two concerns — they have different runtimes.</strong></p>
+<ol>
+<li><p><strong>CI <code>test:integration</code> job → GitHub Actions <code>services:</code> container.</strong> The integration tests run as
+a Node/Vitest process <em>on the runner</em>, not inside a container. The cheapest, most reliable way to
+give that process a database is a runner-local service container
+(<code>services: { postgres: { image: postgres:16, ports: [5432], health-cmd: pg_isready } }</code>), with
+<code>DATABASE_URL=postgres://…@localhost:5432/…</code>. The job then: install → <code>prisma generate</code> →
+<strong><code>prisma migrate deploy</code></strong> against the service → <code>pnpm --filter @steuereule/api test:integration</code>.
+This is a <strong>new required job</strong> (name: <code>integration</code>), CI-blocking exactly like the unit <code>test</code> job.
+Chosen over docker-compose-in-CI because there is no container to build for a process that already
+runs natively on the runner — compose-up would add an image build and orchestration for no gain.</p>
+</li>
+<li><p><strong>CI <code>smoke</code> job → same service-container + real boot over HTTP.</strong> Reuse a Postgres service
+container, <code>migrate deploy</code>, then boot the <strong>real compiled server</strong> (see ADR-0010a note below on the
+loader), poll for listen, and <code>curl</code> a golden-path request: <code>GET /v1/profile</code> (returns a 200 default
+DTO for a fresh guest and <em>does</em> touch Postgres — proving adapter + plugins + DB wiring in one
+cheap request). Non-2xx / connection-refused fails the build in seconds. Runs after <code>build</code>, before
+any future acceptance/e2e tier (ADR-0004 cascade).</p>
+</li>
+<li><p><strong><code>docker-compose.yml</code> gains a real <code>postgres</code> service → the PO&#39;s one-command local stack.</strong> The
+base compose file adds <code>postgres:16</code> with a named volume and a seed/migrate path, so
+<code>docker compose up</code> gives a live database the local API + <code>test:integration</code> + <code>pnpm --filter @steuereule/api prisma db seed</code> (ADR-0003 synthetic fixture) run against. This is the &quot;testable
+artifact&quot; the milestone rule demands. The <code>ci</code>/<code>e2e</code> overlays layer env onto it. The idle
+<code>baseline</code> container is retired from the base file (its only job was to keep <code>validate-compose</code>
+honest; a real <code>postgres</code> service replaces it).</p>
+</li>
+</ol>
+<p><strong>Pinning &amp; parity (12-Factor X):</strong> the CI service container and the compose service use the <strong>same
+<code>postgres:16</code> family</strong>, so dev/CI/prod-shaped parity holds — no silent drift between &quot;passed in CI&quot; and
+&quot;runs locally&quot;.</p>
+<p><strong>No real PII (ADR-0004 §4.2):</strong> the integration DB is seeded only with synthetic fixtures, identical
+to <code>profile.integration.test.ts</code>&#39;s existing constants.</p>
+<h3 id="adr-0010a--the-smoke-steps-loader-tactical-recorded-for-traceability"><a class="anchor" href="#adr-0010a--the-smoke-steps-loader-tactical-recorded-for-traceability" aria-hidden="true" tabindex="-1">#</a>ADR-0010a — the smoke step&#39;s loader (tactical, recorded for traceability)</h3>
+<p><code>node dist/main.js</code> <strong>cannot boot today</strong>: <code>@steuereule/core</code>&#39;s <code>package.json</code> sets
+<code>&quot;main&quot;: &quot;./src/index.ts&quot;</code> (ships TS source, no build) with extensionless internal imports
+(<code>from &#39;./format&#39;</code>), so the compiled API&#39;s <code>import … from &#39;@steuereule/core&#39;</code> dies at runtime with
+<code>ERR_MODULE_NOT_FOUND</code>. The smoke step therefore boots via <strong><code>node --import tsx dist/main.js</code></strong> — <code>tsx</code>
+(already an API devDependency) bridges the TS-source + extensionless-import resolution while still
+running the <strong>compiled <code>dist/</code></strong> of the API (so a real API dist-wiring regression, the <code>@fastify/static</code>
+class of bug, is still caught). This is the pragmatic bridge for <em>this</em> slice. The <strong>proper</strong> fix —
+give <code>@steuereule/core</code> a real build (JS output + <code>exports</code> map) or bundle the API so <code>node dist/main.js</code>
+runs loader-free — is a forward-looking monorepo packaging decision that shapes the eventual production
+container; it is <strong>escalated to the stakeholder</strong> and tracked as a separate follow-up, not settled here.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Two new CI jobs (<code>integration</code>, <code>smoke</code>) become required gates; a regression in encryption-at-rest,
+the audit log, or server boot now fails the build the same way a unit-test regression does. <strong>The gate
+is only truly enforced once branch protection (#71) requires these checks — that is the human
+stakeholder&#39;s to set; CI defining the jobs does not by itself block a merge.</strong></li>
+<li>The compose stack is now a real, bring-up-able artifact (Postgres + seed), not a placeholder.</li>
+<li>The <code>@steuereule/core</code> packaging quirk is now load-bearing for production runtime, not just tests —
+it must be fixed before a loader-free production image ships (follow-up, stakeholder-owned choice).</li>
+<li>Slight CI time cost: two jobs spin a Postgres container + run migrations. Kept fast by (a) pinning a
+single small image, (b) <code>migrate deploy</code> (not <code>migrate dev</code>), (c) <code>GET /v1/profile</code> as the one smoke
+request rather than a full e2e run.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>docker-compose-up in CI for the integration tests</strong> — rejected: adds an image build + orchestration
+around a process that runs natively on the runner; the service container is faster and simpler for the
+same parity. Compose stays the <em>local/e2e</em> stack, where a full multi-service bring-up is the point.</li>
+<li><strong>Testcontainers (programmatic Postgres from the test process)</strong> — viable and keeps DB lifecycle in
+the suite, but adds a Docker-in-test dependency and startup cost per run; the GHA service container is
+the lighter idiom for a single Postgres. Revisit if the integration suite needs bespoke DB topologies.</li>
+<li><strong><code>tsx src/main.ts</code> for smoke (skip the build)</strong> — rejected: it would boot the <em>source</em>, not <code>dist/</code>,
+so a <code>dist</code>-packaging regression (the exact <code>@fastify/static</code> failure mode) could slip through.</li>
+<li><strong>Keep asserting compliance only in local <code>test:integration</code></strong> — rejected: that is precisely the
+&quot;passed on someone&#39;s machine once&quot; gap #66 exists to close.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0009-better-auth-as-auth-server.html"><span class="eyebrow">Previous</span><span>ADR-0009</span></a><a class="step step-next" href="0011-cors-credentialed-cross-origin.html"><span class="eyebrow">Next</span><span>ADR-0011</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

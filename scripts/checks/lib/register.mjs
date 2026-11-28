@@ -1,11 +1,13 @@
-// Parses docs/requirements/register.md's two pipe tables (the summary table and the
+// Parses the two pipe tables of the requirements register, as lib/html-doc.mjs reads them from
+// docs/requirements/register.html (the summary table and the
 // Traceability matrix) into structured rows, and extracts file-path citations from a cell.
 //
 // Deliberately hand-rolled rather than a Markdown-table library: the format here is one
 // row per line (no multi-line cells), which a ~40-line parser handles completely, and a
 // dependency buys nothing extra for that shape.
 
-const KNOWN_EXTENSIONS = 'ts|tsx|mjs|md|puml|svg'
+// `html` is the pages of docs/ themselves (ADR-0116): a citation of a document is checked like one of a test.
+const KNOWN_EXTENSIONS = 'ts|tsx|mjs|md|html|puml|svg'
 
 // Backtick-fenced path-like citation, with brace-expansion support
 // (`apps/api/test/cockpit.{http,service,integration}.test.ts`) and an optional trailing
@@ -57,7 +59,7 @@ function splitRow(line) {
 }
 
 /**
- * @param {string} text full register.md content
+ * @param {string} text full register.html content
  * @returns {{name: string, headers: string[], rows: {lineNumber: number, cells: string[]}[]}[]}
  */
 export function parseTables(text) {
@@ -89,7 +91,7 @@ export function parseTables(text) {
 }
 
 /**
- * The column each table uses for test citations, by convention (see register.md's own
+ * The column each table uses for test citations, by convention (see register.html's own
  * headers): the summary table's "Acceptance test", the traceability table's "Location".
  */
 export function citationColumnIndex(table) {

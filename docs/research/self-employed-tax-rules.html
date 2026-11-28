@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tax rules for the self-employed 2022–2026 — sources — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Research</p>
+        <h1>Tax rules for the self-employed 2022–2026 — sources</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#freelance-profession-or-trade-professionts">Freelance profession or trade (<code>profession.ts</code>)</a></li><li><a class="chip" href="#depreciation-depreciationts">Depreciation (<code>depreciation.ts</code>)</a></li><li><a class="chip" href="#umsatzsteuer-vat-vat-annualts-business-taxests">Umsatzsteuer (VAT) (<code>vat-annual.ts</code>, <code>business-taxes.ts</code>)</a></li><li><a class="chip" href="#gewerbesteuer-trade-tax-trade-taxts">Gewerbesteuer (trade tax) (<code>trade-tax.ts</code>)</a></li><li><a class="chip" href="#losses-lossests">Losses (<code>losses.ts</code>)</a></li><li><a class="chip" href="#profit-profitts">Profit (<code>profit.ts</code>)</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 19.11.2026. Basis for <code>packages/core/src/domains/business/*</code> and its integration into the estimate (<code>engine/business-income.ts</code>, ADR-0101). &quot;Checked&quot; means: read in the statutory text on gesetze-im-internet.de or in the BMF letter itself. &quot;Not checked against the primary text&quot; is noted where only secondary sources or memory support the statement.</p>
+<h2 id="freelance-profession-or-trade-professionts"><a class="anchor" href="#freelance-profession-or-trade-professionts" aria-hidden="true" tabindex="-1">#</a>Freelance profession or trade (<code>profession.ts</code>)</h2>
+<ul>
+<li>§ 18 Abs. 1 Nr. 1 Satz 2 EStG: catalog professions and scientific, artistic, literary, teaching and educational activity. Checked.</li>
+<li>§ 18 Abs. 1 Nr. 1 Satz 3 und 4 EStG: assistance from professionally trained staff only with the person&#39;s own leading and self-responsible activity; a stand-in during temporary unavailability does no harm. Checked.</li>
+<li>§ 15 Abs. 2 EStG: Gewerbebetrieb (trade or business) as the catch-all category. H 15.6 EStH on the „ähnlicher Beruf“ (similar profession): not checked against the primary text.</li>
+</ul>
+<h2 id="depreciation-depreciationts"><a class="anchor" href="#depreciation-depreciationts" aria-hidden="true" tabindex="-1">#</a>Depreciation (<code>depreciation.ts</code>)</h2>
+<ul>
+<li>§ 6 Abs. 2 EStG: GWG (low-value assets) up to €800 net; register above €250. § 52 Abs. 12 EStG: for acquisitions after 31.12.2017. Checked.</li>
+<li>§ 6 Abs. 2a EStG: Sammelposten (pool) above €250 up to €1,000, one fifth each in the year of formation and the four following years, a disposal does not reduce it, immediate deduction up to €250, uniform for all assets of the year. Checked.</li>
+<li>§ 7 Abs. 1 Satz 4 EStG: in the year of acquisition, one twelfth less for each full month before the month of acquisition. Checked. Year of disposal pro rata including the month of disposal (R 7.4 Abs. 8 EStR): not checked against the primary text.</li>
+<li>§ 7 Abs. 2 EStG, declining-balance AfA (depreciation): current text 1.7.2025–31.12.2027, 3 times, at most 30 %. Checked. § 52 Abs. 15 Satz 4 EStG names the windows 1.1.2020–31.12.2022 and 1.4.–31.12.2024. Checked. The rates of these windows (2.5 times/25 % and 2 times/20 %) come from the amending acts: not checked against the primary text.</li>
+<li>§ 7 Abs. 4 EStG: 3 % for business buildings (Nr. 1), 3 % for residential buildings completed after 31.12.2022, 2 % otherwise, 2.5 % before 1925. Checked.</li>
+<li>§ 7 Abs. 5a EStG: 5 % of the residual value for residential buildings with construction start 1.10.2023–30.9.2029. Checked.</li>
+<li>AfA-Tabelle AV (depreciation table for general assets), BMF 15.12.2000, IV D 2 - S 1551 - 188/00, BStBl I S. 1532: useful lives in the code with citation. Checked against the table text.</li>
+<li>BMF 22.02.2022, IV C 3 - S 2190/21/10002 :025 (replaces BMF 26.02.2021): computer hardware and software 1 year; no option, register required, full AfA in the year of acquisition is not objected to (Tz. 1.1, 1.2, 1.4). Checked via WD 4 - 3000 - 051/22 of the Bundestag. Whether smartphones fall under it: open; the code uses 5 years (AfA-Tabelle AV 6.13.2.2).</li>
+<li>§ 7g Abs. 1 EStG: IAB (investment deduction) up to 50 %, profit limit €200,000, maximum €200,000 per business. Abs. 2: add-back up to 50 % of the costs, reduction of the costs. Abs. 3: reversal after the third following year. Abs. 5: special AfA up to 40 % in the year of acquisition and the four following years. Abs. 6: profit limit, almost exclusively business use. Checked.</li>
+<li>§ 52 Abs. 16 EStG: 40 % for acquisitions after 31.12.2023 (before that 20 %); investment period for deductions from 2017 six, 2018 five, 2019 four years. For 2020 and 2021 no extension in the text. Checked.</li>
+<li>§ 7a Abs. 9 EStG: after the end of the incentive period, residual value over the remaining useful life. Not checked against the primary text.</li>
+</ul>
+<h2 id="umsatzsteuer-vat-vat-annualts-business-taxests"><a class="anchor" href="#umsatzsteuer-vat-vat-annualts-business-taxests" aria-hidden="true" tabindex="-1">#</a>Umsatzsteuer (VAT) (<code>vat-annual.ts</code>, <code>business-taxes.ts</code>)</h2>
+<ul>
+<li>§ 12 Abs. 1, 2 UStG: 19 % and 7 %. § 12 Abs. 3 UStG: 0 % photovoltaics up to 30 kWp. Checked (text without time limit).</li>
+<li>§ 12 Abs. 2 Nr. 15 UStG, food in restaurants excluding drinks: 7 % from 1.1.2026, Steueränderungsgesetz 2025 of 22.12.2025 (BGBl. 2025 I Nr. 363). Checked against the current text; date via Bundestag/KPMG/Haufe. 7 % from 1.7.2020 to 31.12.2023 and 19 % in 2024/2025: not checked against the primary text.</li>
+<li>§ 28 Abs. 5 UStG, gas 7 % from 1.10.2022 to 31.3.2024: not checked against the primary text.</li>
+<li>§ 19 Abs. 1 UStG: €25,000 previous year, €100,000 current year (from 2025); total turnover based on payments received (Abs. 2); waiver binds for five years (Abs. 3). Checked. BMF 18.03.2025, III C 3 - S 7360/00027/044/105: exceeding €100,000 ends the scheme with that transaction. Until 2024 €22,000 / €50,000: not checked against the primary text.</li>
+<li>§ 20 Satz 1 UStG: cash-basis taxation up to €800,000 previous-year turnover, for freelance professions without limit. Checked. €600,000 until 2023: not checked against the primary text.</li>
+<li>§ 13b, § 15 Abs. 1 Satz 1 Nr. 4, § 19 Abs. 1 Satz 4 UStG (reverse charge, deduction, Kleinunternehmer without deduction): not checked against the primary text.</li>
+</ul>
+<h2 id="gewerbesteuer-trade-tax-trade-taxts"><a class="anchor" href="#gewerbesteuer-trade-tax-trade-taxts" aria-hidden="true" tabindex="-1">#</a>Gewerbesteuer (trade tax) (<code>trade-tax.ts</code>)</h2>
+<ul>
+<li>§ 8 Nr. 1 GewStG: one quarter of the sum of a) to f) above €200,000; d) one fifth (half of that for electric vehicles and bicycles), e) one half, f) one quarter. Checked.</li>
+<li>§ 9 Nr. 1 Satz 1 GewStG from EZ 2025: the Grundsteuer (property tax) recorded as a business expense in the assessment period (§ 36 Abs. 4b Satz 1 GewStG, version of the JStG 2024 of 2.12.2024). Checked. Until 2024 1.2 % of 140 % of the Einheitswert (assessed value): via Haufe/NWB, not checked against the primary text.</li>
+<li>§ 10a GewStG: deficits up to €1 million in full, above that 60 %. Checked.</li>
+<li>§ 11 Abs. 1, 2 GewStG: rounding down to full €100, allowance €24,500 at most up to the rounded-down income, base rate 3.5 %. Checked. R 14.1 Satz 3 GewStR: round the base amount down to full euros (via NWB, version of the GewStR 2009).</li>
+<li>§ 35 Abs. 1 EStG: 4.0 times the base amount, maximum reduction amount, limit to the trade tax actually payable. Checked.</li>
+<li>BMF 03.11.2016, IV C 6 - S 2296-a/08/10002-003, BStBl I S. 1187, amended by BMF 17.04.2019, IV C 6 - S 2296-a/17/10004: Rn. 4 (starting figure, § 35a after it), Rn. 9 (limited per business), Rn. 10 (spouses), Rn. 16–18 (formula, positive income per type of income, examples). Checked against the text. I did not find a newer letter.</li>
+<li>§ 51a Abs. 2 Satz 3 EStG: § 35 is disregarded for church tax. Checked. § 3 Abs. 2 SolZG: Soli (solidarity surcharge) on the income tax to be assessed with child allowances; does not name § 35. That § 35 reduces the Soli is the usual reading; not supported by the wording.</li>
+</ul>
+<h2 id="losses-lossests"><a class="anchor" href="#losses-lossests" aria-hidden="true" tabindex="-1">#</a>Losses (<code>losses.ts</code>)</h2>
+<ul>
+<li>§ 10d Abs. 1 EStG (version from 1.1.2024): carry-back up to €1 million (€2 million jointly), first into the previous year, then into the second previous year, with priority over Sonderausgaben (special expenses); waiver only in full. Checked.</li>
+<li>§ 10d Abs. 2 EStG: €1 million (€2 million) in full, above that 70 %. Checked. § 52 Abs. 18b Satz 3 EStG: from VZ 2024. 70 % only until 2027, from 2028 60 %: via Steuerschröder, not checked against the primary text.</li>
+<li>€10 million / €20 million for 2022 and 2023 (Viertes Corona-Steuerhilfegesetz; § 52 Abs. 18b Satz 2 EStG): via Haufe and buzer.de, not checked against the primary text.</li>
+<li>§ 10d Abs. 4 Satz 2 EStG: remaining loss carry-forward. Checked.</li>
+<li>Open: whether the maximum amount of Satz 1 applies to both carry-back years together (the code reads it that way); the order of a carry-back from a later year and a carry-forward in the same year (the code deducts the carry-back first); BVerfG 23.07.2025, 2 BvL 19/14 on minimum taxation, content not read.</li>
+</ul>
+<h2 id="profit-profitts"><a class="anchor" href="#profit-profitts" aria-hidden="true" tabindex="-1">#</a>Profit (<code>profit.ts</code>)</h2>
+<ul>
+<li>§ 4 Abs. 5 Satz 1 Nr. 1 EStG: gifts up to €50 per recipient and year. Checked. § 52 Abs. 6 Satz 1 EStG: from financial years after 31.12.2023. Checked. Previously €35: not checked against the primary text.</li>
+<li>§ 4 Abs. 5 Satz 1 Nr. 2 EStG: business entertainment at 70 %. Checked.</li>
+<li>§ 4 Abs. 5 Satz 1 Nr. 5 with § 9 Abs. 4a Satz 3 EStG: €28 / €14. Checked against the current text.</li>
+<li>§ 4 Abs. 5 Satz 1 Nr. 6 EStG: trips between home and business with the Entfernungspauschale (distance allowance), 0.03 % rule for a car in business assets. Checked.</li>
+<li>§ 9 Abs. 1 Satz 3 Nr. 4 EStG: €0.38 from the first kilometer, current text. Checked. From 2026 through the Steueränderungsgesetz 2025 (BT-Drs. 21/1974). Until 2025 €0.30 / €0.38 from the 21st km: not checked against the primary text.</li>
+<li>§ 4 Abs. 5 Satz 1 Nr. 6b, 6c EStG: center of activity, annual flat rate €1,260 with reduction per month, daily flat rate €6 up to €1,260. Checked. 2022 version (€1,250, €5 up to €600): not checked against the primary text.</li>
+<li>§ 4 Abs. 5b EStG: Gewerbesteuer is not a business expense. Checked.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>
