@@ -91,6 +91,8 @@ locals {
     "GOOGLE_API_KEY",
     "ANTHROPIC_API_KEY",
     "OPENAI_API_KEY",
+    # Key of the owl's voice while AI_SPEECH_PROVIDER is mistral (ADR-0115).
+    "MISTRAL_API_KEY",
     # A key for the chosen provider, and one per model slot (chat, documents, fallback, topic guard).
     "AI_API_KEY",
     "AI_ADVISOR_API_KEY",

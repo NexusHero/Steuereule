@@ -25,7 +25,7 @@ export class GeminiSpeech implements SpeechPort {
       // The passage and nothing else: a line on how to sound is read aloud with it (measured 28.11.2026). The voice
       // carries the tone, and the model takes the language from the text.
       contents: [{ parts: [{ text: request.text }] }],
-      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voice } } } },
+      generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: this.config.voices[request.language] } } } },
     }
     let response: Awaited<ReturnType<Fetch>>
     try {

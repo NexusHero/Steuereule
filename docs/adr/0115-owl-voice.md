@@ -20,12 +20,15 @@ speech endpoint, so a conversation answered by Claude needs another provider for
 
 ## Decision
 
-1. **A port.** `SpeechPort.speak({ text, language })` returns one WAV file. `GeminiSpeech` is the
-   first adapter (Generative Language API, key in a header). `FakeSpeech` is the scripted voice of
-   CI and tests, on with `AI_FAKE_KI`. `NoSpeech` stands where nothing is configured. Another
-   provider is another adapter.
-2. **Off until named.** The voice is on only with `AI_SPEECH_PROVIDER=google-genai` and a Gemini
-   key. A key that is present for the chat does not switch it on: reading aloud sends answer text
+1. **A port, independent of the chat model.** `SpeechPort.speak({ text, language })` returns one
+   WAV file. Two adapters: `MistralSpeech` (Voxtral, `POST /v1/audio/speech`, data hosted in the
+   EEA by default) and `GeminiSpeech` (Generative Language API). `FakeSpeech` is the scripted voice
+   of CI and tests, on with `AI_FAKE_KI`. `NoSpeech` stands where nothing is configured. Another
+   provider is another adapter. Which model answers a conversation plays no part in which
+   provider speaks it.
+2. **Off until named.** The voice is on only with `AI_SPEECH_PROVIDER` (`mistral` or
+   `google-genai`) and that provider's own key (`MISTRAL_API_KEY`; `GEMINI_API_KEY` or
+   `GOOGLE_API_KEY`). A key that is present for the chat does not switch it on: reading aloud sends answer text
    to the speech provider, which is a data flow of its own and may go to a provider the chat does
    not use. `AI_KILL_SWITCH` switches it off with every other model slot.
 3. **One route, text in.** `POST /v1/eulen-modus/stimme` takes one passage of at most 600
@@ -44,17 +47,24 @@ speech endpoint, so a conversation answered by Claude needs another provider for
 6. **No provider text in logs or errors.** A failed call is logged with its reason and HTTP status
    only, because a provider's error message may quote the passage. The client gets a German
    sentence and a code (`SPEECH_UNAVAILABLE`, `SPEECH_FAILED`, `SPEECH_BUDGET_SPENT`).
-7. **Voice and model.** Default voice `Sulafat`, default model `gemini-3.8-flash-tts`; both are
-   settings (`AI_SPEECH_VOICE`, `AI_SPEECH_MODEL`). The request carries the passage and nothing
+7. **Voice and model.** Defaults per provider: Mistral `voxtral-mini-tts-3-0` with `voice_481`
+   (Heidi, its one German preset) and `voice_447` for English, because a Mistral voice speaks one
+   language; Gemini `gemini-3.8-flash-tts` with `Sulafat` for both. All are settings
+   (`AI_SPEECH_MODEL`, `AI_SPEECH_VOICE`, `AI_SPEECH_VOICE_EN`). The request carries the passage and nothing
    else: a style line in front of it was spoken with it (checked by transcribing the audio).
 
 ## Consequences
 
-- With the voice on, the text of every answer a user has read aloud goes to Google. Personal data
-  reaches an answer only with the user's consent (ADR-0091), but then it is in the spoken text too.
-  The provider has to be named in the privacy notice before `AI_SPEECH_PROVIDER` is set on a
-  deployment. A Generative Language API key gives no assurance of processing in the EU; Vertex AI
-  with an EU region or a European provider would, and either is a new adapter.
+- With the voice on, the text of every answer a user has read aloud goes to the speech provider.
+  Personal data reaches an answer only with the user's consent (ADR-0091), but then it is in the
+  spoken text too. The provider has to be named in the privacy notice before `AI_SPEECH_PROVIDER`
+  is set on a deployment. Mistral states that API data is hosted in the EEA by default; whether
+  inputs are used for training is a setting of the Mistral account (Admin, Privacy) and has to be
+  off, and zero data retention is granted on request for paid accounts. A Generative Language API
+  key gives no assurance of processing in the EU.
+- The Mistral adapter is tested against the documented request and response, not yet against the
+  live API: no Mistral key existed when it was written. The real-call measurements below are
+  Gemini's.
 - Audio is sent as uncompressed WAV, about 48 kB per second at 24 kHz. A passage is a few hundred
   kilobytes. A compressed format would need an encoder on the server.
 - The speech model is not streamed: a passage plays once it is complete. The wait before the first
