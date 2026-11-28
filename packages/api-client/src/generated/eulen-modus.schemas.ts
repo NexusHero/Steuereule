@@ -2006,6 +2006,11 @@ export interface SpeakDto {
   language: SpeakDtoLanguage;
 }
 
+export interface TranscriptDto {
+  /** The words of the recording; empty when nothing was said. */
+  text: string;
+}
+
 export type AdvisorControllerGetSessionParams = {
   /** Which conversation to load; without it the one used last. */
   conversationId?: string;
@@ -2023,5 +2028,19 @@ export type AdvisorControllerRunEventsParams = {
 export type AdvisorControllerSearchParams = {
   /** At least two characters; case and accents are ignored. */
   q: string;
+};
+
+export type SpeechControllerTranscribeBodyLanguage = typeof SpeechControllerTranscribeBodyLanguage[keyof typeof SpeechControllerTranscribeBodyLanguage];
+
+
+export const SpeechControllerTranscribeBodyLanguage = {
+  de: 'de',
+  en: 'en',
+} as const;
+
+export type SpeechControllerTranscribeBody = {
+  /** The utterance as a WAV file, 16-bit mono, at most 60 seconds. */
+  file: Blob | File;
+  language: SpeechControllerTranscribeBodyLanguage;
 };
 

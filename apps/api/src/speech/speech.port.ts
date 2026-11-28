@@ -14,14 +14,22 @@ export interface SpeechRequest {
   readonly language: SpeechLanguage
 }
 
+/** One utterance as a WAV file (16-bit mono), as the app records it. */
+export interface HeardAudio {
+  readonly wav: Buffer
+  readonly language: SpeechLanguage
+}
+
 /**
- * The owl's voice (ADR-0115): text in, spoken audio out. The provider behind it is a setting, so another
- * one replaces an adapter and nothing else.
+ * The owl's voice and ear (ADR-0115): text in and spoken audio out, a recording in and its words out. The
+ * provider behind it is a setting, so another one replaces an adapter and nothing else.
  */
 export interface SpeechPort {
   /** False where no voice is configured: the app then reads with the device's own voice. */
   readonly available: boolean
   speak(request: SpeechRequest, signal?: AbortSignal): Promise<SpokenAudio>
+  /** The words of the recording; empty when nothing was said. */
+  transcribe(heard: HeardAudio, signal?: AbortSignal): Promise<string>
 }
 
 /** The provider did not answer with audio. Carries no provider text: that may quote the request. */

@@ -20,6 +20,7 @@ const COSTLY: Readonly<Record<string, { readonly effect: Effect; readonly limite
   'AdvisorController.streamMessage': { effect: 'model' },
   'AdvisorController.summarizeConversation': { effect: 'model' },
   'SpeechController.speak': { effect: 'model' },
+  'SpeechController.transcribe': { effect: 'model' },
   'ReceiptParseController.parseReceipt': { effect: 'model' },
   'ReceiptParseController.reassign': { effect: 'model' },
   'PrintoutController.printout': { effect: 'pdf' },

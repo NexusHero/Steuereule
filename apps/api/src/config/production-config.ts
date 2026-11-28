@@ -341,6 +341,7 @@ export const API_PRODUCTION_SETTINGS: readonly ProductionSetting[] = [
   // ── The owl's voice (ADR-0115): off until a provider is named, so a chat key alone starts no second data flow ──
   { name: 'AI_SPEECH_PROVIDER', source: 'operator', need: 'optional', format: '"google-genai" or "mistral", or unset for no server voice', check: oneOf('google-genai', 'mistral') },
   { name: 'AI_SPEECH_MODEL', source: 'operator', need: 'optional', format: 'model id of the voice (default: the provider default)', check: modelId },
+  { name: 'AI_SPEECH_TRANSCRIBE_MODEL', source: 'operator', need: 'optional', format: 'model id that turns a recording into words (default: the provider default)', check: modelId },
   { name: 'AI_SPEECH_VOICE', source: 'operator', need: 'optional', format: "the provider's voice for German (default Sulafat with google-genai, voice_481 with mistral)", check: voiceName },
   { name: 'AI_SPEECH_VOICE_EN', source: 'operator', need: 'optional', format: "the provider's voice for English (default: the German voice with google-genai, voice_447 with mistral)", check: voiceName },
   { name: 'AI_SPEECH_DAILY_CALL_LIMIT', source: 'operator', need: 'optional', format: 'speech calls a day across all users (default 20000)', check: wholeNumber(1, 100_000_000) },

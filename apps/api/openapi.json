@@ -9210,6 +9210,68 @@
         ]
       }
     },
+    "/v1/eulen-modus/gehoert": {
+      "post": {
+        "operationId": "SpeechController_transcribe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "language"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "The utterance as a WAV file, 16-bit mono, at most 60 seconds."
+                  },
+                  "language": {
+                    "type": "string",
+                    "enum": [
+                      "de",
+                      "en"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Requires account."
+          },
+          "413": {
+            "description": "The recording is longer than 60 seconds."
+          },
+          "429": {
+            "description": "Too many utterances for this account, or the day's voice budget is spent."
+          },
+          "503": {
+            "description": "No voice is configured, or its provider did not answer."
+          }
+        },
+        "summary": "The words of one recorded utterance (ADR-0115); the recording is not kept",
+        "tags": [
+          "eulen-modus"
+        ]
+      }
+    },
     "/v1/steuerjahre/{jahr}/veranlagungsartenvergleich": {
       "get": {
         "operationId": "FilingTypeComparisonController_getComparison",
@@ -25402,6 +25464,19 @@
         "required": [
           "text",
           "language"
+        ]
+      },
+      "TranscriptDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Ich bin 38 Kilometer zur Arbeit gefahren.",
+            "description": "The words of the recording; empty when nothing was said."
+          }
+        },
+        "required": [
+          "text"
         ]
       },
       "ComparisonSourceDto": {

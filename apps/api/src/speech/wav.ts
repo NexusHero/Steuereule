@@ -26,3 +26,30 @@ export function sampleRateOf(mimeType: string | undefined, fallback = 24_000): n
   const rate = /rate=(\d{4,6})/.exec(mimeType ?? '')?.[1]
   return rate === undefined ? fallback : Number.parseInt(rate, 10)
 }
+
+const FRAME_SECONDS = 0.05
+/** A frame counts as sound above this level (about -40 dBFS): a quiet room and a microphone's own noise stay below it. */
+const SOUND_RMS = 0.01
+/** Three such frames, 150 ms, are the shortest word. */
+const SOUND_FRAMES = 3
+
+/**
+ * Whether a 16-bit WAV file has anything in it that could be a word. A speech model asked to write down
+ * silence invents a sentence (measured 28.11.2026), so silence never reaches one.
+ */
+export function hasSound(wav: Buffer): boolean {
+  if (!isWav(wav) || wav.readUInt16LE(34) !== 16) return true
+  const channels = Math.max(1, wav.readUInt16LE(22))
+  const frame = Math.max(1, Math.round(wav.readUInt32LE(24) * FRAME_SECONDS)) * channels
+  const samples = Math.floor((wav.length - HEADER_BYTES) / 2)
+  let loud = 0
+  for (let start = 0; start + frame <= samples; start += frame) {
+    let sum = 0
+    for (let i = start; i < start + frame; i += 1) {
+      const value = wav.readInt16LE(HEADER_BYTES + i * 2) / 32_768
+      sum += value * value
+    }
+    if (Math.sqrt(sum / frame) > SOUND_RMS && ++loud >= SOUND_FRAMES) return true
+  }
+  return false
+}

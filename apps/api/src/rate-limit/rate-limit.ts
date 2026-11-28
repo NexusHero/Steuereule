@@ -59,6 +59,9 @@ export const SUMMARIZE_THROTTLE = { ttl: 10 * 60_000, limit: 10 } as const
  */
 export const SPEECH_THROTTLE = { ttl: 10 * 60_000, limit: 150 } as const
 
+/** One utterance of a spoken conversation is one call of a speech model (ADR-0115): 120 in ten minutes is one every five seconds. */
+export const LISTEN_THROTTLE = { ttl: 10 * 60_000, limit: 120 } as const
+
 /**
  * A per-account limit on the shared throttler storage (ADR-0109 §1). The class's UserContextGuard runs first, so
  * the account is known; a guest counts by address.
