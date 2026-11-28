@@ -1188,7 +1188,8 @@
     "markiert": "aus {{year}} übernommen – zählt erst, wenn du speicherst. Prüf die Werte kurz."
   },
   "steuerIdHinweis": {
-    "ungueltig": "Diese Steuer-ID kann so nicht stimmen. Prüf bitte die Ziffern auf dem Brief vom Bundeszentralamt für Steuern."
+    "ungueltig": "Diese Steuer-ID kann so nicht stimmen. Prüf bitte die Ziffern auf dem Brief vom Bundeszentralamt für Steuern.",
+    "form": "Eine Steuer-ID besteht aus genau 11 Ziffern, ohne Buchstaben oder andere Zeichen."
   },
   "haushalt": {
     "kinder": {

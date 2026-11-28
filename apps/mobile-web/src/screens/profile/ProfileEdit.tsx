@@ -1,11 +1,12 @@
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Feld, Input, Pill, Sticker, useTheme, type Breakpoint } from '@steuereule/ui'
-import { isValidTaxId } from '@steuereule/core'
+import { inspectTaxId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
 import { makeProfileStyles } from './styles'
 import { formatTaxId, sanitizeTaxNumberInput, countDigits } from '../onboarding/format'
 import type { OnboardingProfile } from '../onboarding/profileMapping'
+import { TaxIdHint } from '../shared/TaxIdHint'
 
 interface ProfileEditProps {
   readonly draft: OnboardingProfile
@@ -22,7 +23,8 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
   const { t: tr } = useTranslation(APP_NS)
   const styles = makeProfileStyles(t)
   const idDigits = countDigits(draft.steuerId)
-  const taxIdOk = isValidTaxId(draft.steuerId.replace(/\D/g, ''))
+  // The sticker says „gültig“, so it stands only on the full check (#67); saving does not depend on it.
+  const taxIdChecked = inspectTaxId(draft.steuerId) === 'valid'
   const canSave = draft.firstName.trim() !== '' && draft.lastName.trim() !== ''
 
   return (
@@ -62,8 +64,9 @@ export function ProfileEdit({ draft, onChange, onSave, onCancel, isSaving, saveE
       </Feld>
       <View style={styles.counterRow}>
         <Pill>{tr('profil.steuerIdCounter', { count: idDigits })}</Pill>
-        {taxIdOk ? <Sticker>{tr('profil.steuerIdConfirmed')}</Sticker> : null}
+        {taxIdChecked ? <Sticker>{tr('profil.steuerIdConfirmed')}</Sticker> : null}
       </View>
+      <TaxIdHint value={draft.steuerId} testID="profil-steuerid-hinweis" />
       <Feld label={tr('profil.steuerNrLabel')}>
         <Input
           type="numeric"
