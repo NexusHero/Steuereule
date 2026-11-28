@@ -21,7 +21,7 @@ describe('the way into a spoken conversation (ADR-0115)', () => {
 
   it('cannot be opened while an answer is written', () => {
     const onOpenConversation = vi.fn()
-    renderAdvisorChatPanel([], { onOpenConversation, isSending: true })
+    renderAdvisorChatPanel([], { onOpenConversation, stream: { isSending: true } })
     fireEvent.click(screen.getByTestId('advisor-conversation-open'))
     expect(onOpenConversation).not.toHaveBeenCalled()
   })

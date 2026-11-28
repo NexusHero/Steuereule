@@ -9,7 +9,7 @@ function renderPanel(props: Partial<AdvisorChatPanelProps>) {
 
 describe('AdvisorChatPanel live answer (#451 slice 1)', () => {
   it('shows the thinking owl with a server step before the first token', () => {
-    renderPanel({ isSending: true, streamSteps: [{ kind: 'tool', tool: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …' }] })
+    renderPanel({ stream: { isSending: true, streamSteps: [{ kind: 'tool', tool: 'lookup_legal_source', label: 'Prüfe EStG-Paragraph …' }] } })
     expect(screen.getByTestId('advisor-thinking')).toBeTruthy()
     expect(screen.getByTestId('eule-thinking-phrase').textContent).toBe('Prüfe EStG-Paragraph …')
     // Announced once through a polite live region, not on every phrase.
@@ -18,7 +18,7 @@ describe('AdvisorChatPanel live answer (#451 slice 1)', () => {
   })
 
   it('grows the answer inside the assistant bubble once tokens arrive, under the still counting thinking line', () => {
-    renderPanel({ isSending: true, streamedText: 'Du kannst bis zu 1.260 € ' })
+    renderPanel({ stream: { isSending: true, streamedText: 'Du kannst bis zu 1.260 € ' } })
     expect(screen.getByTestId('advisor-streaming-message').textContent).toContain('Du kannst bis zu 1.260 €')
     expect(screen.getByTestId('advisor-thought-toggle').textContent).toContain('Denkt nach')
     expect(screen.getByTestId('advisor-streaming-message').textContent).not.toContain('Denkt nach')
@@ -26,19 +26,19 @@ describe('AdvisorChatPanel live answer (#451 slice 1)', () => {
 
   it('offers Stop only while answering and only when the chat can stop', () => {
     const onStop = vi.fn()
-    renderPanel({ isSending: true, onStop })
+    renderPanel({ stream: { isSending: true, onStop } })
     fireEvent.click(screen.getByTestId('advisor-chat-stop'))
     expect(onStop).toHaveBeenCalled()
   })
 
   it('has no Stop where the chat cannot stop (non-streaming companion)', () => {
-    renderPanel({ isSending: true })
+    renderPanel({ stream: { isSending: true } })
     expect(screen.queryByTestId('advisor-chat-stop')).toBeNull()
   })
 
   it('keeps a stopped answer marked as aborted and asks again on retry', () => {
     const onSendMessage = vi.fn()
-    renderPanel({ abortedTurn: { question: 'Homeoffice?', partialText: 'Du kannst bis zu' }, onSendMessage })
+    renderPanel({ onSendMessage, stream: { abortedTurn: { question: 'Homeoffice?', partialText: 'Du kannst bis zu' } } })
     const bubble = screen.getByTestId('advisor-message-aborted')
     expect(bubble.textContent).toContain('Du kannst bis zu')
     expect(bubble.textContent).toContain('abgebrochen')

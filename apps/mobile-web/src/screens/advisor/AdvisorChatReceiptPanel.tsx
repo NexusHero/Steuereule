@@ -1,25 +1,21 @@
-import type { ReactNode } from 'react'
 import { Pressable, Text, TextInput, View } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Card, useTheme } from '@steuereule/ui'
 import { APP_NS } from '../../i18n/resources'
 import { ReceiptPickerButton } from '../shared/ReceiptPickerButton'
 import type { makeStyles } from './AdvisorChatPanel.styles'
-import type { AdvisorChatPanelProps } from './AdvisorChat.types'
+import type { AdvisorChatReceipts } from './AdvisorChat.types'
 import type { AdvisorChatState } from './useAdvisorChat'
 
 interface AdvisorChatReceiptPanelProps {
   readonly chat: AdvisorChatState
-  readonly onAttachReceipt: AdvisorChatPanelProps['onAttachReceipt']
-  readonly onAttachReceiptFile: AdvisorChatPanelProps['onAttachReceiptFile']
-  readonly receiptProgress: string | null
-  readonly receiptSources: ReactNode | undefined
-  readonly isParsingReceipt: boolean
+  readonly receipts: AdvisorChatReceipts
   readonly styles: ReturnType<typeof makeStyles>
 }
 
 /** Receipt attach panel: a PDF or photo first (read on the device, #444), pasted text as fallback. */
-export function AdvisorChatReceiptPanel({ chat, onAttachReceipt, onAttachReceiptFile, receiptProgress, receiptSources, isParsingReceipt, styles }: AdvisorChatReceiptPanelProps) {
+export function AdvisorChatReceiptPanel({ chat, receipts, styles }: AdvisorChatReceiptPanelProps) {
+  const { onAttachReceipt, onAttachReceiptFile, receiptProgress = null, receiptSources, isParsingReceipt = false } = receipts
   const theme = useTheme()
   const { t: tr } = useTranslation(APP_NS)
   const {
@@ -139,14 +135,12 @@ export function AdvisorChatReceiptPanel({ chat, onAttachReceipt, onAttachReceipt
 }
 
 interface AdvisorChatReceiptNoticeProps {
-  readonly receiptNotice: string | null
-  readonly receiptAssignment: ReactNode | undefined
-  readonly receiptResults: ReactNode | undefined
+  readonly receipts: Pick<AdvisorChatReceipts, 'receiptNotice' | 'receiptAssignment' | 'receiptResults'>
   readonly styles: ReturnType<typeof makeStyles>
 }
 
 /** What became of the last selection: one line per file, the reader's own sentence, and „Für wen?“. */
-export function AdvisorChatReceiptNotice({ receiptNotice, receiptAssignment, receiptResults, styles }: AdvisorChatReceiptNoticeProps) {
+export function AdvisorChatReceiptNotice({ receipts: { receiptNotice = null, receiptAssignment, receiptResults }, styles }: AdvisorChatReceiptNoticeProps) {
   if (!(receiptNotice || receiptAssignment || receiptResults)) return null
   return (
     <Card style={styles.receiptPanel} testID="advisor-receipt-notice">

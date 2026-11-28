@@ -38,7 +38,7 @@ function lstbAction(field: string, label: string, newValue: string, confidenceSt
 describe('AdvisorChatPanel — receipts in the chat', () => {
   it('hands a picked PDF or photo to the capture pipeline', async () => {
     const onFile = vi.fn()
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ onAttachReceiptFile: onFile }} />)
 
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
     const photo = new File([new Uint8Array([0xff, 0xd8, 0xff])], 'quittung.jpg', { type: 'image/jpeg' })
@@ -51,7 +51,7 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
   it('reads several picked files one after another, and lets a waiting one be taken out of the queue', async () => {
     const gates: Array<() => void> = []
     const onFile = vi.fn(() => new Promise<void>((resolve) => gates.push(resolve)))
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ onAttachReceiptFile: onFile }} />)
 
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
     const a = new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' })
@@ -85,7 +85,7 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
     const panel = (paused: boolean) => (
       <I18nextProvider i18n={createAppI18n('de')}>
         <ThemeProvider>
-          <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} receiptQueuePaused={paused} />
+          <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ onAttachReceiptFile: onFile, receiptQueuePaused: paused }} />
         </ThemeProvider>
       </I18nextProvider>
     )
@@ -105,7 +105,7 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
   it('starts a new batch once per selection, so the lines of the last one go (ADR-0097 §3)', async () => {
     const onBatchStart = vi.fn()
     const onFile = vi.fn(async () => {})
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceiptFile={onFile} onReceiptBatchStart={onBatchStart} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ onAttachReceiptFile: onFile, onReceiptBatchStart: onBatchStart }} />)
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
     const a = new File([new Uint8Array([1])], 'a.pdf', { type: 'application/pdf' })
     const b = new File([new Uint8Array([2])], 'b.pdf', { type: 'application/pdf' })
@@ -117,26 +117,26 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
   })
 
   it('shows the lines per file with the notice', () => {
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptResults={<span data-testid="results-slot">a.pdf: Nichts erkannt</span>} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ receiptResults: <span data-testid="results-slot">a.pdf: Nichts erkannt</span> }} />)
     expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()
     expect(screen.getByTestId('results-slot').textContent).toBe('a.pdf: Nichts erkannt')
   })
 
   it('says that pasted text creates no Beleg (ADR-0097 §4)', () => {
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} onAttachReceipt={vi.fn()} onAttachReceiptFile={vi.fn()} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ onAttachReceipt: vi.fn(), onAttachReceiptFile: vi.fn() }} />)
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
     fireEvent.click(screen.getByTestId('advisor-receipt-text-toggle'))
     expect(screen.getByTestId('advisor-receipt-text-hint').textContent).toBe('Eingefügter Text wird nur gelesen. Er legt keinen Beleg an, in deinen Belegen erscheint nichts.')
   })
 
   it('shows the document assignment under the upload (ADR-0092)', () => {
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptAssignment={<span data-testid="zuordnung-slot">Für wen?</span>} />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ receiptAssignment: <span data-testid="zuordnung-slot">Für wen?</span> }} />)
     expect(screen.getByTestId('advisor-receipt-notice')).toBeTruthy()
     expect(screen.getByTestId('zuordnung-slot').textContent).toBe('Für wen?')
   })
 
   it('shows no assignment on an ordinary notice', () => {
-    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receiptNotice="Datei unlesbar" />)
+    renderPanel(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} receipts={{ receiptNotice: 'Datei unlesbar' }} />)
     expect(screen.queryByTestId('beleg-zuordnung')).toBeNull()
   })
 
@@ -145,10 +145,12 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
       <AdvisorChatPanel
         messages={[]}
         onSendMessage={vi.fn()}
-        onAttachReceiptFile={vi.fn()}
-        isParsingReceipt
-        receiptProgress="Foto wird lokal gelesen …"
-        receiptNotice="Diese Lohnsteuerbescheinigung gehört zum Steuerjahr 2024"
+        receipts={{
+          onAttachReceiptFile: vi.fn(),
+          isParsingReceipt: true,
+          receiptProgress: 'Foto wird lokal gelesen …',
+          receiptNotice: 'Diese Lohnsteuerbescheinigung gehört zum Steuerjahr 2024',
+        }}
       />,
     )
     fireEvent.click(screen.getByTestId('advisor-receipt-attach-btn'))
@@ -172,7 +174,7 @@ describe('AdvisorChatPanel — receipts in the chat', () => {
       },
     } as unknown as AdvisorChatMessageView
 
-    renderPanel(<AdvisorChatPanel messages={[message]} onSendMessage={vi.fn()} onInspectMask={onInspectMask} />)
+    renderPanel(<AdvisorChatPanel messages={[message]} onSendMessage={vi.fn()} drafts={{ onInspectMask }} />)
 
     expect(screen.getByTestId('advisor-lstb-scan-status-bruttoarbeitslohn').textContent).toBe('sicher gelesen')
     expect(screen.getByTestId('advisor-lstb-scan-status-lohnsteuer').textContent).toBe('bitte prüfen')

@@ -22,7 +22,7 @@ describe('AdvisorChatPanel: the owl opens the conversation (ADR-0067 §11)', () 
   })
 
   it('does not show the placeholder while the opening is being written', () => {
-    renderPanel({ messages: [], isSending: true, pendingUserMessage: placeholder })
+    renderPanel({ messages: [], stream: { isSending: true, pendingUserMessage: placeholder } })
     expect(screen.queryByTestId('advisor-user-message')).toBeNull()
   })
 

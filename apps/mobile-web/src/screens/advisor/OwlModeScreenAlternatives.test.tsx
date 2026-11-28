@@ -47,7 +47,7 @@ function renderScreen(messages: readonly AdvisorChatMessageView[], onApplyAction
   render(
     <I18nextProvider i18n={i18n}>
       <ThemeProvider mode="light">
-        <OwlModeScreen taxYear={2026} initialCards={[]} initialMessages={messages} onApplyAction={onApplyAction} />
+        <OwlModeScreen taxYear={2026} initialCards={[]} initialMessages={messages} drafts={{ onApplyAction }} />
       </ThemeProvider>
     </I18nextProvider>,
   )

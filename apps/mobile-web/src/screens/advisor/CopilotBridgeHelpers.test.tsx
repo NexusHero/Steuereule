@@ -8,7 +8,6 @@ import {
   answeringIds,
   bestProvenance,
   extractStaleConflicts,
-  parsePlanSteps,
   patchedStreams,
   provenanceAfterApply,
   streamMessageBody,
@@ -47,12 +46,6 @@ describe('the plan of an answer', () => {
     expect(
       abortPlan({ finished: false, steps: [{ text: 'a', status: 'erledigt' }, { text: 'b', status: 'laeuft' }, { text: 'c', status: 'offen' }] }),
     ).toEqual({ finished: true, steps: [{ text: 'a', status: 'erledigt' }, { text: 'b', status: 'abgebrochen' }, { text: 'c', status: 'offen' }] })
-  })
-
-  it('reads only well-formed steps of a plan frame', () => {
-    expect(parsePlanSteps(null)).toBeNull()
-    expect(parsePlanSteps({ steps: 'x' })).toBeNull()
-    expect(parsePlanSteps({ steps: [{ text: 'a', status: 'offen' }, { text: 'b', status: 'abgebrochen' }, null, { text: 3, status: 'offen' }] })).toEqual([{ text: 'a', status: 'offen' }])
   })
 })
 

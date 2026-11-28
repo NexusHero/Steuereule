@@ -165,7 +165,7 @@ describe('every sheet of the owl closes again', () => {
 
   it('hands a dismissed draft to whoever owns the screen', async () => {
     const onDismissAction = vi.fn().mockResolvedValue(undefined)
-    renderScreen({ initialMessages: [answer('a1', { action: draft('d1') })], onDismissAction })
+    renderScreen({ initialMessages: [answer('a1', { action: draft('d1') })], drafts: { onDismissAction } })
     fireEvent.click(screen.getByTestId('advisor-action-dismiss-btn'))
     await waitFor(() => expect(onDismissAction).toHaveBeenCalledWith('d1'))
   })
@@ -185,7 +185,7 @@ describe('every sheet of the owl closes again', () => {
     const onApplyAction = vi.fn().mockResolvedValue(undefined)
     renderScreen({
       initialMessages: [answer('a1', { actions: [draft('d1'), { ...draft('d2'), field: 'kirchensteuer' }] })],
-      onApplyAction,
+      drafts: { onApplyAction },
     })
     openWorkbenchIfClosed()
     fireEvent.click(await screen.findByTestId('eule-batch-apply-btn'))

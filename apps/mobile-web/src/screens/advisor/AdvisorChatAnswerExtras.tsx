@@ -10,41 +10,25 @@ import { ModelFailureNotice } from './chat/ModelFailureNotice'
 import { PersonalDataConsentCard } from './chat/PersonalDataConsentCard'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './chat/ProposalCards'
 import type { makeStyles } from './AdvisorChatPanel.styles'
-import type { AdvisorChatPanelProps } from './AdvisorChat.types'
+import type { AdvisorChatDrafts, AdvisorChatLiveStream, AdvisorChatModel } from './AdvisorChat.types'
 import type { AdvisorChatState } from './useAdvisorChat'
 import { turboAppliedCount } from './AdvisorChatHelpers'
-
-/** The panel's props an answer's cards and notices need. */
-export type AdvisorChatAnswerContext = Pick<
-  AdvisorChatPanelProps,
-  | 'models'
-  | 'chatModel'
-  | 'onApplyAction'
-  | 'onUndoAction'
-  | 'onDismissAction'
-  | 'onInspectMask'
-  | 'receiptLinkedActionIds'
-  | 'partnerName'
-  | 'ownName'
-  | 'jointReturn'
-  | 'onUndoNoteChange'
-  | 'onAcceptSituationSuggestion'
-  | 'onRateMessage'
-> & { readonly isSending: boolean }
 
 interface AdvisorChatAnswerExtrasProps {
   readonly msg: AdvisorChatMessageView
   readonly isLast: boolean
   readonly chat: AdvisorChatState
-  readonly panel: AdvisorChatAnswerContext
+  readonly drafts: AdvisorChatDrafts
+  readonly model: AdvisorChatModel
+  readonly stream: AdvisorChatLiveStream
   readonly styles: ReturnType<typeof makeStyles>
 }
 
 /** Everything an answer's meta adds under its text: sources, questions, drafts, notices. */
-export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: AdvisorChatAnswerExtrasProps) {
+export function AdvisorChatAnswerExtras({ msg, isLast, chat, drafts, model, stream, styles }: AdvisorChatAnswerExtrasProps) {
   const { t: tr } = useTranslation(APP_NS)
   const { setSelectedSource, send, handleSubmit, canReplace, continueAfterConsent, regenerate } = chat
-  const { onApplyAction, onUndoAction, onDismissAction, onInspectMask, receiptLinkedActionIds, partnerName, ownName, jointReturn, onUndoNoteChange, onAcceptSituationSuggestion } = panel
+  const { onInspectMask, receiptLinkedActionIds, onUndoNoteChange, onAcceptSituationSuggestion } = drafts
   return (
     <>
       {/* Source Pills when sources are in meta */}
@@ -69,7 +53,7 @@ export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: Ad
       ) : null}
 
       {msg.meta?.questionRound ? (
-        <QuestionRound round={msg.meta.questionRound} open={isLast && !panel.isSending} onSubmit={(text) => void send(text)} />
+        <QuestionRound round={msg.meta.questionRound} open={isLast && !stream.isSending} onSubmit={(text) => void send(text)} />
       ) : null}
 
       {/* Mandanten-Anamnese Follow-up Choice Pills */}
@@ -96,16 +80,10 @@ export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: Ad
       {msg.meta?.action ? (
         <ActionProposalCardView
           action={msg.meta.action}
-          onApply={onApplyAction}
-          onUndo={onUndoAction}
-          onDismiss={onDismissAction}
-          onInspectMask={onInspectMask}
+          drafts={drafts}
           receiptLinked={receiptLinkedActionIds?.has(msg.meta.action.actionId)}
           onSelectSource={setSelectedSource}
           styles={styles}
-          partnerName={partnerName}
-          ownName={ownName}
-          jointReturn={jointReturn}
         />
       ) : null}
 
@@ -115,16 +93,10 @@ export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: Ad
             <ActionProposalCardView
               key={action.actionId}
               action={action}
-              onApply={onApplyAction}
-              onUndo={onUndoAction}
-              onDismiss={onDismissAction}
-              onInspectMask={onInspectMask}
+              drafts={drafts}
               receiptLinked={receiptLinkedActionIds?.has(action.actionId)}
               onSelectSource={setSelectedSource}
               styles={styles}
-              partnerName={partnerName}
-              ownName={ownName}
-              jointReturn={jointReturn}
             />
           ))
         : null}
@@ -154,7 +126,7 @@ export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: Ad
       ) : null}
 
       {/* The owl needed personal data without consent: ask once, explicitly (ADR-0091) */}
-      {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard provider={panel.chatModel?.provider ?? panel.models?.standard?.provider ?? null} onGranted={isLast && canReplace ? continueAfterConsent : undefined} /> : null}
+      {msg.meta?.personalDataConsentRequest === true ? <PersonalDataConsentCard provider={model.chatModel?.provider ?? model.models?.standard?.provider ?? null} onGranted={isLast && canReplace ? continueAfterConsent : undefined} /> : null}
 
       {/* The model did not answer: the rules did, and the reason stays with the answer (#487) */}
       {msg.meta?.modelFailure ? (
@@ -190,22 +162,16 @@ export function AdvisorChatAnswerExtras({ msg, isLast, chat, panel, styles }: Ad
 
       {/* Scanned LStB: several staged fields at once */}
       {msg.meta?.lstbScan && msg.meta.actions && msg.meta.actions.length > 0 ? (
-        <ScannedCertificateCardView actions={msg.meta.actions} onInspectMask={onInspectMask} styles={styles} />
+        <ScannedCertificateCardView actions={msg.meta.actions} drafts={drafts} styles={styles} />
       ) : null}
 
       {/* Two-Paths Comparison Card */}
       {msg.meta?.twoPaths ? (
         <TwoPathsCardView
           twoPaths={msg.meta.twoPaths}
-          onApply={onApplyAction}
-          onUndo={onUndoAction}
-          onInspectMask={onInspectMask}
-          receiptLinkedActionIds={receiptLinkedActionIds}
+          drafts={drafts}
           onSelectSource={setSelectedSource}
           styles={styles}
-          partnerName={partnerName}
-          ownName={ownName}
-          jointReturn={jointReturn}
         />
       ) : null}
     </>

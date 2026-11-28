@@ -20,19 +20,13 @@ import { useOwlVoice } from '../../lib/readAloud/useOwlVoice'
 
 type OwlModeChatProps = Pick<
   OwlModeScreenProps,
-  | 'models'
-  | 'chatModel'
-  | 'onPickModel'
-  | 'partnerName'
-  | 'ownName'
-  | 'jointReturn'
+  | 'model'
+  | 'drafts'
   | 'opening'
   | 'situation'
   | 'onSaveSituation'
   | 'context'
   | 'onSummarize'
-  | 'onUndoNoteChange'
-  | 'onRateMessage'
 > & {
   readonly owl: OwlModeScreenState
   readonly compact: boolean
@@ -46,21 +40,16 @@ export function OwlModeChat({
   compact,
   switchToTab,
   styles,
-  models,
-  chatModel,
-  onPickModel,
-  partnerName,
-  ownName,
-  jointReturn,
+  model,
+  drafts,
   opening,
   situation,
   onSaveSituation,
   context,
   onSummarize,
-  onUndoNoteChange,
-  onRateMessage,
 }: OwlModeChatProps) {
   const { t: tr, i18n } = useTranslation(APP_NS)
+  const { models, chatModel, onPickModel } = model ?? {}
   const {
     bridge,
     displayedMessages,
@@ -94,13 +83,8 @@ export function OwlModeChat({
           />
         ) : undefined
       }
-      models={models}
-      chatModel={chatModel}
-      onPickModel={onPickModel ? (model) => void onPickModel(model) : undefined}
+      model={{ models, chatModel, onPickModel: onPickModel ? (picked) => void onPickModel(picked) : undefined }}
       messages={displayedMessages}
-      partnerName={partnerName}
-      ownName={ownName}
-      jointReturn={jointReturn}
       opening={opening}
       situationChip={hasSituationDialog ? <SituationChip text={situation ?? ''} onPress={() => setSituationOpen(true)} /> : undefined}
       footnote={tr('eule.workspace.topbar.legalStatus', { date: formatLegalDate(LEGAL_STATUS_DATE, i18n.language) })}
@@ -114,64 +98,65 @@ export function OwlModeChat({
         { label: tr('advisor.chat.trainingChip'), testID: 'advisor-chip-fortbildung' },
         { label: tr('advisor.chat.donationsChip'), testID: 'advisor-chip-spenden' },
       ]}
-      isSending={effectiveSending}
       context={context}
       onSummarize={onSummarize}
-      onUndoNoteChange={onUndoNoteChange}
-      onAcceptSituationSuggestion={onSaveSituation ? (text) => onSaveSituation(situationWith(situation, text)) : undefined}
-      streamSteps={bridge?.streamSteps}
-      streamedText={bridge?.streamedText}
-      streamedReasoning={bridge?.streamedReasoning}
-      pendingUserMessage={bridge?.pendingUserMessage}
-      reconnecting={bridge?.reconnecting}
-      onRateMessage={onRateMessage}
       variant="page"
-      chatError={bridge?.chatError}
-      basisMode={bridge?.basisMode}
       onSendMessage={handleSendChat}
-      onStop={bridge?.stopStreaming}
-      abortedTurn={bridge?.abortedTurn}
-      plan={bridge?.plan}
-      onApplyAction={handleApplyAction}
-      onUndoAction={handleUndoAction}
-      onDismissAction={handleDismissAction}
-      onInspectMask={handleInspectMask}
-      receiptLinkedActionIds={bridge?.receiptLinkedActionIds}
-      onAttachReceipt={handleAttachReceipt}
-      // The promise is handed on: the chat reads several files one after another and has to know when one is done.
-      onAttachReceiptFile={bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined}
-      receiptProgress={bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null}
-      receiptNotice={bridge?.receiptNotice ?? null}
-      receiptQueuePaused={bridge?.documentQuestion != null}
-      onReceiptBatchStart={bridge?.startReceiptBatch}
-      receiptResults={
-        bridge && bridge.receiptResults.length > 0 ? (
-          <ChatReceiptResults results={bridge.receiptResults} openYear={bridge.taxYear} onSwitchYear={bridge.switchTaxYear} onClose={bridge.clearReceiptResults} />
-        ) : undefined
-      }
-      receiptAssignment={
-        bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
-          <>
-            {bridge.documentQuestion !== null || bridge.documentHolder !== null ? <ChatDocumentAssignment bridge={bridge} /> : null}
-            {/* The way back from the chat to the document: its original lies in the Belege tab. */}
-            {bridge.lastParsedReceipt !== null && switchToTab ? (
-              <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
-                <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
-              </Pressable>
-            ) : null}
-          </>
-        ) : undefined
-      }
-      receiptSources={
-        bridge ? (
+      stream={{
+        isSending: effectiveSending,
+        streamSteps: bridge?.streamSteps,
+        streamedText: bridge?.streamedText,
+        streamedReasoning: bridge?.streamedReasoning,
+        pendingUserMessage: bridge?.pendingUserMessage,
+        reconnecting: bridge?.reconnecting,
+        chatError: bridge?.chatError,
+        basisMode: bridge?.basisMode,
+        onStop: bridge?.stopStreaming,
+        abortedTurn: bridge?.abortedTurn,
+        plan: bridge?.plan,
+      }}
+      drafts={{
+        ...drafts,
+        onApplyAction: handleApplyAction,
+        onUndoAction: handleUndoAction,
+        onDismissAction: handleDismissAction,
+        onInspectMask: handleInspectMask,
+        receiptLinkedActionIds: bridge?.receiptLinkedActionIds,
+        onAcceptSituationSuggestion: onSaveSituation ? (text) => onSaveSituation(situationWith(situation, text)) : undefined,
+      }}
+      receipts={{
+        onAttachReceipt: handleAttachReceipt,
+        // The promise is handed on: the chat reads several files one after another and has to know when one is done.
+        onAttachReceiptFile: bridge ? async (file) => void (await bridge.captureReceiptFile(file)) : undefined,
+        receiptProgress: bridge?.receiptPhase ? tr(`advisor.chat.receiptProgress.${bridge.receiptPhase}`) : null,
+        receiptNotice: bridge?.receiptNotice ?? null,
+        receiptQueuePaused: bridge?.documentQuestion != null,
+        onReceiptBatchStart: bridge?.startReceiptBatch,
+        receiptResults:
+          bridge && bridge.receiptResults.length > 0 ? (
+            <ChatReceiptResults results={bridge.receiptResults} openYear={bridge.taxYear} onSwitchYear={bridge.switchTaxYear} onClose={bridge.clearReceiptResults} />
+          ) : undefined,
+        receiptAssignment:
+          bridge && (bridge.documentQuestion !== null || bridge.documentHolder !== null || bridge.lastParsedReceipt !== null) ? (
+            <>
+              {bridge.documentQuestion !== null || bridge.documentHolder !== null ? <ChatDocumentAssignment bridge={bridge} /> : null}
+              {/* The way back from the chat to the document: its original lies in the Belege tab. */}
+              {bridge.lastParsedReceipt !== null && switchToTab ? (
+                <Pressable accessibilityRole="button" onPress={() => switchToTab('Receipts')} testID="eule-receipt-result-belege">
+                  <Text style={styles.help}>{tr('eule.workspace.receiptInInbox')}</Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : undefined,
+        receiptSources: bridge ? (
           <StoredReceiptPicker
             onRead={bridge.readStoredReceipt}
             disabled={bridge.parsingReceipt}
             {...(switchToTab ? { onOpenReceipts: () => switchToTab('Receipts') } : {})}
           />
-        ) : undefined
-      }
-      isParsingReceipt={bridge?.parsingReceipt}
+        ) : undefined,
+        isParsingReceipt: bridge?.parsingReceipt,
+      }}
       compact={compact}
     />
   )

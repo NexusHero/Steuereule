@@ -149,7 +149,7 @@ tax return. While an answer is running, clearing is rejected (409).
   `advisor-runs.http.test.ts`.
 - Reasoning, usage, prompt prefix: `langgraph-advisor.reasoning.test.ts`.
 - Memory: `packages/core/src/interview/advisor-history.test.ts`.
-- Client: `chat/runStream.test.tsx`, `CopilotBridgeResume.test.tsx`, `AdvisorChatPanelLifecycle.test.tsx`.
+- Client: `lib/runStream/runStream.test.tsx`, `CopilotBridgeResume.test.tsx`, `AdvisorChatPanelLifecycle.test.tsx`.
 
 **Not verified:** Anthropic and OpenAI. For Gemini see the addendum.
 

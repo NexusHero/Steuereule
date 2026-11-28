@@ -29,7 +29,9 @@ describe('AdvisorChatPanel: stored message states (#476 decision 7)', () => {
   it('does not show the stopped answer twice once the stored one has arrived', () => {
     renderPanel({
       messages: [user('u1', 'Homeoffice?'), owl('a1', 'Du kannst bis zu', { status: 'aborted' })],
-      abortedTurn: { question: 'Homeoffice?', partialText: 'Du kannst bis zu' },
+      stream: {
+        abortedTurn: { question: 'Homeoffice?', partialText: 'Du kannst bis zu' },
+      },
     })
     expect(screen.getAllByTestId('advisor-message-aborted')).toHaveLength(1)
   })
@@ -45,7 +47,7 @@ describe('AdvisorChatPanel: stored message states (#476 decision 7)', () => {
   })
 
   it('offers neither rating nor regenerate on an answer that was cut off', () => {
-    renderPanel({ messages: [user('u1', 'Frage'), owl('a1', 'halb', { status: 'aborted' })], onRateMessage: vi.fn() })
+    renderPanel({ messages: [user('u1', 'Frage'), owl('a1', 'halb', { status: 'aborted' })], drafts: { onRateMessage: vi.fn() } })
     expect(screen.queryByTestId('advisor-feedback')).toBeNull()
     expect(screen.queryByTestId('advisor-message-regenerate')).toBeNull()
   })
@@ -61,8 +63,10 @@ describe('AdvisorChatPanel: stored message states (#476 decision 7)', () => {
   it('leaves a stored answer that is still being written to the live bubble', () => {
     renderPanel({
       messages: [user('u1', 'Frage'), owl('a1', '', { status: 'streaming', runId: 'run-1' })],
-      isSending: true,
-      streamedText: 'Ich schreibe gerade',
+      stream: {
+        isSending: true,
+        streamedText: 'Ich schreibe gerade',
+      },
     })
     expect(screen.queryByTestId('advisor-assistant-message')).toBeNull()
     expect(screen.getByTestId('advisor-streaming-message').textContent).toContain('Ich schreibe gerade')
@@ -71,24 +75,26 @@ describe('AdvisorChatPanel: stored message states (#476 decision 7)', () => {
 
 describe('AdvisorChatPanel: the running turn (#476)', () => {
   it('shows the question at once, before the stored conversation has it', () => {
-    renderPanel({ isSending: true, pendingUserMessage: user('u9', 'Lohnt sich mein Arbeitsweg?') })
+    renderPanel({ stream: { isSending: true, pendingUserMessage: user('u9', 'Lohnt sich mein Arbeitsweg?') } })
     expect(screen.getAllByTestId('advisor-user-message').map((n) => n.textContent)).toEqual(['Lohnt sich mein Arbeitsweg?'])
   })
 
   it('does not repeat the question once the stored conversation has it', () => {
-    renderPanel({ isSending: true, messages: [user('u9', 'Lohnt sich mein Arbeitsweg?')], pendingUserMessage: user('u9', 'Lohnt sich mein Arbeitsweg?') })
+    renderPanel({ messages: [user('u9', 'Lohnt sich mein Arbeitsweg?')], stream: { isSending: true, pendingUserMessage: user('u9', 'Lohnt sich mein Arbeitsweg?') } })
     expect(screen.getAllByTestId('advisor-user-message')).toHaveLength(1)
   })
 
   it('shows the line of thought live above the growing answer, apart from it', () => {
     renderPanel({
-      isSending: true,
-      streamSteps: [
-        { kind: 'status', label: 'Prüfe Akte …' },
-        { kind: 'tool', tool: 'simulate_tax_delta', label: 'Simuliere …' },
-      ],
-      streamedReasoning: 'Erst die Pauschale prüfen.',
-      streamedText: 'Ja, das lohnt sich.',
+      stream: {
+        isSending: true,
+        streamSteps: [
+          { kind: 'status', label: 'Prüfe Akte …' },
+          { kind: 'tool', tool: 'simulate_tax_delta', label: 'Simuliere …' },
+        ],
+        streamedReasoning: 'Erst die Pauschale prüfen.',
+        streamedText: 'Ja, das lohnt sich.',
+      },
     })
     // Collapsed while the owl works, like a finished answer; one tap opens it.
     expect(screen.queryByTestId('advisor-thought-body')).toBeNull()
@@ -99,14 +105,14 @@ describe('AdvisorChatPanel: the running turn (#476)', () => {
   })
 
   it('shows reasoning that arrives before the first word of the answer', () => {
-    renderPanel({ isSending: true, streamedReasoning: 'Ich schaue in die Akte.' })
+    renderPanel({ stream: { isSending: true, streamedReasoning: 'Ich schaue in die Akte.' } })
     fireEvent.click(screen.getByTestId('advisor-thought-toggle'))
     expect(screen.getByTestId('advisor-thought-reasoning').textContent).toBe('Ich schaue in die Akte.')
     expect(screen.getByTestId('advisor-thinking')).toBeTruthy()
   })
 
   it('says when the connection is being restored', () => {
-    renderPanel({ isSending: true, reconnecting: true, streamedText: 'Bis zu ' })
+    renderPanel({ stream: { isSending: true, reconnecting: true, streamedText: 'Bis zu ' } })
     expect(screen.getByTestId('advisor-reconnecting').textContent).toContain('Verbindung wird wiederhergestellt')
   })
 })
@@ -126,7 +132,9 @@ describe('AdvisorChatPanel: line of thought and rating on stored answers (#476)'
     const onRateMessage = vi.fn()
     renderPanel({
       messages: [user('u1', 'Frage'), owl('a1', 'Antwort.', { feedback: { rating: 'down', reason: 'unklar' } })],
-      onRateMessage,
+      drafts: {
+        onRateMessage,
+      },
     })
     expect(screen.getByTestId('advisor-feedback-down').getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(screen.getByTestId('advisor-feedback-up'))
@@ -150,7 +158,9 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     const onApplyAction = vi.fn()
     renderPanel({
       messages: [user('u1', 'Drei Dinge'), owl('a1', 'Drei Entwürfe.', { meta: { actions: [draft('d1', 'Homeoffice-Tage', '30'), draft('d2', 'Handwerkerkosten', '5000'), draft('d3', 'Spenden', '200')] } })],
-      onApplyAction,
+      drafts: {
+        onApplyAction,
+      },
     })
     const cards = screen.getAllByTestId('advisor-action-card')
     expect(cards).toHaveLength(3)
@@ -172,7 +182,9 @@ describe('AdvisorChatPanel: several drafts in one answer (ADR-0066)', () => {
     const onInspectMask = vi.fn()
     renderPanel({
       messages: [user('u1', 'Miete 9600'), owl('a1', 'Lege das Objekt bitte an.', { meta: { notStaged: [{ label: 'Mieteinnahmen', reason: 'Es ist noch kein Vermietungsobjekt angelegt.', screen: 'vermietung' }] } })],
-      onInspectMask,
+      drafts: {
+        onInspectMask,
+      },
     })
     fireEvent.click(screen.getByTestId('advisor-not-staged-open-mask'))
     expect(onInspectMask).toHaveBeenCalledWith('vermietung')

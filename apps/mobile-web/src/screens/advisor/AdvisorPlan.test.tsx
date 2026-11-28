@@ -17,14 +17,16 @@ function renderPanel(props: Partial<AdvisorChatPanelProps>) {
 describe('plan checklist (#451 slice 6, AC 11–14)', () => {
   it('shows each step with its live status while the owl works', () => {
     renderPanel({
-      isSending: true,
-      plan: {
+      stream: {
+        isSending: true,
+        plan: {
         finished: false,
         steps: [
           { text: 'Arbeitsweg prüfen', status: 'erledigt' },
           { text: 'Spenden prüfen', status: 'laeuft' },
           { text: 'Belege prüfen', status: 'offen' },
         ],
+      },
       },
     })
     expect(screen.getByTestId('advisor-plan-step-1').textContent).toContain('✓')
@@ -39,7 +41,9 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
         { id: 'u1', role: 'user', content: 'Was hab ich vergessen?', meta: null, createdAt: '2026-11-10T10:00:00Z' },
         { id: 'a1', role: 'assistant', content: 'Spenden fehlen noch.', meta: null, createdAt: '2026-11-10T10:00:05Z' },
       ],
-      plan: { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' }, { text: 'Spenden prüfen', status: 'erledigt' }] },
+      stream: {
+        plan: { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' }, { text: 'Spenden prüfen', status: 'erledigt' }] },
+      },
     })
     expect(screen.getByTestId('advisor-plan-toggle').textContent).toContain('2 Schritte erledigt ▸')
     expect(screen.queryByTestId('advisor-plan-step-1')).toBeNull()
@@ -49,8 +53,10 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
 
   it('keeps a stopped plan open so the done and the cut-off steps stay visible', () => {
     renderPanel({
-      abortedTurn: { question: 'Prüf alles', partialText: '' },
-      plan: { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' }, { text: 'Riester prüfen', status: 'abgebrochen' }] },
+      stream: {
+        abortedTurn: { question: 'Prüf alles', partialText: '' },
+        plan: { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' }, { text: 'Riester prüfen', status: 'abgebrochen' }] },
+      },
     })
     expect(screen.queryByTestId('advisor-plan-toggle')).toBeNull()
     expect(screen.getByTestId('advisor-plan-step-1').textContent).toContain('✓')

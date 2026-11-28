@@ -14,9 +14,7 @@ export type UseOwlModeScreenInput = Pick<
   | 'initialMessages'
   | 'onDismissCard'
   | 'onSendMessage'
-  | 'onApplyAction'
-  | 'onUndoAction'
-  | 'onDismissAction'
+  | 'drafts'
   | 'onClearConversation'
   | 'onSearchConversations'
   | 'situation'
@@ -39,9 +37,7 @@ export function useOwlModeScreen({
   initialMessages,
   onDismissCard,
   onSendMessage,
-  onApplyAction,
-  onUndoAction,
-  onDismissAction,
+  drafts,
   onClearConversation,
   onSearchConversations,
   situation,
@@ -53,6 +49,7 @@ export function useOwlModeScreen({
 }: UseOwlModeScreenInput) {
   const bp = useBreakpoint()
   const bridge = useOptionalCopilotBridge()
+  const { onApplyAction, onUndoAction, onDismissAction } = drafts ?? {}
 
   // null: the workbench follows what needs attention; otherwise the reader's own choice stands.
   const [panelChoice, setPanelChoice] = useState<'open' | 'closed' | null>(null)

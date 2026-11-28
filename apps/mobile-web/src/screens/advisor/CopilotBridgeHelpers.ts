@@ -4,7 +4,6 @@ import type {
   AbortedTurn,
   AdvisorPlanView,
   ChatReceiptResult,
-  PlanStepView,
   SendStreamingOptions,
   StaleConflictState,
   StaleFieldConflict,
@@ -66,17 +65,6 @@ export function answeringIds(streams: Readonly<Record<string, ConversationStream
 export function abortPlan(plan: AdvisorPlanView | null): AdvisorPlanView | null {
   if (plan === null) return null
   return { finished: true, steps: plan.steps.map((s) => (s.status === 'laeuft' ? { ...s, status: 'abgebrochen' } : s)) }
-}
-
-export function parsePlanSteps(data: unknown): PlanStepView[] | null {
-  if (typeof data !== 'object' || data === null || !('steps' in data)) return null
-  const steps = (data as { steps: unknown }).steps
-  if (!Array.isArray(steps)) return null
-  return steps.flatMap((step: unknown) => {
-    if (typeof step !== 'object' || step === null) return []
-    const { text, status } = step as Record<string, unknown>
-    return typeof text === 'string' && (status === 'offen' || status === 'laeuft' || status === 'erledigt') ? [{ text, status }] : []
-  })
 }
 
 /** The body of a streamed message, without keys that are unset. */

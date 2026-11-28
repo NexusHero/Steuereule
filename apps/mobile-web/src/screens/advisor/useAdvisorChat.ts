@@ -6,7 +6,7 @@ import { activeModel } from './chat/ModelControls'
 import { copyToClipboard } from './chat/clipboard'
 import { plainTextForCopy } from './chat/markdownLinks'
 import { textToRepeatAfterConsent } from './chat/consentRetry'
-import type { AdvisorChatPanelProps, ChatSendOptions } from './AdvisorChat.types'
+import type { AdvisorChatLiveStream, AdvisorChatModel, AdvisorChatPanelProps, AdvisorChatReceipts, ChatSendOptions } from './AdvisorChat.types'
 import {
   isStoredInterrupted,
   lastIndexOfRole,
@@ -17,36 +17,23 @@ import {
   withoutQueuedFile,
 } from './AdvisorChatHelpers'
 
-export type UseAdvisorChatInput = Pick<
-  AdvisorChatPanelProps,
-  'models' | 'chatModel' | 'onSendMessage' | 'onAttachReceipt' | 'onAttachReceiptFile' | 'onReceiptBatchStart'
-> & {
+export interface UseAdvisorChatInput {
+  readonly model: Pick<AdvisorChatModel, 'models' | 'chatModel'>
   readonly allMessages: AdvisorChatPanelProps['messages']
-  readonly isSending: boolean
-  readonly pendingUserMessage: NonNullable<AdvisorChatPanelProps['pendingUserMessage']> | null
-  readonly abortedTurn: NonNullable<AdvisorChatPanelProps['abortedTurn']> | null
-  readonly plan: NonNullable<AdvisorChatPanelProps['plan']> | null
+  readonly stream: Pick<AdvisorChatLiveStream, 'isSending' | 'pendingUserMessage' | 'abortedTurn' | 'plan'>
+  readonly receipts: Pick<AdvisorChatReceipts, 'onAttachReceipt' | 'onAttachReceiptFile' | 'onReceiptBatchStart' | 'receiptQueuePaused' | 'isParsingReceipt'>
   readonly dictationEngine: NonNullable<AdvisorChatPanelProps['dictationEngine']>
-  readonly receiptQueuePaused: boolean
-  readonly isParsingReceipt: boolean
+  readonly onSendMessage: AdvisorChatPanelProps['onSendMessage']
 }
 
 /** The chat's own state: input, switches, edit, copy, the receipt queue, and what the list derives. */
 export function useAdvisorChat({
-  models,
-  chatModel,
+  model: { models, chatModel },
   allMessages,
-  isSending,
-  pendingUserMessage,
-  abortedTurn,
-  plan,
+  stream: { isSending, pendingUserMessage, abortedTurn, plan },
+  receipts: { onAttachReceipt, onAttachReceiptFile, onReceiptBatchStart, receiptQueuePaused = false, isParsingReceipt = false },
   dictationEngine,
   onSendMessage,
-  onAttachReceipt,
-  onAttachReceiptFile,
-  onReceiptBatchStart,
-  receiptQueuePaused,
-  isParsingReceipt,
 }: UseAdvisorChatInput) {
   const { t: tr } = useTranslation(APP_NS)
   const [inputText, setInputText] = useState('')

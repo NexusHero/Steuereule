@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { useTheme } from '@steuereule/ui'
-import type { AdvisorActionProposal, AdvisorTwoPathsProposal } from '@steuereule/core'
+import type { AdvisorActionProposal, AdvisorTwoPathsProposal, Screen } from '@steuereule/core'
 import { renderInApp } from '../../../../test/test-render'
 import { makeStyles } from '../AdvisorChatPanel.styles'
 import { ActionProposalCardView, ScannedCertificateCardView, TwoPathsCardView } from './ProposalCards'
@@ -32,7 +32,7 @@ interface CardProps {
   readonly onApply?: Handler
   readonly onUndo?: Handler
   readonly onDismiss?: Handler
-  readonly onInspectMask?: (screen: string, field?: string) => void
+  readonly onInspectMask?: (screen: Screen, field?: string) => void
   readonly receiptLinked?: boolean
   readonly partnerName?: string
   readonly ownName?: string
@@ -40,9 +40,17 @@ interface CardProps {
   readonly onSelectSource?: () => void
 }
 
-function Card({ onSelectSource = vi.fn(), ...props }: CardProps) {
+function Card({ onSelectSource = vi.fn(), action, receiptLinked, onApply, onUndo, onDismiss, onInspectMask, partnerName, ownName, jointReturn }: CardProps) {
   const styles = makeStyles(useTheme())
-  return <ActionProposalCardView {...(props as Parameters<typeof ActionProposalCardView>[0])} onSelectSource={onSelectSource} styles={styles} />
+  return (
+    <ActionProposalCardView
+      action={action}
+      receiptLinked={receiptLinked}
+      drafts={{ onApplyAction: onApply, onUndoAction: onUndo, onDismissAction: onDismiss, onInspectMask, partnerName, ownName, jointReturn }}
+      onSelectSource={onSelectSource}
+      styles={styles}
+    />
+  )
 }
 
 describe('everything a card would write (ADR-0066 Zero-Write, real-data run)', () => {
@@ -212,7 +220,7 @@ describe('two paths and the scanned certificate', () => {
 
   it('marks the path that comes with a receipt', () => {
     function Paths() {
-      return <TwoPathsCardView twoPaths={twoPaths} onSelectSource={vi.fn()} styles={makeStyles(useTheme())} receiptLinkedActionIds={new Set(['p-max'])} />
+      return <TwoPathsCardView twoPaths={twoPaths} drafts={{ receiptLinkedActionIds: new Set(['p-max']) }} onSelectSource={vi.fn()} styles={makeStyles(useTheme())} />
     }
     renderInApp(<Paths />)
     expect(screen.getByTestId('advisor-path-max-receipt-badge')).toBeDefined()
@@ -222,7 +230,7 @@ describe('two paths and the scanned certificate', () => {
   const row = (field: string, extra: Partial<AdvisorActionProposal> = {}) => draft({ actionId: `s-${field}`, screen: 'lstb', field, label: field, newValue: '1000', ...extra })
 
   function Scan(props: { actions: AdvisorActionProposal[]; onInspectMask?: (screen: string) => void }) {
-    return <ScannedCertificateCardView actions={props.actions} onInspectMask={props.onInspectMask as never} styles={makeStyles(useTheme())} />
+    return <ScannedCertificateCardView actions={props.actions} drafts={{ onInspectMask: props.onInspectMask as never }} styles={makeStyles(useTheme())} />
   }
 
   it('lists what was read, flags what needs a look, and leads to the review', () => {
