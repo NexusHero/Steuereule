@@ -94,17 +94,24 @@ export function speechText(markdown: string, language: string): string {
  * a blank; a dot after a digit ends none, so "3.030 Euro" and "am 3. Mai" stay in one piece.
  */
 export function sentencesOf(text: string): string[] {
+  const isBlank = (index: number): boolean => /\s/.test(text[index] ?? '')
+  const endsSentence = (index: number): boolean => {
+    const char = text[index]!
+    if (!'.!?:'.includes(char) || !isBlank(index + 1)) return false
+    return !(char === '.' && /\d/.test(text[index - 1] ?? ''))
+  }
   const sentences: string[] = []
   let start = 0
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i]!
-    if (!'.!?:'.includes(char) || !/\s/.test(text[i + 1] ?? '')) continue
-    if (char === '.' && /\d/.test(text[i - 1] ?? '')) continue
-    let end = i + 1
-    while (end < text.length && /\s/.test(text[end]!)) end += 1
-    sentences.push(text.slice(start, end))
-    start = end
-    i = end - 1
+  let at = 0
+  while (at < text.length) {
+    if (!endsSentence(at)) {
+      at += 1
+      continue
+    }
+    at += 1
+    while (at < text.length && isBlank(at)) at += 1
+    sentences.push(text.slice(start, at))
+    start = at
   }
   if (start < text.length) sentences.push(text.slice(start))
   return sentences
