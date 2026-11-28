@@ -98,9 +98,16 @@ async function main() {
     await page.locator(tid('werbungskosten-verbaende-art')).fill('Gewerkschaft')
     await page.locator(tid('werbungskosten-sonstiges')).fill('35')
     await page.locator(tid('werbungskosten-sonstiges-art')).fill('Bewerbungen')
-    const savedCommute = page.waitForResponse((r) => r.url().includes('/arbeitsweg') && r.request().method() === 'PUT' && r.ok(), { timeout: 15_000 })
+    // The mask saves when a field is left and again on „Weiter“, one save after the other. The save to wait for
+    // is the one that carries what was typed last: an earlier one may still be answering when „Weiter“ is
+    // pressed, and reading after that one found the travel days missing (main, 28.11.2026).
+    const carriesAll = (request) => {
+      const body = request.postDataJSON()
+      return body?.travelDays === 150 && body?.otherWorkExpensesEur === 35 && body?.otherWorkExpensesNote === 'Bewerbungen'
+    }
+    const savedCommute = page.waitForResponse((r) => r.url().includes('/arbeitsweg') && r.request().method() === 'PUT' && r.ok() && carriesAll(r.request()), { timeout: 15_000 })
     await page.locator(tid('arbeitstage-weiter')).click()
-    await savedCommute
+    await savedCommute.catch(() => fail('Row A: „Weiter“ should save the way to work with everything that was entered'))
     const commute = (await call(api, 'GET', `/v1/steuerjahre/${YEAR}/arbeitsweg`)).inputs
     const wanted = { travelDays: 150, shortestRouteConfirmed: true, oneWayKm: 12, periodTo: '31.10.2025', secondOneWayKm: 80, secondTransport: 'pkw', secondFrom: '01.11.2025', workEquipmentEur: 110, accountFeesEur: 16, professionalBodiesEur: 240, otherWorkExpensesEur: 35 }
     for (const [key, value] of Object.entries(wanted)) {
