@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0087 — Escalation case: two Grenzgänger with a change year, three children, medical costs — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0087</p>
+        <h1>Escalation case: two Grenzgänger with a change year, three children, medical costs <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/ch-salary-certificate/</code>, <code>apps/api/src/tax-estimate/tax-estimate.service.ts</code>, <code>apps/api/src/lstb-scan/lstb-scan.parse-strategy.ts</code>, <code>apps/api/src/advisor/{advisor.service,advisor-drafts}.ts</code>, <code>apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts</code>, <code>apps/api/src/ch-certificate-scan/ch-health-statement.parse-strategy.ts</code>, <code>packages/core/src/domains/{medical-invoice,childcare-notice}.ts</code>, <code>apps/mobile-web/src/screens/cross-border/CrossBorderScreen.tsx</code>, <code>apps/mobile-web/src/screens/cockpit/CockpitPartnerSection.tsx</code>, <code>e2e/scenarios/25-familie-sommer-eskalation.mjs</code></li>
+<li><strong>Builds on:</strong> ADR-0054 (Person A enters data for Person B), ADR-0074 (reading the Lohnausweis), ADR-0077 (medical costs), ADR-0079 (change year), ADR-0080 (health insurance statements), ADR-0086 (care period)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>A deliberately exaggerated, fictional case: both spouses work until June for a German employer
+(German social insurance and pension) and from July as Grenzgänger (cross-border commuters) in
+Switzerland (AHV, Pensionskasse with Obligatorium, Quellensteuer). Three children are in
+kindergarten and day care, there is a dentist invoice of €1,700 and a cosmetic surgery. Every
+document should find a field, and the printout should be complete. The first run found these gaps:</p>
+<ul>
+<li>For Person B there was neither a Lohnausweis (Swiss salary certificate) form nor an interface. B&#39;s
+employer address, rate and Grenzgänger status could not be entered anywhere; the printout stayed
+locked.</li>
+<li>The joint estimate did not count B&#39;s Swiss salary as soon as B also had an LStB, because B as a
+person without an account has no interview answer „Schweiz“ (&quot;Switzerland&quot;).</li>
+<li>B&#39;s read LStB was prepared as a draft for A and displaced A&#39;s own LStB drafts.</li>
+<li>Amounts with a thousands dot were read incorrectly (€1.700,00 as €700).</li>
+<li>Doctor and dentist invoices found no field. A cosmetic surgery was not recognized.</li>
+<li>The self-borne costs in the Swiss health insurance statement appeared only as a hint.</li>
+<li>A day care document with an annual total paid yielded only the period, not the amount.</li>
+<li>An invoice that builds on a still open document draft replaced it instead of adding to it.</li>
+</ul>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>B&#39;s Swiss data.</strong> All endpoints of <code>ch-lohnausweis</code> take <code>?person=B</code>, like LStB and commute
+(ADR-0054). B&#39;s own Grenzgänger questions (residence, non-return days) are stored by <code>PUT ch-lohnausweis/grenzgaenger?person=B</code> as B&#39;s answers. Estimate, printout and form derive B&#39;s
+status from them as for A from the interview. For A the interview remains the place for these
+questions (400 without <code>person=B</code>). In the cockpit, B has the field „Lohnausweis Schweiz“ in a
+Switzerland tax return. B&#39;s form first asks for residence and days.</li>
+<li><strong>Estimate.</strong> A person with a Lohnausweis counts as a Grenzgänger if they answered „Schweiz“ or
+answered the Grenzgänger questions. With an LStB in addition it is a change year (ADR-0079),
+also for B.</li>
+<li><strong>Whose LStB.</strong> An LStB without a specified person (upload in the chat) belongs, in a
+Zusammenveranlagung (joint assessment), to the person whose name is on it. If none matches, the
+chat asks as for the Lohnausweis. Drafts for B carry <code>person: &#39;B&#39;</code> and do not displace A&#39;s
+drafts.</li>
+<li><strong>Medical costs from invoices (§ 33 EStG).</strong> A doctor, dentist or similar invoice becomes a draft
+for <code>gesundheit-betrag</code> with „Ja“ (&quot;Yes&quot;) as the accompanying answer. The amount is the own share
+after a printed reimbursement, otherwise the invoice amount. Several invoices add up, the same
+invoice counts once. The app does <strong>not</strong> record a cosmetic surgery or cosmetic treatment: no
+draft, and the chat says why (Product Owner decision: &quot;do not record at all&quot;). § 33 EStG is a
+legal source of the owl.</li>
+<li><strong>Self-borne costs from the Swiss statement</strong> (franchise, deductible) go to the medical costs in
+euros at the Lohnausweis rate (otherwise at the annual average, „prüfen“ (&quot;check&quot;)), once per
+statement.</li>
+<li><strong>Day care amount.</strong> If a document states the total paid for the year („Gesamt 2025“, „im Jahr
+2025 gezahlt“ (&quot;total 2025&quot;, &quot;paid in 2025&quot;)), it is proposed as a „prüfen“ draft. A monthly fee
+still does not count as an amount (ADR-0086).</li>
+<li><strong>Summing up and conflicts.</strong> An invoice also adds onto an open document draft and takes over its
+counted items. A field that, when applying, already has exactly the draft&#39;s value (two documents
+both open „Krankheitskosten: Ja“ (&quot;Medical costs: yes&quot;)) is not a stale state.</li>
+<li><strong>Amounts</strong> with a thousands dot are read in full; the line with the invoice amount takes
+precedence.</li>
+<li><strong>Reasonable burden with entered children.</strong> The interview answer „2 oder mehr“ (&quot;2 or more&quot;)
+does not distinguish 2 from 3+ and still counts as &quot;1–2&quot;. If children are entered for the year,
+their number decides: from three, 1/1/2 % applies (§ 33 Abs. 3 EStG). Found when comparing with
+the BMF calculator; its tariff values for the case matched.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Scenario 25 („Familie Sommer“) in the E2E matrix plays through the case: documents in the chat and
+via the same interface, B&#39;s Switzerland form in the browser, then the remaining forms. It checks
+the estimate with both change years, a printout without missing entries and every amount in its
+field. Medical costs: €1,700 plus the self-borne costs, never the €3,800 of the surgery.</li>
+<li>Cosmetic surgeries with medical necessity confirmed by a public health officer are entered by the
+user themselves; the app does not recognize them as an exception.</li>
+<li>The Anlage N still does not print the wage tax (it comes from the electronic LStB), only the gross
+salary.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0086-child-health-insurance-rate-and-care-period.html"><span class="eyebrow">Previous</span><span>ADR-0086</span></a><a class="step step-next" href="0088-person-b-complete-and-kinderzulage.html"><span class="eyebrow">Next</span><span>ADR-0088</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

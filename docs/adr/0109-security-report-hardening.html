@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0109 — Hardening after the security report of 2026-11-24 — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0109</p>
+        <h1>Hardening after the security report of 2026-11-24 <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#not-changed-with-reasons">Not changed, with reasons</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#amendment--2026-11-27-the-dependency-gate-covers-development-dependencies">Amendment — 2026-11-27: the dependency gate covers development dependencies</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-24</li>
+<li><strong>Deciders:</strong> engineering and the product owner (retention period, alerting, dependency gate, sign-up flow).</li>
+<li><strong>Builds on</strong> <a href="0103-session-security-hardening.html">ADR-0103</a>, <a href="0104-pentest-finding-fixes.html">ADR-0104</a>,
+<a href="0106-live-pentest-fixes.html">ADR-0106</a>, <a href="0053-beta-hosting-cloud-run.html">ADR-0053</a>,
+<a href="0105-ci-gate-taxonomy-and-transparency.html">ADR-0105</a>, <a href="0030-system-initiated-deletion-of-unverified-accounts.html">ADR-0030</a>.</li>
+<li><strong>Supersedes in part</strong> ADR-0103 §4 (verification only gated at filing) and ADR-0106 &quot;D10&quot; (sign-up reveals an
+existing account).</li>
+<li><strong>Context tags:</strong> security, availability, auth, infrastructure, supply-chain</li>
+<li><strong>Component:</strong> <code>apps/api</code>, <code>apps/mobile-web</code>, <code>infra/gcp</code>, <code>.github/workflows</code>, both Dockerfiles</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>A code review of <code>main</code> at <code>0f30e251</code> rated user-data protection B+, availability C+ and platform, supply
+chain and operations C+. It found no way to another user&#39;s data and no single request that stops the
+server. What it found were limits that count per process, expensive paths without a limit, data that is
+never deleted, a container scan that suppresses about 100 entries, no alerting, one environment, and an
+account oracle at sign-up. This ADR records what was changed and what was left.</p>
+<p>The review read code. Nothing here was measured under load or tried against a deployed system.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="availability"><a class="anchor" href="#availability" aria-hidden="true" tabindex="-1">#</a>Availability</h3>
+<ol>
+<li><strong>Every limit counts in the shared storage.</strong> The Nest throttler used its in-memory store, so each of up
+to ten instances allowed the full limit. <code>SharedThrottlerStorage</code> puts <code>@Throttle</code> on the rate-limit
+storage better-auth already uses (Redis when <code>REDIS_URL</code> is set, in memory otherwise). That storage now
+holds one reused connection instead of opening one per call, and <code>consume</code> takes an amount, so byte
+budgets can use it. The storage answers allowed or refused, not a hit count, so the
+<code>X-RateLimit-Remaining</code> header is coarse.</li>
+<li><strong>Redis is on by default</strong>, in local development (<code>.env.example</code>, <code>scripts/local.sh</code>), in the production
+compose stack and in <code>infra/gcp</code> (<code>enable_redis</code> defaults to true, about 35 EUR a month per
+environment; the default budget is raised from 20 to 60 EUR). In GCP it requires AUTH and in-transit
+encryption; the API reads the server CA from <code>REDIS_TLS_CA</code>. The AUTH string is part of the connection
+URL that Terraform writes to Secret Manager, so it is in the state. That conflicts with ADR-0053 (&quot;no
+secret in state&quot;) and is accepted: the state bucket is private and the instance has no public address.</li>
+<li><strong>Uploads are admitted, not queued.</strong> At most 4 uploads are in flight per instance
+(<code>UPLOAD_MAX_IN_FLIGHT</code>) and 1 per account or guest address; more get 429 with <code>Retry-After</code>. A guest
+address may upload 100 MB a day (<code>GUEST_UPLOAD_BYTES_PER_DAY</code>), because a request without a cookie gets
+a new guest id and the per-account quota never bound it. All guests together may upload 5 GiB a
+day (<code>GUEST_UPLOAD_BYTES_PER_DAY_TOTAL</code>), which bounds a caller with many addresses; past it a guest is
+told to create an account. Two avoidable copies of the file were removed.
+The file is still buffered once, and the per-address cap of one upload is per instance.</li>
+<li><strong>Export and printout.</strong> The account export is throttled to 5 an hour. The PDF lists the newest 1,000
+access-log entries and says so; the JSON export stays complete, because it answers Art. 15 and 20 GDPR, and is
+read in batches and sent as a stream.
+The PDF renderer queue holds at most 8 waiting renders, a render times out after 60 seconds. Asynchronous
+printout jobs are throttled (10 per 10 minutes), limited to 3 held jobs per account (counted in the
+shared storage, so the cap holds across instances) and dropped after 10 minutes; a job no longer keeps its PDF in memory.</li>
+<li><strong><code>/api/auth/*</code> refuses bodies over 64 KiB</strong> with 413, by <code>Content-Length</code> and while reading.</li>
+<li><strong>Model calls have a daily cap across all users</strong> (<code>AI_DAILY_CALL_LIMIT</code>, default 10,000, counted per
+chat turn, summary and vision read). When it is spent the owl answers from its rules, as it does when no
+provider is configured. Receipt parsing is capped at 300 a day per user (<code>PARSE_DAILY_LIMIT</code>).</li>
+<li><strong>Lists are bounded:</strong> the newest 2,000 chat messages, 20,000 bank transactions per book, 200 entries in
+the booking <code>lines</code> and <code>totals</code> arrays, 100 characters for profile names. The Brevo call times out
+after 10 seconds.</li>
+<li><strong>An unhandled rejection ends the process after a drain.</strong> The state after an unknown rejection is
+unknown, so the instance still goes, but it first stops accepting and lets requests in flight finish
+(10 seconds at most). Unexpected errors are logged in production as one JSON line that Cloud Error
+Reporting groups: severity, message with stack, request id and route template, no body and no headers.</li>
+</ol>
+<h3 id="user-data"><a class="anchor" href="#user-data" aria-hidden="true" tabindex="-1">#</a>User data</h3>
+<ol start="9">
+<li><strong>Guest data is deleted 30 days after the guest&#39;s last write.</strong> <code>GuestActivity</code> records the last write
+(at most once an hour per guest). The sweep uses the account-deletion transaction, including key
+shredding and legal holds. Existing guests get 30 days from deployment. Like the sweep of ADR-0029 it
+runs on traffic (at most hourly per process, 25 guests a run): with no requests nothing is deleted, so
+the promise is &quot;no sooner than 30 days&quot;.</li>
+<li><strong>Password reset by e-mail.</strong> The link lives 30 minutes and works once. A reset revokes every session
+and the account&#39;s assistant grants, as a password change does. The request answers the same for a known
+and an unknown address; 3 an hour per target address, 5 per 10 minutes per client address. <code>redirectTo</code>
+must be the web app&#39;s origin.</li>
+<li><strong>Sign-up no longer reveals an account.</strong> <code>requireEmailVerification</code> is on. A sign-up answers 200 with
+no session for a free and a taken address alike; the owner of a taken address gets a notice by mail. The
+account is usable after the verification link, and the link does not sign in: otherwise someone who
+registered a victim&#39;s address with their own password could get the victim into that account. The
+guest keeps working meanwhile, and the guest&#39;s data moves to the account at the first verified sign-in
+in the same browser. Consequences: accounts that never verified must follow a new link before they can
+sign in (accepted by the product owner); <code>@RequiresVerifiedEmail()</code> is redundant for e-mail accounts;
+the &quot;signed in but unverified&quot; state no longer exists for them. The registration form asks for 12
+characters, as the server has required since ADR-0103.</li>
+<li><strong>E-mail, display name and the session&#39;s address are encrypted.</strong> better-auth now runs on the
+encrypting client. <code>User.email</code> is found through <code>emailHash</code>, a salted hash of the lower-cased address
+with a unique index; the salt is its own secret (<code>PRISMA_FIELD_ENCRYPTION_HASH_SALT</code>, required in
+production) and cannot change without re-hashing every account. The library passes a value that is not
+ciphertext through on read, so old and new rows are served side by side and strict mode stays on.
+Deploy order: set the salt, migrate, hash phase, release, encrypt phase. The migrate role runs the hash
+phase itself, so a release cannot go out with accounts it cannot find; the encrypt phase is run by hand
+after the release (<code>node --import tsx scripts/backfill-identity.ts</code> in the image). The unique index on <code>User.email</code> stays until a
+later contract step. Prefix search and ordering by e-mail no longer work; nothing uses them. The
+sign-in limit still holds the address in the rate-limit storage for 15 minutes.</li>
+<li><strong>Links the model writes</strong> open directly only for https links to a short list of official hosts. Any
+other host is shown and has to be confirmed; links with credentials, another scheme or a query over
+200 characters are plain text.</li>
+</ol>
+<h3 id="platform-supply-chain-operations"><a class="anchor" href="#platform-supply-chain-operations" aria-hidden="true" tabindex="-1">#</a>Platform, supply chain, operations</h3>
+<ol start="14">
+<li><strong>Dependency gate.</strong> <code>security: dependency audit (production deps)</code> fails on high and critical
+advisories in production dependencies. Exceptions carry a reason and an expiry date
+(<code>scripts/checks/dependency-audit.mjs</code>). There is no update bot (decision of the product owner).</li>
+<li><strong>The API image carries what the app runs and nothing that installs or builds.</strong> Three stages: build,
+a production tree made by pnpm, and a runtime stage that copies that tree and has neither pnpm nor npm
+nor corepack. Optional peers (vitest, typescript) that pnpm resolves to the workspace&#39;s dev dependencies
+are removed from the tree, and an import check proves the app loads without them. The sources of
+<code>apps/api</code> are in the image because the migrate role&#39;s backfills are TypeScript. The migrate role runs
+<code>node scripts/migrate-deploy.mjs</code> without pnpm. <code>.trivyignore</code> was rebuilt from a scan of the images&#39;
+SBOMs without it: of 63 HIGH/CRITICAL ids in the API image one remains, with its reason
+(<code>deepmerge-ts</code> inside the Prisma CLI).</li>
+<li><strong>The web server sends security headers.</strong> HSTS, <code>nosniff</code>, <code>X-Frame-Options: DENY</code>, a referrer and a
+permissions policy always; a Content-Security-Policy when it knows the API origin (<code>API_ORIGIN</code>). The
+local E2E servers pass none, so the policy is enforced in the production-image job only.</li>
+<li><strong>Alerting uses Cloud Monitoring</strong> (decision of the product owner: no further processor): an uptime
+check, alerts on the 5xx ratio, container crashes, unhandled errors, Cloud SQL disk and CPU, by e-mail.
+All of it is skipped while <code>alert_email</code> is empty. <code>docs/sre/incident-runbook.html</code> says what each means.</li>
+<li><strong>Staging and production are separate.</strong> <code>infra/gcp</code> takes an <code>environment</code>; a green CI on <code>main</code>
+deploys staging, production is deployed by hand through the GitHub environment <code>production</code>. The
+workload identity condition checks the environment claim.<blockquote>
+<p><strong>Amended (2026-11-26, <a href="0113-production-deploy-by-release.html">ADR-0113</a>).</strong> Production is deployed by
+publishing a release, not by hand.</p>
+</blockquote>
+</li>
+<li><strong>Both Cloud SQL instances have a private address only.</strong> The API and the migrate job reach them through
+Direct VPC egress and the Cloud SQL socket, so the VPC is now a required part of the stack and the Trivy
+exception is gone. Production gets a dedicated-core tier and regional availability; beta and staging keep
+the shared core. <code>max_connections</code> follows from instances × pool + migrate + headroom (60 on the shared
+core, untested under load).</li>
+<li><strong>Secret scan exceptions name values, not patterns or directories.</strong></li>
+</ol>
+<h2 id="not-changed-with-reasons"><a class="anchor" href="#not-changed-with-reasons" aria-hidden="true" tabindex="-1">#</a>Not changed, with reasons</h2>
+<ul>
+<li><strong>Field-encrypted columns share one key.</strong> Per-user keys are proposed in
+<a href="0110-per-user-field-keys.html">ADR-0110</a> and not built here.</li>
+<li><strong>Model providers are in the United States.</strong> Covered by consent (ADR-0091); no EU endpoint is configured.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>With Redis unreachable every limit falls back to the process, as before. With Redis reachable a refused
+request costs one round trip.</li>
+<li>An operator moving the existing beta stack follows the sequence in <code>infra/README.md</code> (the move to the
+private address restarts the databases) and has to run Terraform with <code>environment=beta</code> once (this
+replaces the Redis instance), create the GitHub environment <code>staging</code>, set <code>alert_email</code> and
+<code>api_hostname</code>, and add the new check name to the <code>main</code> ruleset. Production needs its own GCP project.</li>
+<li>Not verified by this change: the image build, Redis over TLS against a real server, the Cloud Monitoring
+filters, upload admission over real HTTP, and the E2E scenarios on the new sign-up flow. CI confirms the
+first and the last; the others need a deployment.</li>
+</ul>
+<h2 id="amendment--2026-11-27-the-dependency-gate-covers-development-dependencies"><a class="anchor" href="#amendment--2026-11-27-the-dependency-gate-covers-development-dependencies" aria-hidden="true" tabindex="-1">#</a>Amendment — 2026-11-27: the dependency gate covers development dependencies</h2>
+<p>Decision 14 audited production dependencies only (<code>pnpm audit --prod</code>). Build and test tooling runs in CI
+with the repository&#39;s secrets and on every developer&#39;s machine, so an advisory there is not harmless. The
+gate now audits every dependency of the lockfile and is named <code>security: dependency audit (all deps)</code>. The
+allowlist is empty: after the Expo 58 and Vitest 4 upgrades no accepted path was left. The mechanism (a
+reason and an expiry date per rule) stays for a case that cannot be fixed by an upgrade or an override.</p>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0108-pentest-round-4-hardening.html"><span class="eyebrow">Previous</span><span>ADR-0108</span></a><a class="step step-next" href="0110-per-user-field-keys.html"><span class="eyebrow">Next</span><span>ADR-0110</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

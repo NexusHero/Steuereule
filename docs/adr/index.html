@@ -1,0 +1,660 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Engineering ADR log (arc42) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision log</p>
+        <h1>Engineering ADR log (arc42)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#two-adr-logs--on-purpose">Two ADR logs — on purpose</a></li><li><a class="chip" href="#closed-inconsistencies-kept-as-record">Closed inconsistencies (kept as record)</a></li></ul>
+      </header>
+      <article class="prose">
+<p>Architecture decisions for the <em>engineering</em> build, in lightweight <a href="https://adr.github.io/madr/">MADR</a>
+(Context → Decision → Consequences [→ Alternatives]). Numbering is 4-digit, sequential and immutable;
+a decision that replaces another <strong>supersedes</strong> it (never rewrite history). Governed by
+ultimate-dev-process §1.2.</p>
+<p>The ADRs <strong>justify</strong> the architecture; <a href="../index.html"><code>docs/index.html</code></a> <strong>shows</strong> it
+(arc42: context, building blocks, runtime, deployment, concepts, risks). The toolchain and the
+boot-ordering invariant are detailed in <a href="../arc42/README.html"><code>docs/arc42/README.html</code></a>.</p>
+<h2 id="two-adr-logs--on-purpose"><a class="anchor" href="#two-adr-logs--on-purpose" aria-hidden="true" tabindex="-1">#</a>Two ADR logs — on purpose</h2>
+<ul>
+<li><strong>This log — <code>docs/adr/NNNN</code></strong> (4-digit): engineering/architecture decisions (build tooling,
+data layer, testing, delivery method, infra).</li>
+<li><strong>Product/design log — <code>finanzo-funke-design-system/project/research/adr/NNN</code></strong> (3-digit): the
+SteuerEule product &amp; design-language decisions (001–050), including the framework choices from the
+architecture grilling (ADR-043…050). This engineering log <strong>cross-references</strong> those rather than
+duplicating them.</li>
+</ul>
+<div class="table"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Title</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>0001</td>
+<td>Frontend data layer: TanStack Query + OpenAPI-generated typed client</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0002</td>
+<td>i18n layer: i18next / react-i18next, German base locale</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0003</td>
+<td>Seed/demo data: single synthetic fixture seeded at container start</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0004</td>
+<td>Testing strategy &amp; tooling (Vitest · jest-expo + RTL · Playwright · MSW)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0005</td>
+<td>UI takeover delivered as vertical slices, walking-skeleton first</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0006</td>
+<td>German base + English as a switchable UI locale (refines 0002)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0007</td>
+<td>Authentication: Keycloak IdP + better-auth (OIDC RP), EU-resident</td>
+<td>Superseded by 0009</td>
+</tr>
+<tr>
+<td>0008</td>
+<td>Profile persistence: server-side, sensitive fields field-encrypted at rest</td>
+<td>Accepted (refined 0009-era)</td>
+</tr>
+<tr>
+<td>0009</td>
+<td>better-auth as the auth server (Keycloak dropped); supersedes 0007</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0010</td>
+<td>Postgres in CI: service-container for test/smoke jobs, compose service for local/e2e stack</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0011</td>
+<td>CORS: strict env-driven origin allowlist with credentialed cross-origin</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0012</td>
+<td>better-auth mounting, guard guest-OR-session coexistence, atomic guest→account upgrade</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0013</td>
+<td>DSGVO export (JSON + PDF) &amp; account deletion: anonymise-and-retain audit, atomic teardown</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0014</td>
+<td>Responsive breakpoint strategy (hybrid: tokens + structural hook + future media queries)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0015</td>
+<td>Crew reduced from four developers to two (Ogün and Enis retired)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0016</td>
+<td>Product Owner and Scrum Master retired; the crew is four roles</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0017</td>
+<td>Draft-first PRs with a public review, mandatory refinement, risk-tiered testing</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0018</td>
+<td>Suhay (Scrum Master) reinstated; backlog, refinement and readiness leave the lead</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0019</td>
+<td>oxlint replaces ESLint/typescript-eslint as the static-lint gate</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0020</td>
+<td>A draft PR opening triggers the review; nobody gates it</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0021</td>
+<td>A control is proven by breaking it, not by watching it pass</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0022</td>
+<td>A push to a PR with open findings triggers the re-read</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0023</td>
+<td>Routing in the web app: <code>@react-navigation/native</code> with a <code>linking</code> config</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0024</td>
+<td>QR device authorization: our <code>/v1/device/*</code> endpoints in front of better-auth&#39;s plugin</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0025</td>
+<td>The Requirements Register&#39;s owner can write it; the evidence is checked by CI</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0026</td>
+<td>A local, production-shaped Docker Compose stack for the API and web bundle (#76)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0027</td>
+<td>better-auth&#39;s session freshness gate is disabled (<code>session.freshAge: 0</code>) — exhaustive consumer list, accepted loss on <code>/unlink-account</code></td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0028</td>
+<td>Check the effect, not the mechanism: the pre-Prisma environment snapshot, and the boot ordering invariant it rests on (#284)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0029</td>
+<td>Periodic cleanup runs as a piggybacked batch sweep, not a scheduler — settles the mechanism ADR-0024 left open (#294, #238)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0030</td>
+<td>System-initiated deletion: the first erasure path no user confirms — unverified accounts after 30 days (#294)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0031</td>
+<td>Nine questions, two segments: the interview stays three, the other six arrive as the catalog&#39;s first entry (#318, #11)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0032</td>
+<td>Nothing on screen promises what the slice does not deliver — settles D1, D3 and the Vormerken button as one rule (#11, #321)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0033</td>
+<td>The interview&#39;s question graph lives in <code>packages/core</code>, and the server validates against it (#318 task 0)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0034</td>
+<td>The Veranlagungsartenvergleich returns a bounded comparison, never a bare verdict — and it is not a Günstigerprüfung (#340 F3, #321)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0035</td>
+<td>Foundation consolidation: framework standard over bespoke machinery, one product over slices, shared tax domain core, mantle completion in the foundation</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0036</td>
+<td>Definition of Done: four levels (ticket · REQ · phase · 1.0), posture line, exception process</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0037</td>
+<td>Income-type / tax-year model in <code>packages/core</code> (ADR-006/010/030)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0038</td>
+<td>Calculation core with AI port (determinism boundary, ADR-014/048)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0039</td>
+<td>Tax-year state machine (ADR-018: follow-up question / handled externally)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0040</td>
+<td>Document inbox (ADR-007/008: assignment as a suggestion, conflict visible)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0041</td>
+<td>LStB / employees vertical (scan fallback form, catalog admission)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0042</td>
+<td>Grenzgänger CH vertical (document-type vocabulary, exchange-rate core, segment-ch)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0044</td>
+<td>Pensioner vertical (pension type, statutory tables, Anlage R folding)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0045</td>
+<td>Value-first funnel: a guest may pass the minimal gate, Steuer-ID becomes optional, upgrade carries interview answers along</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0046</td>
+<td>Rental income vertical: multiple properties per Anlage V, linear AfA, sale/furnished gate</td>
+<td>Draft</td>
+</tr>
+<tr>
+<td>0047</td>
+<td>Deadline / late-filing surcharge warning mode: filing-deadline rule set, 60-day banner, no late status</td>
+<td>Draft</td>
+</tr>
+<tr>
+<td>0043</td>
+<td>Veranlagungsartenvergleich refinement: Soli/church tax folded in, only remaining uncertainty is the Progressionsvorbehalt</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0048</td>
+<td>Capital vertical: securities-account classification, capital income form, § 32d Günstigerprüfung (bounded comparison)</td>
+<td>Draft</td>
+</tr>
+<tr>
+<td>0049</td>
+<td>Year carry-over M1: source <code>uebernahme</code>, unconfirmed items count into the range, generic labeling layer</td>
+<td>Draft</td>
+</tr>
+<tr>
+<td>0050</td>
+<td>1.0 files on paper: form printout instead of ELSTER, paid per tax year at printout (Stripe), email via Brevo, legal pages</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0051</td>
+<td>Owl AI mode &amp; strict privacy boundary (ticket 10.9, product ADRs 037–042)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0052</td>
+<td>Agent access: the user&#39;s own AI assistant fills in the tax return (MCP, OAuth, collected confirmation)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0053</td>
+<td>Beta hosting on Google Cloud Run and Cloud SQL (changes product ADR-049 for the beta)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0054</td>
+<td>Zusammenveranlagung: one joint tax return, Person A also records for Person B</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0055</td>
+<td>Zero-Downtime Database Migrations (Expand and Contract Pattern)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0056</td>
+<td>Asynchronous PDF generation &amp; job decoupling (fault isolation)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0058</td>
+<td>LStB text fallback: allowlist, document check, never green</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0059</td>
+<td>Separate keystore database for document keys (crypto-shredding down into the backups)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0060</td>
+<td>On-device OCR on the web, self-hosted, OCR values never green</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0061</td>
+<td>Dictation stage 2: speech model from Hugging Face, pinned and verified (deviation from ADR-0060)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0062</td>
+<td>Household at account level: create spouse and children once, select per year</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0063</td>
+<td>Church tax in the estimate: rate, cap, special Kirchgeld, Abgeltungsteuer</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0064</td>
+<td>Owl chat: answer runs, detached from the connection, with resumption</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0065</td>
+<td>Address search via our own server (deviation from #451 decisions 7 and 8)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0066</td>
+<td>The owl: one field catalog, one value check, honest preview</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0067</td>
+<td>The owl: tax year as a project, multiple conversations, project notes, context with summary</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0068</td>
+<td>The owl: skills and question rounds</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0069</td>
+<td>The owl: advisor stance always, tax knowledge to look up, all tax topics</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0070</td>
+<td>The owl: savings plan, outlook, Bescheid check and „Unsere Situation“</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0071</td>
+<td>The owl: tax years as projects in the sidebar, conversations answer concurrently</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0072</td>
+<td>Anlage N-Gre: Pensionskasse by Obligatorium/Überobligatorium, NBUV 100 % at the employer, tax-free Krankentaggeld, annual average exchange rate</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0073</td>
+<td>The owl: drafts for Person B in the Zusammenveranlagung</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0074</td>
+<td>Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0075</td>
+<td>Swiss letters: Pensionskasse statement and the employer&#39;s premium confirmation</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0076</td>
+<td>Further Werbungskosten, childcare and the employer&#39;s share of the premiums</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0077</td>
+<td>Medical expenses (§ 33) and household-related expenses (§ 35a) switched on</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0078</td>
+<td>Reading tradesman invoices (§ 35a Abs. 3 EStG)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0079</td>
+<td>Changeover year: German and Swiss wages in one year, two commutes</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0080</td>
+<td>Adding up donation receipts, reading Swiss health-insurance statements</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0081</td>
+<td>Advance tax payments in the estimate</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0082</td>
+<td>The owl changes recorded values only on request</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0083</td>
+<td>Lohnsteuerbescheinigung without readable social security</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0084</td>
+<td>An empty answer from the model is retried and then named openly</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0085</td>
+<td>Printout for 2024, overlong entries before payment</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0086</td>
+<td>Child&#39;s health insurance without a chosen exchange rate, care period from the Bescheid</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0087</td>
+<td>Escalation case: two Grenzgänger with a changeover year, three children, medical expenses</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0088</td>
+<td>Recording Person B completely, Swiss Kinderzulage per child</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0089</td>
+<td>The stream: one selection instead of yes/no pages, one page per topic</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0090</td>
+<td>Findings from the real-case run through the stream (2024/2025)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0091</td>
+<td>The owl fills every field: personal data with consent</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0092</td>
+<td>Document assignment: who does a document belong to?</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0093</td>
+<td>Required fields and follow-up questions instead of interpretation</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0094</td>
+<td>The estimate calculates like the Bescheid</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0095</td>
+<td>Reading documents by position: reading order, 300 dpi, word boxes</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0096</td>
+<td>Selectable model and thinking depth (Gründlich / Max)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0097</td>
+<td>Document lifecycle: every document says what became of it</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0098</td>
+<td>Tax history: all years at a glance</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0099</td>
+<td>History: hints, life events and groups</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0100</td>
+<td>The owl: guard alongside the model, timings per round, form before the question</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0101</td>
+<td>Self-employed: EÜR, bookkeeping, balance sheet, VAT and trade tax</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0102</td>
+<td>Ports &amp; Adapters: two architecture tests enforce the boundaries in <code>apps/api</code> and in the core</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0103</td>
+<td>Session-security hardening: <code>/v1</code> CSRF, an absolute session cap, token rotation, stronger registration defaults</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0104</td>
+<td>Fixes for the post-hardening security-audit findings (token-logging, Swagger, redirect, request-id, control chars)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0105</td>
+<td>CI gate taxonomy, <code>category: gate</code> naming &amp; the advisory CI-Overview transparency rollup</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0106</td>
+<td>Fixes for the live penetration test of 2026-11-23 (quadratic readers, client address, step-up, assistant grants, limits)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0107</td>
+<td>Fixes for the third-round penetration test of 2026-11-23 (fastify/deps, AI chat PII leak, name at rest, crypto-shredding scope, rate-limit signal, export fresh-auth, oauth step-up)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0108</td>
+<td>Hardening from the post-merge review (fileless receipt-row cap, per-account /verify-password limit)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0109</td>
+<td>Hardening after the security report of 2026-11-24 (shared limits, Redis by default, upload admission, guest retention, password reset, sign-up without an account oracle, dependency gate, two-stage image, alerting, staging and production)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0110</td>
+<td>Per-user keys for the field-encrypted columns (own Prisma extension, keystore key per row owner, staged migration)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0111</td>
+<td>Beta readiness after the completeness audit of 2026-11-24 (throwing API client and partial saves, central user-wins path, MCP tool gate and upload, payment contract and refunds, personal-data registry and legal holds, declared production configuration, route and DTO locks, rewritten website)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0112</td>
+<td>The browser gates run as parallel groups from one gate list (build once, a fresh stack per group, aggregate jobs keep the required check names, production stack split into smoke and DAST, shared set-up as composite actions, long shell as scripts)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0113</td>
+<td>Production is deployed by publishing a release, with the API image staging ran (release guard, same-digest promotion, tag-restricted workload identity, <code>static: opentofu validate</code> moved to quality.yml)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0114</td>
+<td>A SteuerEule summary leads the paid printout (result step by step from the estimate, then every printed value with its Zeile; pdf-lib, no second calculation, not part of the return)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0115</td>
+<td>The owl&#39;s voice and ear come from speech models behind a port (<code>SpeechPort</code>, Mistral and Gemini adapters independent of the chat model, off until <code>AI_SPEECH_PROVIDER</code> is set, one text-in route with its own limits, device voice as fallback; addendum: the spoken conversation as a cascade with short spoken answers)</td>
+<td>Accepted</td>
+</tr>
+<tr>
+<td>0116</td>
+<td>The documentation is HTML pages in the app's design; the Markdown is removed</td>
+<td>Accepted</td>
+</tr>
+</tbody></table></div>
+<p>See also the <a href="tech-radar.html">Tech Radar</a>.</p>
+<h2 id="closed-inconsistencies-kept-as-record"><a class="anchor" href="#closed-inconsistencies-kept-as-record" aria-hidden="true" tabindex="-1">#</a>Closed inconsistencies (kept as record)</h2>
+<p><code>k8s/README.md</code> used to carry a dangling reference to a 4-digit Kubernetes-decision number with no
+matching file in this log — inherited from the <strong>myDevTime</strong> lineage. <strong>Closed by deletion</strong>: <code>k8s/</code>
+was inherited scaffolding that nothing in this workspace, CI, or the compose stack referenced or ran,
+removed in #260. There is nothing left in this log to reconcile against it. (This closes the dangling
+reference only — it makes no claim about the deployment target itself; see the
+<a href="tech-radar.html">Tech Radar</a>.)</p>
+<p>The companion <code>eslint.config.js</code> → <code>ADR-0025</code> (NestJS) dangling reference is <strong>closed</strong>: ADR-0019
+deleted that file when oxlint replaced ESLint. <strong>Note the number is now genuinely taken</strong> — the
+<code>ADR-0025</code> in this log is the Requirements Register decision above, unrelated to that inherited NestJS
+reference. The two are only a numeric coincidence, recorded here so nobody reads this paragraph as a
+description of the real 0025.</p>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

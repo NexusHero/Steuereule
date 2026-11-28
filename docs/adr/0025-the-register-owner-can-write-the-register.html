@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0025 — The Requirements Register's owner can write it; the evidence is checked by CI — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0025</p>
+        <h1>The Requirements Register&#39;s owner can write it; the evidence is checked by CI <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-03</li>
+<li><strong>Deciders:</strong> Stakeholder (NexusHero)</li>
+<li><strong>Context tags:</strong> delivery method, requirements traceability</li>
+<li><strong>Arises from</strong> the REQ-010 status ruling on <a href="https://github.com/NexusHero/Steuereule/pull/247#issuecomment-5170258284">PR #247</a>
+and its implementation in <a href="https://github.com/NexusHero/Steuereule/pull/249">PR #249</a></li>
+<li><strong>Applies</strong> <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a>&#39;s standard — a control is only a
+control if it can fail — to the register itself</li>
+<li><strong>Adjusts</strong> <a href="0018-scrum-master-reinstated.html">ADR-0018</a>, which returned register state to the Scrum
+Master without noticing that the seat could not open the file</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p><code>docs/requirements/register.html</code> is the living source of truth for what this product has actually
+delivered. ADR-0018 named the Scrum Master (Suhay) as the owner of its state.</p>
+<p>He could not write it. The role holds <code>Read</code>, <code>Grep</code>, <code>Glob</code> and the GitHub tools — no <code>Edit</code>, no
+<code>Write</code>, no <code>Bash</code>. So the file was in fact maintained by <strong>whichever developer&#39;s slice happened to
+land in it</strong>, writing down a meaning the owner held and the writer had to infer.</p>
+<p>That is not a hypothetical seam. It tore five times, and the tear has a consistent shape: a status is
+set when the slice that writes the row merges, and is then read again only by whichever slice <em>next</em>
+touches that same row — never on its own schedule.</p>
+<ul>
+<li><strong>REQ-010</strong> read <code>Done</code>/<code>green</code> while one of its own cited tests
+(<code>trusted-proxies-ip-resolution.test.ts</code>&#39;s A1) is a permanent regression test that stays green
+<strong>because</strong> the single-value <code>X-Forwarded-For</code> rate-limit bypass is unfixed. PR #247 did exactly what
+the process asked — append test paths to the evidence column — and produced a wrong row, because
+nothing asked it to read the status line above the cell it was editing.</li>
+<li><strong>REQ-004</strong> carried &quot;no REQ-004-tagged acceptance test of its own&quot; at three places. The tagged tests
+(<code>profile.integration.test.ts:248-363</code>, REQ-004.1–.6, real Postgres) had landed <strong>five days before</strong>
+the reconciliation that recorded the gap (<code>08099ac</code>, 2026-07-23, vs <code>d650a03</code>, 2026-07-28). The claim
+was untrue on the day it was written.</li>
+<li><strong>REQ-002/REQ-009</strong> still required <code>SameSite=strict</code> after ADR-0011 and ADR-0012 §3 deliberately
+superseded it with <code>SameSite=None; Secure</code>; code and tests had moved, the register had not.</li>
+<li><strong>REQ-002</strong>&#39;s traceability row cited <em>source files</em> in a column headed <code>Location</code> for a test. A source
+file cannot be green.</li>
+</ul>
+<p>The common cause is not carelessness. It is that the person who knew what the row meant could not
+type it, and the person who could type it was guessing.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>1. The register&#39;s owner gets write access to it.</strong> The <code>scrum-master</code> role gains <strong><code>Edit</code></strong>.</p>
+<p><strong>2. The grant is deliberately partial, and the partition is the point.</strong></p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Suhay</th>
+<th>enforced by</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Change an existing document</td>
+<td>yes (<code>Edit</code>)</td>
+<td>tool grant</td>
+</tr>
+<tr>
+<td>Create a file</td>
+<td><strong>no</strong> (no <code>Write</code>)</td>
+<td>tool grant</td>
+</tr>
+<tr>
+<td>Run a command, a test, a commit</td>
+<td><strong>no</strong> (no <code>Bash</code>)</td>
+<td>tool grant</td>
+</tr>
+<tr>
+<td>Land a change on <code>main</code> by himself</td>
+<td><strong>no</strong> — no commit path</td>
+<td>tool grant</td>
+</tr>
+<tr>
+<td>Touch code, tests, CI config, ADRs</td>
+<td><strong>no</strong></td>
+<td><em>written obligation + the review gate</em> — see Consequences</td>
+</tr>
+</tbody></table></div>
+<p>He writes the <strong>meaning</strong>: status, statement, Given–When–Then, which issue it serves, what the row
+claims. He does not certify the <strong>evidence</strong>, because he cannot run what he cites.</p>
+<p><strong>3. CI checks the evidence, so the split does not rest on trust.</strong> A <code>register-check</code> gate
+(Salih&#39;s to build) turns the four mechanical properties into checks that go red:</p>
+<ol>
+<li>every cited path exists;</li>
+<li>every cited file is actually executed by a CI job (matched against the vitest globs), so a citation
+cannot point at a test nothing runs;</li>
+<li>a <strong>bidirectional</strong> <code>REQ-NNN</code> tag reconciliation — every tag in the test tree appears in the
+register, and every register citation points at a file that really carries the tag it claims. This
+check would have gone red on the REQ-004 defect on 2026-07-23, five days before a human recorded it
+as a gap that did not exist;</li>
+<li><code>Status</code> and <code>State</code> values come from the declared vocabularies, which also catches the register
+drifting out of its own language (ADR-0006: the development process is English).</li>
+</ol>
+<p>Plus the one that closes the REQ-010 class, which needs a marker in the <strong>test source</strong> rather than in
+prose: a test that documents an unfixed defect carries <code>@documents-defect #NNN</code>, and the gate requires
+both that the register&#39;s citation of that file carries the corresponding flag <strong>and that the referenced
+issue is still open</strong>. The day the defect ticket closes is then automatically the day the register row
+goes red until someone re-reads it.</p>
+<p><strong>4. What is explicitly <em>not</em> decided as a control.</strong> &quot;Whoever touches a REQ row re-reads the whole
+row&quot; was proposed and is <strong>rejected as a mechanism</strong>. Delete that sentence and every test still passes:
+by ADR-0021&#39;s own scope test it is an agreement, not a control. It survives only as the human residue —
+attached to the refinement block, where the REQ row a slice touches is read out as part of the DoR,
+with a second person in the room — never as a standing promise nobody triggers.</p>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>(2) Declare the register developer-maintained, with Suhay ruling on status semantics at
+refinement.</strong> The lead&#39;s recommendation. Rejected by the stakeholder: it formalises the guessing
+rather than removing it, and leaves the owner of a document unable to correct it without a relay.</li>
+<li><strong>(3) Let the CI check be the only owner.</strong> Rejected: the checks are mechanical by construction.
+Whether a requirement is genuinely <code>Done</code> is a judgement about what was promised, and no gate makes
+it. A check with no owner behind it turns &quot;green&quot; into the whole answer, which is the failure this
+ADR is about, one level up.</li>
+<li><strong>Give the Scrum Master the full developer toolset</strong> (<code>Bash</code>, <code>Write</code>) so he can commit his own
+edits. Rejected: it makes the Scrum Master a developer, which was not decided, and it would let a
+register row reach <code>main</code> without passing a review gate.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>The seat can now do its job.</strong> The meaning and the ability to write it sit in the same place for the
+first time.</li>
+<li><strong>His edit still goes through the gate.</strong> With no commit path, a register change rides the branch in
+flight and reaches <code>main</code> only through a PR that Musti reviews and Salih tests. This is a feature: a
+register editable straight on <code>main</code> would be a new hole in the wall this ADR closes.</li>
+<li><strong>The scope limit is honest about what holds it.</strong> The tool grant cannot express a path restriction —
+agent frontmatter grants tools, not paths, and a project-wide permission rule would restrict the
+developers too. So &quot;documentation only&quot; is a <strong>written obligation</strong>, and the thing that catches a
+breach is the <strong>review gate</strong>, which catches it reliably precisely because every edit has to appear in
+a diff someone reads. What the tool grant <em>does</em> enforce is narrower and real: no new files, no
+commands, no independent landing path. Recorded plainly rather than dressed up as enforcement,
+because a paper control counted as a real one is the exact mistake ADR-0021 exists to prevent.</li>
+<li><strong><code>register-check</code> is the load-bearing half of this decision.</strong> Until it runs, item 3 is a plan and
+the split between &quot;writes meaning&quot; and &quot;certifies evidence&quot; is only a convention. The gate&#39;s own
+status should be visible, not assumed.</li>
+<li><strong>A future re-read of this ADR should ask</strong> whether check 5&#39;s <code>@documents-defect</code> marker was actually
+adopted by the tests that need it. A marker convention nobody applies degrades into the same
+unenforced agreement this ADR rejected in item 4 — it just fails one layer later.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0024-qr-device-authorization-endpoints.html"><span class="eyebrow">Previous</span><span>ADR-0024</span></a><a class="step step-next" href="0026-local-production-shaped-compose-stack.html"><span class="eyebrow">Next</span><span>ADR-0026</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

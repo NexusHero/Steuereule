@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0076 — More Werbungskosten, childcare and the employer share of the premiums — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0076</p>
+        <h1>More Werbungskosten, childcare and the employer share of the premiums <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/prisma/schema.prisma</code> (commute, child), <code>apps/api/src/commute/</code>, <code>apps/api/src/children/</code>, <code>apps/api/src/confirmation/field-access.ts</code>, <code>apps/api/src/tax-estimate/tax-estimate.service.ts</code>, <code>apps/api/src/printout/</code>, <code>apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts</code>, <code>apps/api/src/advisor/{advisor.service,advisor-case-facts}.ts</code>, <code>apps/api/src/ki/advisor-prompt.ts</code>, <code>apps/api/src/ch-certificate-scan/ch-letter.parse-strategy.ts</code>, <code>packages/core/src/domains/{work-expenses,childcare,n-gre}.ts</code>, <code>packages/core/src/interview/{advisor,field-catalog}.ts</code>, <code>apps/mobile-web/src/screens/{workdays,children,cross-border}/</code></li>
+<li><strong>Builds on:</strong> ADR-0050 (measuring printout fields), ADR-0072 (N-Gre premiums), ADR-0073 (Person B), ADR-0075 (premium letter)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the real case the tax advisor claimed work equipment (work clothing), account fees and
+childcare. The app had no field for these: the owl named them as levers but could not store them
+anywhere, the estimate did not know them, the printout did not print them. Documents about work
+equipment ended up as &quot;further training = yes&quot;. For Grenzgänger (cross-border commuters), further
+training and relocation did not count in the estimate at all. The employer amount of a premium was
+only visible in the form at 100 %, although the calculation always uses it and a premium letter
+states it without a share.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>More Werbungskosten (work-related expenses) per person in the commute form:</strong> professional
+associations (Kz 310), work equipment and typical work clothing (Kz 320, with &quot;what it was&quot;),
+account fees and other (Kz 380, with &quot;what for&quot;). The commute form is already kept per person,
+also for Person B; saving without these fields leaves them unchanged. Encrypted like all
+amounts.</li>
+<li><strong>Estimate:</strong> they count together with commute and home office and are compared with the
+employee lump sum as before. Further training and relocation now also count for Grenzgänger.</li>
+<li><strong>Printout:</strong> Anlage N l. 53/54/56 and 62–64, Anlage N-Gre l. 48/49/51 and 57–59, newly measured.</li>
+<li><strong>Childcare per child</strong> (amount, type/provider, period): Anlage Kind l. 67 (Kz 51). From 2025 the
+estimate deducts 80 %, at most €4,800 per child (before that two thirds, at most €4,000), only for
+a child who was not yet 14 at the start of the year; for a married couple once for the household.</li>
+<li><strong>Owl and documents:</strong> the fields are in the field catalog and are draft targets (also for
+Person B). The owl knows their effect in the case overview. A work equipment document goes to
+Kz 320; several documents add up to the annual total instead of replacing each other. A value
+that is not a plain amount is left in place for the PII check and is not &quot;corrected&quot;.</li>
+<li><strong>Premiums:</strong> the employer amount is visible as long as the share is open or 100 %. If the person
+pays nothing toward the Krankentaggeld (sickness daily allowance) themselves, the employer counts
+as the 100 % payer — in the calculation and in the premium letter reader. For the NBUV the share
+remains a question to the user, because the employee share there is only a remainder from item 9.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Real case: work equipment and account fees per person and the childcare can be entered and appear
+in the printout as with the tax advisor.</li>
+<li>Not included: further training costs (Kz 330) are not in the printout yet; travel expenses and
+double housekeeping stay as before.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0075-swiss-letters-pension-fund-and-premiums.html"><span class="eyebrow">Previous</span><span>ADR-0075</span></a><a class="step step-next" href="0077-medical-costs-and-35a-enabled.html"><span class="eyebrow">Next</span><span>ADR-0077</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

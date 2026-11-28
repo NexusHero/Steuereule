@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0082 — The owl changes entered values only on request — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0082</p>
+        <h1>The owl changes entered values only on request <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/interview/advisor-overwrite-guard.ts</code>, <code>apps/api/src/advisor/advisor.service.ts</code></li>
+<li><strong>Builds on:</strong> ADR-0066 (field catalog), ADR-0073 (Person B)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the 2025 real case the user answered a follow-up question only by saying that the partner pays
+nothing toward the Krankentaggeld (sickness daily allowance) herself. The owl then created new
+drafts for all of the partner&#39;s premium fields. One of them set the NBU premium, read from the
+employer&#39;s confirmation, to ten times its value. Anyone who applies the drafts without reading each
+one thus loses a correct value.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>The owl may fill empty fields</strong>, including fields that are still at 0. That is the state of an
+untouched form.</li>
+<li><strong>An entered value changes only on request.</strong> A draft for a field with a different value stays
+only if the user&#39;s message names the new value (in any usual notation: „5.120“,
+„5’120,00“) or asks for a change („ändern“, „korrigieren“, „falsch“, „statt“ (&quot;change&quot;,
+&quot;correct&quot;, &quot;wrong&quot;, &quot;instead of&quot;) …).</li>
+<li><strong>A draft that writes the existing value again is dropped.</strong></li>
+<li><strong>The answer says what stayed unchanged:</strong> which field, the entered value and what the owl would
+have proposed. One sentence invites the user to state the correct value.</li>
+<li>The rule applies to the model&#39;s drafts, both for the live display and for the stored answer.
+Drafts from documents remain exempt, because there the document is the request. It also does not
+apply to the fixed rules without a model, because they read their values from the message itself.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>2025 real case: the NBU premium would stay at the value read. The owl would have stated its
+differing proposal instead of silently preparing it.</li>
+<li>A value the owl derives from information (e.g. days driven converted into vacation days) goes
+only into an empty field or one at 0. If the user wants to change an entered value this way, they
+say so.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0081-advance-tax-payments.html"><span class="eyebrow">Previous</span><span>ADR-0081</span></a><a class="step step-next" href="0083-lstb-without-readable-social-insurance.html"><span class="eyebrow">Next</span><span>ADR-0083</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

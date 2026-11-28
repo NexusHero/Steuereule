@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0074 — Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0074</p>
+        <h1>Reading documents: Swiss Lohnausweis and scanned Lohnsteuerbescheinigung <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/domains/{ch-salary-certificate-parser,lstb-parser,document-kind}.ts</code>, <code>apps/api/src/ch-certificate-scan/</code>, <code>apps/api/src/advisor/advisor.service.ts</code> (<code>stageDocumentDrafts</code>, <code>householdNames</code>), <code>apps/api/src/receipt/{receipt-parse.service,dto/parse-receipt.dto}.ts</code>, <code>apps/api/src/lstb/lstb.service.ts</code>, <code>apps/api/src/lstb-scan/</code>, <code>apps/mobile-web/src/lib/receipts/captureReceipt.ts</code>, <code>apps/mobile-web/src/screens/advisor/{CopilotBridgeProvider,AdvisorChatPanel}.tsx</code>, <code>apps/mobile-web/src/screens/lstb/scan/</code></li>
+<li><strong>Builds on:</strong> ADR-0058 (allowlist before the model), ADR-0060 (OCR never green), ADR-0072 (N-Gre), ADR-0073 (drafts for Person B)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the real-case test (married couple, both Grenzgänger (cross-border commuters) to CH) the app read
+neither of the two Swiss Lohnausweise (Swiss salary certificates): the general document recognition
+creates at most one field, and only health insurance, Krankentaggeld (sickness daily allowance) or
+pillar 3a. A document always ended up with the person who uploaded it. Scanned German
+Lohnsteuerbescheinigungen (wage tax certificates) (two columns, OCR) were read only partly by the
+fixed part: text from the left column stood before the line number, umlauts were missing, „für“
+came out as „fur“. A second certificate in the same year (second employer, later payment) could
+only replace the first.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>A dedicated reader for the Lohnausweis (Form 11).</strong> A fixed rule in the core reads the header
+(year, period, fields F and G), items 1–14 and 10.1/10.2. It checks itself with the form&#39;s
+totals: item 8 = 1 to 7, item 11 = 8 − 9 − 10. Figures that break a total are
+„prüfen“ (&quot;check&quot;). If OCR splits a number apart („1 1 1 839“), the value the total requires
+applies only if exactly its digits are on the line.</li>
+<li><strong>The model sees only items 1–12.</strong> Header (name, address, AHV number, date of birth), remarks
+and employer never leave the server. The model fills only empty items, only with amounts that
+appear verbatim in the text shown, and never as „gelesen“ (&quot;read&quot;).</li>
+<li><strong>The name on it says whose certificate it is.</strong> A person&#39;s first and last name (umlauts also as
+&quot;ue&quot;) must both appear on the certificate. If the name matches neither or both persons, the app
+asks „Wessen Lohnausweis ist das?“ (&quot;Whose salary certificate is this?&quot;) and reads only with the
+answer; the document is not uploaded a second time for this. If Person B has their own account,
+nothing is prepared.</li>
+<li><strong>Drafts instead of writes.</strong> The items become owl drafts for the Lohnausweis form of the
+correct person (<code>stageDocumentDrafts</code>, Person B via ADR-0073). Only „Übernehmen“ (&quot;Apply&quot;)
+writes. Negative items (such as a correction in item 7) are not applied, because the form does
+not support any; item 8 already contains them. The employer address is left to the user (the
+field is locked for the AI); the Pensionskasse split is not on the certificate.</li>
+<li><strong>Recognition in one place.</strong> <code>classifyDocumentKind</code> recognizes the certificate by
+„Lohnausweis“, „Certificat de salaire“ and „Bruttolohn total“; app and server route with it the
+same way.</li>
+<li><strong>Scanned LStB.</strong> The line number is also found after left-column text when the line&#39;s heading
+follows; headings match without umlauts; „für“ also as „fur/fiir“; thousands with a comma
+(„61,234,56“). Only the line from its number onward goes to the model, never the left column.</li>
+<li><strong>A further certificate in the year</strong> is added on request (<code>addToExisting</code>). The server rejects
+the same certificate twice (<code>LSTB_SAME_CERTIFICATE</code>). A sum of two documents is no longer a
+single document: provenance „nutzer“ (user), confirmed.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Real case 2025: both Lohnausweise are read completely, both totals add up, the wife&#39;s scanned
+certificate lands with Person B. 2024: a scanned certificate from a German employer yields
+gross salary, wage tax, pension, health and unemployment insurance; the long-term care insurance
+was illegible in the scan and is left to the model or the user.</li>
+<li>Values from OCR remain „prüfen“ (ADR-0060); only the user confirms.</li>
+<li>Not included: pension certificate (field B), Pensionskasse certificate, person recognition for the
+German LStB (there the user chooses the person as before).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0073-owl-drafts-for-person-b.html"><span class="eyebrow">Previous</span><span>ADR-0073</span></a><a class="step step-next" href="0075-swiss-letters-pension-fund-and-premiums.html"><span class="eyebrow">Next</span><span>ADR-0075</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

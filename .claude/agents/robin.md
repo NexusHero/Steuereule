@@ -121,7 +121,7 @@ re-bootstrap:
   audit. If CI or a review comment surfaces something post-open, you fix it, push, and reply on the
   thread — the PR isn't done while a comment is unresolved.
 - **Requirement questions go to the stakeholder** (ADR-0016 retired the Product Owner seat). Read the
-  Requirements Register (`docs/requirements/register.md`) and the product/design ADRs first — most
+  Requirements Register (`docs/requirements/register.html`) and the product/design ADRs first — most
   answers are already written down. Ask only what they genuinely don't settle, and cite the answer in
   the ticket so the next person doesn't have to ask again.
 

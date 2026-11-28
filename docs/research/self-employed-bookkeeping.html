@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Bookkeeping for the self-employed: sources and licenses (ADR-0101) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Research</p>
+        <h1>Bookkeeping for the self-employed: sources and licenses (ADR-0101)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#charts-of-accounts-skr03-and-skr04">Charts of accounts SKR03 and SKR04</a></li><li><a class="chip" href="#inflow-and-outflow--11-estg">Inflow and outflow (§ 11 EStG)</a></li><li><a class="chip" href="#retention--147-ao">Retention (§ 147 AO)</a></li><li><a class="chip" href="#non-deductible-expenses-in-the-eür">Non-deductible expenses in the EÜR</a></li><li><a class="chip" href="#data-access-z3-gdpdu-description-standard">Data access Z3 (GDPdU description standard)</a></li><li><a class="chip" href="#e-bilanz-taxonomies">E-Bilanz taxonomies</a></li><li><a class="chip" href="#bank-formats">Bank formats</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 19.11.2026. Applies to <code>packages/core/src/domains/ledger/*</code>.</p>
+<h2 id="charts-of-accounts-skr03-and-skr04"><a class="anchor" href="#charts-of-accounts-skr03-and-skr04" aria-hidden="true" tabindex="-1">#</a>Charts of accounts SKR03 and SKR04</h2>
+<ul>
+<li><strong>Account numbers:</strong> The numbers of the SKR03 and SKR04 charts are a de facto standard of German bookkeeping. We use only the numbers, not the account names of any published catalog.</li>
+<li><strong>Cross-check:</strong> Every number was checked against Odoo&#39;s openly licensed charts of accounts: <code>odoo/odoo</code>, branch <code>18.0</code>, files <code>addons/l10n_de/data/template/account.account-de_skr03.csv</code> and <code>account.account-de_skr04.csv</code>, license <strong>LGPL-3.0</strong>. Nothing was taken from these files except the check that number and meaning match in both charts; the HGB mapping (Odoo tags <code>tag_de_asset_bs_*</code>, <code>tag_de_liabilities_bs_*</code>, <code>tag_de_pl_*</code>) also served only for cross-reading.</li>
+<li><strong>Deviations from Odoo:</strong> Cash (1000/1600), bank (1200/1800) and money in transit (1360/1460) are missing in Odoo (Odoo creates them via journals); we use the usual numbers. For receivables and payables we take the accounts „ohne Kontokorrent“ (without current account, 1410/1210, 1610/3310), because the app does not keep debtor and creditor accounts.</li>
+<li><strong>Account names:</strong> All account names are our own wording.</li>
+<li><strong>Scope:</strong> 184 concepts per chart. Each concept has a kind, default tax code, EÜR (cash-basis income statement) key (<code>EuerKey</code>), HGB position (§ 266 HGB at the depth for small companies, § 275 Abs. 2 HGB total cost method) and the E-Bilanz element of that position.</li>
+</ul>
+<h2 id="inflow-and-outflow--11-estg"><a class="anchor" href="#inflow-and-outflow--11-estg" aria-hidden="true" tabindex="-1">#</a>Inflow and outflow (§ 11 EStG)</h2>
+<ul>
+<li>Regularly recurring income and expenses paid a short time before or after the turn of the year belong to the year to which they economically belong (§ 11 Abs. 1 S. 2, Abs. 2 S. 2 EStG). „Kurze Zeit“ (a short time) is ten days (H 11 EStH), i.e. 22.12. to 10.1.</li>
+<li>The due date must also fall within this period (BFH, ruling of 27.6.2018, X R 44/16).</li>
+<li>If 10.1. falls on a weekend, the due date of the VAT advance payment shifts under § 108 Abs. 3 AO; it then lies outside the period (BFH, ruling of 21.6.2022, VIII R 25/20). The app calculates with the due date that the user or the API supplies after this shift.</li>
+</ul>
+<h2 id="retention--147-ao"><a class="anchor" href="#retention--147-ao" aria-hidden="true" tabindex="-1">#</a>Retention (§ 147 AO)</h2>
+<ul>
+<li>Books, inventories, annual financial statements, opening balance sheet, work instructions and organizational documents (thus also the process documentation): <strong>ten years</strong> (§ 147 Abs. 1 Nr. 1, Abs. 3 S. 1 AO).</li>
+<li>Accounting vouchers: <strong>eight years</strong> since the Fourth Bureaucracy Relief Act (BEG IV), from 1.1.2025. The new period applies to all documents whose period had not yet expired on 31.12.2024 (Art. 97 § 19a EGAO). For credit institutions and insurance companies the reduction applies only later; for the self-employed in the app this plays no role.</li>
+<li>Commercial and business letters, other documents: <strong>six years</strong>.</li>
+<li>The period begins at the end of the calendar year of the last entry or creation (§ 147 Abs. 4 AO) and does not end as long as the assessment period is running (§ 147 Abs. 3 S. 5 AO).</li>
+<li>ADR-0101 §13 has been adjusted accordingly; <code>retentionPeriod</code> returns the statutory period.</li>
+</ul>
+<h2 id="non-deductible-expenses-in-the-eür"><a class="anchor" href="#non-deductible-expenses-in-the-eür" aria-hidden="true" tabindex="-1">#</a>Non-deductible expenses in the EÜR</h2>
+<ul>
+<li>Every account lands on exactly one <code>EuerKey</code>. Whatever is entirely non-deductible is only on its own key, never additionally on an ordinary one: trade tax (4320/7610) on <code>ausgaben_gewerbesteuer</code> (§ 4 Abs. 5b EStG), non-deductible debt interest under § 4 Abs. 4a EStG (2113/7313) on <code>nicht_abziehbar_schuldzinsen_4_4a</code>, non-deductible late-filing surcharges and coercive fines (4397/6437), ancillary tax payments (2102/7302) and advertising and entertainment costs (4655/6645) on <code>nicht_abziehbar_sonstige</code>. The tax rules (<code>profit.ts</code>) count these keys as 0.</li>
+<li>The non-deductible part of the debt interest is therefore reposted from the interest account to 2113/7313, not posted additionally.</li>
+<li>There is no separate account for fines in the cross-checked Odoo charts of accounts; it has therefore not been created.</li>
+<li>The VAT on gratuitous withdrawals (withdrawals of goods and services, private car use) is on <code>einnahmen_umsatzsteuer_entnahmen</code>, separate from the VAT collected.</li>
+<li>Reduction of acquisition costs under § 7g Abs. 2 EStG (4853/4854, 6243/6244) on <code>ausgaben_herabsetzung_7g</code>; depreciation on intangible assets on <code>ausgaben_afa_immateriell</code>; rent and leasing of movable assets on <code>ausgaben_miete_leasing_beweglich</code>.</li>
+</ul>
+<h2 id="data-access-z3-gdpdu-description-standard"><a class="anchor" href="#data-access-z3-gdpdu-description-standard" aria-hidden="true" tabindex="-1">#</a>Data access Z3 (GDPdU description standard)</h2>
+<ul>
+<li>Export as <code>index.xml</code> according to the tax administration&#39;s DTD <code>gdpdu-01-09-2004.dtd</code> plus CSV (semicolon, decimal comma, date <code>DD.MM.YYYY</code>, UTF-8, CRLF).</li>
+<li>The API ships the DTD itself from the BMF&#39;s publication; it is not in the core.</li>
+</ul>
+<h2 id="e-bilanz-taxonomies"><a class="anchor" href="#e-bilanz-taxonomies" aria-hidden="true" tabindex="-1">#</a>E-Bilanz taxonomies</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Date of the taxonomy</th>
+<th>Mandatory for fiscal years beginning after</th>
+<th>Source</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>6.5</td>
+<td>01.04.2021</td>
+<td>31.12.2021 (FY 2022)</td>
+<td>annual rhythm, not individually documented</td>
+</tr>
+<tr>
+<td>6.6</td>
+<td>01.04.2022</td>
+<td>31.12.2022 (FY 2023)</td>
+<td>annual rhythm, not individually documented</td>
+</tr>
+<tr>
+<td>6.7</td>
+<td>01.04.2023</td>
+<td>31.12.2023 (FY 2024)</td>
+<td>BMF letter of 9.6.2023</td>
+</tr>
+<tr>
+<td>6.8</td>
+<td>01.04.2024</td>
+<td>31.12.2024 (FY 2025)</td>
+<td>BMF letter of June 2024</td>
+</tr>
+<tr>
+<td>6.9</td>
+<td>01.04.2025</td>
+<td>31.12.2025 (FY 2026)</td>
+<td>BMF letter of 10.6.2025</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>Each version may already be used one year earlier (non-objection).</li>
+<li>Taxonomy 6.10 (1.4.2026) applies from fiscal year 2027 and lies outside the app&#39;s years.</li>
+</ul>
+<h3 id="account-statements-and-fixed-asset-schedule-primary-sources-checked"><a class="anchor" href="#account-statements-and-fixed-asset-schedule-primary-sources-checked" aria-hidden="true" tabindex="-1">#</a>Account statements and fixed-asset schedule (primary sources checked)</h3>
+<ul>
+<li><strong>Statute:</strong> § 5b Abs. 1 S. 1 EStG as amended by the JStG 2024 (BGBl. 2024 I Nr. 387): balance sheet and P&amp;L „einschließlich der unverdichteten Kontennachweise mit Kontensalden“. Under § 52 Abs. 11 S. 3 EStG this applies to fiscal years beginning after 31.12.2024; for the fixed-asset schedule and fixed-asset register as a statutory obligation under § 52 Abs. 11 S. 4 EStG only from fiscal years after 31.12.2027 (read on gesetze-im-internet.de).</li>
+<li><strong>BMF letter of 10.6.2025</strong> (IV C 6 - S 2133-b/00064/002/006; read as PDF): account statement for every position with a value, with name of the position, account number, account description and account balance; at least all general-ledger accounts with a balance at the end of the fiscal year; no aggregation into account groups; no personal accounts and no journal. For taxonomy 6.9 there is no objection if the account statements are submitted by another route and the reasons are explained in a separate taxonomy position. Under the BMF letter of 24.5.2016, the fixed-asset schedule remains a mandatory field for fiscal years after 31.12.2016.</li>
+<li><strong>Consequence for 2025:</strong> Taxonomy 6.8 does not yet contain account statements. The app therefore uses 6.9 for 2025 (permitted under the BMF letter).</li>
+<li><strong>Open:</strong> The exact element names for the account statement tuple and the columns of the fixed-asset schedule are only in the taxonomy package on esteuer.de, which was not reachable. They are collected in <code>E_BILANZ_DETAIL_ELEMENTS</code> and must be checked before the first transmission.</li>
+<li>esteuer.de was not reachable on retrieval (certificate error); the dates for 6.7 to 6.9 come from reports on the BMF letters (otto-schmidt.de, KPMG, Kleeberg, Lexware).</li>
+</ul>
+<h2 id="bank-formats"><a class="anchor" href="#bank-formats" aria-hidden="true" tabindex="-1">#</a>Bank formats</h2>
+<ul>
+<li>CAMT.053 (ISO 20022, camt.053.001.02 to .08), own parser without DTD and entity resolution.</li>
+<li>CSV templates for Sparkasse („CSV-CAMT V2“), ING, DKB (format since 2023) and Commerzbank according to the known column layout of these exports. The test files are made up; they still need to be checked against real exports.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@ import { SKR03_NUMBERS, SKR04_NUMBERS } from './accounts-numbers'
  *
  * The numbers are the de facto standard of the SKR03/SKR04 frameworks; they were cross-checked against
  * the openly licensed Odoo `l10n_de` charts (LGPL-3.0). The labels are our own wording, not copied
- * from any published catalogue (docs/research/self-employed-bookkeeping.md).
+ * from any published catalogue (docs/research/self-employed-bookkeeping.html).
  */
 
 export type ChartOfAccounts = 'SKR03' | 'SKR04'

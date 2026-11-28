@@ -359,7 +359,7 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     }
     // Every event the webhook handles is one the operator is told to subscribe to, in each place that says so.
     for (const event of STRIPE_WEBHOOK_EVENTS) {
-      for (const [name, text] of [['the wizard', wizard], ['infra/README.md', read('infra/README.md')], ['ADR-0111', read('docs/adr/0111-beta-readiness.md')]] as const) {
+      for (const [name, text] of [['the wizard', wizard], ['infra/README.md', read('infra/README.md')], ['ADR-0111', read('docs/adr/0111-beta-readiness.html')]] as const) {
         expect(text, `${name} names ${event}`).toContain(event)
       }
     }
@@ -367,10 +367,13 @@ describe('deployment wiring: every production value reaches the runtime (beta P1
     expect(wizard).toMatch(/repos\/\$GITHUB_REPOSITORY\/environments\/\$GH_ENVIRONMENT/)
   })
 
-  it('H2-32: every check docs/ci-pipeline.md lists as required is a job that reports under exactly that name', () => {
-    const doc = read('docs/ci-pipeline.md')
-    const section = doc.slice(doc.indexOf('## Required checks'), doc.indexOf('## Categories'))
-    const listed = [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((match) => match[1] ?? '')
+  it('H2-32: every check docs/ci-pipeline.html lists as required is a job that reports under exactly that name', () => {
+    const doc = read('docs/ci-pipeline.html')
+    // The page is HTML (ADR-0116): the section runs from its heading to the next one, and a required check is
+    // the code in the first cell of a row.
+    const section = doc.slice(doc.indexOf('<h2 id="required-checks-ruleset-main">'), doc.indexOf('<h2 id="categories">'))
+    const decode = (text: string) => text.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&quot;', '"').replaceAll('&#39;', "'").replaceAll('&amp;', '&')
+    const listed = [...section.matchAll(/<tr>\n<td><code>([^<]+)<\/code><\/td>/g)].map((match) => decode(match[1] ?? ''))
     const scenarioTitles = [...read('.github/workflows/ci.yml').matchAll(/^ {12}title: '([^']+)'$/gm)].map((match) => match[1] ?? '')
     expect(scenarioTitles.length).toBe(4)
     const jobNames = readdirSync(repoFile('.github/workflows'))

@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://demo.steuereule.de"><img src="https://img.shields.io/badge/Live_Demo-Google_Cloud_Run-4285F4?style=for-the-badge&logo=googlecloud&logoColor=white" alt="Live Demo on Google Cloud Run" /></a>
-  <a href="docs/arc42/README.md"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
+  <a href="docs/arc42/README.html"><img src="https://img.shields.io/badge/Architecture-arc42_Specification-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="arc42 Architecture" /></a>
   <a href="docs/adr/"><img src="https://img.shields.io/badge/Decisions-100%2B_ADRs-191B12?style=for-the-badge&labelColor=C9F229&color=191B12" alt="More than 100 ADRs" /></a>
   <img src="https://img.shields.io/badge/Tests-680%2B_test_files-1F9D55?style=for-the-badge" alt="More than 680 test files" />
   <img src="https://img.shields.io/badge/Tariff-~15M_calls%2Fsec-blue?style=for-the-badge" alt="About 15 million tariff calls per second" />
@@ -41,7 +41,7 @@
 
 The owl is a tax advisor in a chat, built like Claude: the conversation is the main surface, the return stays one click away. She works for the user's money, cites the law, and never writes into the return on her own.
 
-- **She opens the conversation.** With enough on file she analyses the case unasked: where the refund stands, what already counts, where money is still lying around. With gaps she says what she knows and asks for the rest as a round of tappable answers. With nothing on file she offers to start the interview. She only opens again when the case changed ([ADR-0067 §11](docs/adr/0067-owl-projects-conversations-notes-context.md)).
+- **She opens the conversation.** With enough on file she analyses the case unasked: where the refund stands, what already counts, where money is still lying around. With gaps she says what she knows and asks for the rest as a round of tappable answers. With nothing on file she offers to start the interview. She only opens again when the case changed ([ADR-0067 §11](docs/adr/0067-owl-projects-conversations-notes-context.html)).
 - **Figures from the engine, words from the model.** The estimate, the commute and home-office allowances and the work expenses are computed by [`@steuereule/core`](packages/core/) before the model is asked; they are the only amounts she may name. Every answer is checked without a model, and an opening that names an amount the app did not compute is written again.
 - **`/grill-me`.** The Berater-Interview skill asks in rounds, each with tappable answers and her recommendation; the answers become drafts the user approves.
 - **Drafts, not writes.** Everything she prepares is a draft with its computed effect on the refund; nothing reaches the return without a click (or Turbo, visible and undoable).
@@ -63,7 +63,7 @@ The owl is a tax advisor in a chat, built like Claude: the conversation is the m
 |:---|:---|:---|
 | [`packages/core/src/math/tarif.ts`](packages/core/src/math/tarif.ts) | **Pure Deterministic Math** | Pure TypeScript implementation of the German progressive income tax formula (§ 32a EStG) and splitting tariff. No dependencies, no I/O. One call takes about 65 nanoseconds on a laptop (`pnpm --filter @steuereule/core bench`). |
 | [`packages/core/src/interview/matrix-fuzzing.test.ts`](packages/core/src/interview/matrix-fuzzing.test.ts) | **Combinatorial Fuzzing & Invariants** | Exhaustively traverses all **144 permutations** of the interview state machine and proves mathematical boundary invariants up to €100M (non-negativity, tariff monotonicity, absence contradiction gates). |
-| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Field Encryption** | Server-side **AES-256-GCM** encryption of the fields marked `@encrypted`, as a Prisma extension. Old keys stay readable through a list of decryption keys ([ADR-0008](docs/adr/0008-profile-persistence-encryption.md)). |
+| [`apps/api/src/prisma/encrypted-prisma.provider.ts`](apps/api/src/prisma/encrypted-prisma.provider.ts) | **Field Encryption** | Server-side **AES-256-GCM** encryption of the fields marked `@encrypted`, as a Prisma extension. Old keys stay readable through a list of decryption keys ([ADR-0008](docs/adr/0008-profile-persistence-encryption.html)). |
 | [`apps/api/src/health/health.controller.ts`](apps/api/src/health/health.controller.ts) | **SRE Health Probes** | Cloud-native `/v1/health/live` and `/v1/health/ready` probes; readiness checks that the database pool answers. |
 
 ---
@@ -74,8 +74,8 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 **Steuereule changes this with software-driven advisory:**
 1. **Intelligent Advisory:** Instead of blank forms, Steuereule conducts an adaptive interview, deriving legal deductions (home office lump sums, commute deductions, childcare, education costs) directly cited with the governing statutory paragraph (§ EStG).
-2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.md)).
-3. **Transparent Range over Deceptive Promises:** Potential refunds are displayed as an honest, uncommitted range until every relevant legal variable is confirmed ([ADR-0032](docs/adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.md)).
+2. **Deterministic Engine vs. AI Hallucination:** All financial computations are executed strictly by a pure, deterministic calculation kernel ([`@steuereule/core`](packages/core/)). AI assists solely in narrative explanation and contextual suggestions; it is strictly prohibited from mutating financial figures ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.html)).
+3. **Transparent Range over Deceptive Promises:** Potential refunds are displayed as an honest, uncommitted range until every relevant legal variable is confirmed ([ADR-0032](docs/adr/0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.html)).
 4. **Verifiable Paper Trail:** Outputs are calibrated directly onto official Federal Ministry of Finance (BMF) tax forms down to the millimeter, making every figure auditable by tax professionals.
 
 ---
@@ -110,12 +110,12 @@ Traditional tax software presents dense tabular forms without proactive guidance
 
 * **Purely Deterministic Calculation Core ([`packages/core`](packages/core/)):**
   Financial calculation logic (§ 32a EStG income tax brackets, solidarity surcharge, child allowances, split-tariff formulas) is encapsulated in an isolated, pure-TypeScript engine completely free of UI, database, or I/O dependencies. 155 test files check it against statutory values (count as of 2026-11-22).
-* **Separation of AI & Calculation ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.md)):**
+* **Separation of AI & Calculation ([ADR-0038](docs/adr/0038-calculation-core-and-ai-port.html)):**
   Large language models offer advice, summarize legal paragraphs, and propose interview topics, but have zero write access to calculation state. A user must explicitly accept a suggestion before parameters feed into the deterministic core.
 * **Field-Level Encryption:**
-  Fields marked `@encrypted` in the Prisma schema, such as tax identification numbers and amounts, are encrypted server-side with **AES-256-GCM** before they reach PostgreSQL. Receipt files are encrypted with a key per user, so deleting the key destroys the file even in old backups ([ADR-0059](docs/adr/0059-document-keystore-crypto-shredding.md)).
+  Fields marked `@encrypted` in the Prisma schema, such as tax identification numbers and amounts, are encrypted server-side with **AES-256-GCM** before they reach PostgreSQL. Receipt files are encrypted with a key per user, so deleting the key destroys the file even in old backups ([ADR-0059](docs/adr/0059-document-keystore-crypto-shredding.html)).
 * **Rigorous Architecture Discipline:**
-  More than **100 Architecture Decision Records ([docs/adr/](docs/adr/))** record decisions with their alternatives. The architecture is documented along **arc42** in [`docs/architecture.md`](docs/architecture.md), including its known debts.
+  More than **100 Architecture Decision Records ([docs/adr/](docs/adr/))** record decisions with their alternatives. The architecture is documented along **arc42** in [`docs/index.html`](docs/index.html), including its known debts.
 * **Contract-First API Design:**
   The REST API (NestJS + Fastify) generates an OpenAPI specification that compiles into end-to-end typed TypeScript SDKs via Orval, guaranteeing compile-time type safety across frontend and backend boundaries.
 * **Automated Hardened CI/CD ([`.github/workflows/`](.github/workflows)):**
@@ -158,14 +158,14 @@ The tariff functions have a Vitest benchmark (`pnpm --filter @steuereule/core be
 
 **Ports & Adapters (hexagonal architecture), checked by tools rather than by review.**
 
-The full architecture documentation is [`docs/architecture.md`](docs/architecture.md). The whole of `docs/` (the architecture with one page per chapter, every ADR, every other document) is laid out in the app's design under [`docs/site/`](docs/site/index.html); open `docs/site/index.html` in a browser from a checkout.
+The documentation is HTML pages in the app's design under [`docs/`](docs/index.html): the architecture with one page per arc42 chapter, every ADR and every other document ([ADR-0116](docs/adr/0116-documentation-is-html-pages.html)). GitHub shows a page as source; open `docs/index.html` in a browser from a checkout.
 
 - **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) pins the allowed import directions between its folders and forbids import cycles between files.
 - **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.
-- **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).
+- **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-and-adapters-enforced-by-architecture-tests.html)).
 - **Why.** The tax rules are tested and fuzzed without a database. Three LLM vendors and a CI fake sit behind one factory. Field encryption sits in the Prisma adapter, so services never see it.
 
-The full write-up is in [`docs/architecture.md` §4.1](docs/architecture.md#41-architecture-style-ports--adapters). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
+The full write-up is in [`docs/index.html` §4.1](docs/index.html#41-architecture-style-ports--adapters). It covers the rings, the port inventory, what is enforced and how, the known limits, and a recipe for adding a dependency.
 
 Steuereule is structured as a modular TypeScript monorepo powered by `pnpm` and `Turborepo`:
 

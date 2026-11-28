@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0013 — DSGVO data export &amp; account deletion: irrecoverable erasure reconciled with the append-only audit log — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0013</p>
+        <h1>DSGVO data export &amp; account deletion: irrecoverable erasure reconciled with the append-only audit log <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#contract-frozen--pin-before-either-track-starts-70-lesson">Contract (frozen — pin before either track starts, #70 lesson)</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> Accepted · 2026-07-23 · stakeholder decision (escalated by the lead during the REQ-011
+technical grill; both open calls ruled by the stakeholder). Realises <strong>REQ-011</strong> (#48), the hard gate
+before any real, non-synthetic user is let onto Slice 2. <strong>Extends</strong> <a href="0008-profile-persistence-encryption.html">ADR-0008</a>
+(field-encryption + append-only audit) and <a href="0012-session-guard-coexistence-and-guest-upgrade.html">ADR-0012</a>
+(the atomic <code>userId</code> re-key precedent, guard seam). References product <strong>ADR-011</strong> (Löschschutz, deletion protection) and
+<strong>ADR-020</strong> (server-side deletion + pre-delete export offer).</p>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Every account holder must be able to <strong>export</strong> their full data (DSGVO, i.e. GDPR, Art. 15/20) and <strong>delete</strong> their
+account (Art. 17), with the mandatory pre-delete export offer and the &quot;you lose your Finanzamt (tax office) evidence&quot;
+warning (product ADR-011). This is a <strong>hard sequencing gate</strong>: it must be Done before real users touch
+Slice 2 (register §sequencing; ADR-0012 §Stakeholder-asks).</p>
+<p>The technical grill surfaced three realities that shape the design, and two questions that were not the
+lead&#39;s to settle and were escalated:</p>
+<ol>
+<li><strong>Erasure collides with the append-only audit log.</strong> <code>TaxDataAccessLog</code> (ADR-0008, REQ-004) is
+append-only — the repository exposes only <code>append()</code>, no update/delete, so &quot;no mutation surface&quot; is
+structural. Art. 17 &quot;right to erasure&quot; cannot both hard-delete those rows <em>and</em> preserve the
+immutable Art. 30 accountability record. <strong>Escalated.</strong></li>
+<li><strong>Crypto-shredding is not available at the per-user level.</strong> ADR-0008&#39;s field-encryption key is
+<strong>app-wide, not per-user</strong>, so deleting a key to shred one user&#39;s ciphertext would shred every
+user&#39;s. Per-user keys would be a far larger, forward-looking change and are <strong>not</strong> needed: a plain
+hard-delete of the <code>Profile</code> row removes the ciphertext irrecoverably.</li>
+<li><strong>No tax-data / filing / Löschschutz model is persisted yet.</strong> The only user-owned data today is
+<code>Profile</code> (encrypted), <code>TaxDataAccessLog</code> (audit), and the better-auth tables (<code>User</code>, <code>Session</code>,
+<code>Account</code>, <code>Verification</code>). &quot;Export all my tax data&quot; is honestly an <strong>empty set</strong> for now, and the
+Löschschutz exemption is currently <strong>vacuous</strong> — but the acceptance test (<code>REQ-011</code>) exercises
+&quot;delete with and without an active Löschschutz record&quot;, so the <em>mechanism</em> must be real and testable.</li>
+<li><strong>Export format</strong> — the DS reference (<code>Profil.jsx</code>) promises a &quot;PDF-Bericht + Belege (ZIP)&quot;; Art. 20
+requires a <strong>machine-readable</strong> representation (JSON). Which to build was <strong>escalated.</strong></li>
+</ol>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-erasure-vs-audit--anonymise-and-retain-stakeholder-ruling-option-a"><a class="anchor" href="#1-erasure-vs-audit--anonymise-and-retain-stakeholder-ruling-option-a" aria-hidden="true" tabindex="-1">#</a>1. Erasure vs. audit — <strong>anonymise-and-retain</strong> (stakeholder ruling, option A)</h3>
+<p>On account deletion the <code>TaxDataAccessLog</code> rows are <strong>anonymised, not deleted</strong>: their <code>userId</code> is
+severed to an <strong>irreversible tombstone</strong> (a random <code>deleted:&lt;uuid&gt;</code>-class value), keeping the
+person-unlinkable event (<code>action</code> / <code>resource</code> / <code>createdAt</code>) as the Art. 30 processing record. This is
+the <strong>same UPDATE-on-<code>userId</code> shape</strong> already sanctioned as the single structural exception to
+app-layer append-only in ADR-0012 §4 (guest→account re-key). Once the <code>userId</code> link is severed the rows
+are no longer personal data (DSGVO Recital 26), so retaining them is Art. 17-clean while append-only and
+Art. 30 accountability both hold.</p>
+<p>Rejected alternative (option B, hard-delete the audit rows): maximises erasure but sacrifices the
+immutable accountability record and any retention duty. Rejected by the stakeholder in favour of A.</p>
+<h3 id="2-erasure-of-the-encrypted-profile--hard-delete-the-row"><a class="anchor" href="#2-erasure-of-the-encrypted-profile--hard-delete-the-row" aria-hidden="true" tabindex="-1">#</a>2. Erasure of the encrypted profile — <strong>hard-delete the row</strong></h3>
+<p>The <code>Profile</code> row is <strong>hard-deleted</strong> (not a soft-delete flag) — genuine, irrecoverable server-side
+erasure of the encrypted <code>steuerId</code>/<code>steuernummer</code> ciphertext (Art. 17; issue &quot;Irrecoverability&quot;
+quality attribute). Crypto-shredding is unavailable under the app-wide key (Context #2) and unnecessary
+given hard-delete.</p>
+<h3 id="3-account-teardown--one-prisma-transaction-all-or-nothing"><a class="anchor" href="#3-account-teardown--one-prisma-transaction-all-or-nothing" aria-hidden="true" tabindex="-1">#</a>3. Account teardown — <strong>one Prisma <code>$transaction</code>, all-or-nothing</strong></h3>
+<p>Deletion runs as a <strong>single <code>$transaction</code></strong> on the plain (non-field-encryption) client — it only
+deletes rows and re-keys the audit <code>userId</code>, never reads/writes the encrypted fields, mirroring
+<code>guest-account-upgrade.prisma.ts</code>:</p>
+<ol>
+<li>Hard-delete <code>Profile</code> for the userId (except any <code>Profile</code>/tax-data row under active <strong>LegalHold</strong> —
+see §5).</li>
+<li>Anonymise <code>TaxDataAccessLog</code> for the userId → tombstone (§1), <strong>except</strong> rows under active LegalHold.</li>
+<li>Delete the better-auth <code>User</code> row — the schema&#39;s <code>onDelete: Cascade</code> removes <code>Session</code> and <code>Account</code>
+automatically; delete <code>Verification</code> rows by the account email.</li>
+</ol>
+<p>All-or-nothing: no partial teardown is ever observable. A mid-transaction failure rolls the whole thing
+back (proven by an injected-failure test).</p>
+<p><strong>Reuse boundary vs. better-auth:</strong> better-auth is reused for the <strong>re-authentication / confirmation</strong>
+step (fresh-session or password re-verification via <code>auth.api</code>), but the <strong>teardown transaction is
+ours</strong> — the audit anonymisation is a domain concern better-auth cannot see, and a single transaction is
+the only true all-or-nothing guarantee. Delegating teardown to better-auth&#39;s <code>deleteUser</code> would split it
+across two transactions and leave the audit reconcile outside atomicity.</p>
+<h3 id="4-export--json-and-pdf-bericht-both-shipped-stakeholder-ruling"><a class="anchor" href="#4-export--json-and-pdf-bericht-both-shipped-stakeholder-ruling" aria-hidden="true" tabindex="-1">#</a>4. Export — <strong>JSON <em>and</em> PDF-Bericht, both shipped</strong> (stakeholder ruling)</h3>
+<p>The export ships <strong>both</strong> representations from one assembled data set (single source, two renderings):</p>
+<ul>
+<li>the <strong>Art. 20 machine-readable JSON</strong> document, and</li>
+<li>a <strong>human-readable PDF-Bericht</strong> rendered from the same data.</li>
+</ul>
+<p>Scope of &quot;all my data&quot;: decrypted <code>Profile</code> (over the authenticated channel, via <code>ENCRYPTED_PRISMA</code>),
+the subject&#39;s <strong>own</strong> <code>TaxDataAccessLog</code> rows, and better-auth account identity. <strong>Secrets are never
+exported</strong> — no password hash, no session/verification tokens, no other user&#39;s anything. <code>taxData</code> is an
+honest <strong>empty array</strong> until a tax-year model exists. Each export <strong>appends a <code>READ</code> audit entry</strong>
+(ADR-0008: every read of the sensitive field is logged).</p>
+<h3 id="5-löschschutz--a-minimal-legalhold-seam-consulted-by-the-delete"><a class="anchor" href="#5-löschschutz--a-minimal-legalhold-seam-consulted-by-the-delete" aria-hidden="true" tabindex="-1">#</a>5. Löschschutz — a minimal <code>LegalHold</code> seam, consulted by the delete</h3>
+<p>A minimal <strong><code>LegalHold</code></strong> model (expand-only migration: <code>userId</code>, <code>resource</code>, <code>holdUntil</code>) records
+active legal holds. The delete transaction consults it and <strong>exempts</strong> matching rows from erasure/
+anonymisation (product ADR-011: already-submitted filings under Löschschutz require the
+full-account-deletion path, and are retained under legal obligation rather than deleted). Filing data
+itself is <strong>future scope</strong> — today the exemption set is empty, but the mechanism is real and the <code>REQ-011</code>
+acceptance test seeds a synthetic hold to exercise both the exempt and non-exempt branches.</p>
+<h3 id="6-trust-boundary--the-existing-guard-seam-unchanged"><a class="anchor" href="#6-trust-boundary--the-existing-guard-seam-unchanged" aria-hidden="true" tabindex="-1">#</a>6. Trust boundary — the existing guard seam, unchanged</h3>
+<p>Both endpoints sit behind <code>UserContextGuard</code> and read <strong>only</strong> <code>@CurrentUser()</code> userId — never a
+client-asserted id from body/query/path/header (ADR-0007). There is no id parameter to forge; export/
+delete of another user&#39;s data is structurally impossible, exactly as <code>ProfileController</code> already relies
+on. The destructive path additionally requires: the mandatory pre-delete export offer + the ADR-011
+Löschschutz warning + explicit confirmation + fresh-auth re-verification, and is <strong>rate-limited by
+reusing the existing DB-backed <code>RateLimit</code> table</strong> (ADR-0012 §5) — no new mechanism.</p>
+<blockquote>
+<p><strong>Maintenance note (added post-implementation).</strong> The fresh-auth password check calls
+<code>auth.api.verifyPassword()</code> <strong>in process</strong>, which bypasses better-auth&#39;s own rate limiter — that
+limiter only runs in the mounted <code>/api/auth/*</code> router&#39;s <code>onRequest</code> hook. To honour the &quot;no new
+mechanism&quot; rule above, <code>apps/api/src/auth/verify-password-rate-limit.ts</code> consults the same
+<code>RateLimit</code> table directly, hand-mirroring better-auth&#39;s internal <code>consume</code> algorithm (same key
+shape, same 10s window, max 3, same conditional-increment-then-reset semantics). That algorithm is
+<strong>internal and un-exported</strong>, so it is not covered by better-auth&#39;s public API contract:
+<strong>re-verify this mirror whenever better-auth is version-bumped.</strong> If it ever drifts, the deletion
+path silently loses its rate limit while the login path keeps its own — the tests that prove the
+429 are the tripwire.</p>
+</blockquote>
+<h3 id="7-pdf-generation--reuse-the-chromium-we-already-have-behind-a-pdfrenderer-seam"><a class="anchor" href="#7-pdf-generation--reuse-the-chromium-we-already-have-behind-a-pdfrenderer-seam" aria-hidden="true" tabindex="-1">#</a>7. PDF generation — reuse the Chromium we already have, behind a <code>PdfRenderer</code> seam</h3>
+<p>The PDF-Bericht is produced by <strong>server-side HTML→PDF using the Chromium already present via Playwright</strong>
+(ADR-0004), driven through a small <strong><code>PdfRenderer</code> seam</strong> (the same shape as ADR-0012 §6&#39;s <code>EmailSender</code>
+seam). The report HTML is a template built from the <strong>same assembled export data</strong> that produces the
+JSON — one data path, two representations, reusing the existing i18n copy and a print stylesheet. This is
+<strong>reuse, not a new heavy PDF dependency</strong>: no <code>pdfkit</code>/<code>pdf-lib</code>/<code>puppeteer</code>-class dependency is added,
+so no separate <code>ask-matt</code> is required.</p>
+<p><strong>Honest infra note (follow-up, not a design blocker):</strong> Chromium is currently a <em>test-time</em> dependency;
+the API <strong>runtime image</strong> must carry the Chromium binary for the renderer to run in production. That is a
+build/infra follow-up. The <code>PdfRenderer</code> seam keeps the concrete engine swappable — if bundling Chromium
+into the API image proves too heavy at deploy time, a lighter renderer slots in behind the seam with no
+controller change. Dev/test uses the Playwright Chromium directly.</p>
+<h3 id="8-honesty--the-ui-copy-matches-the-real-semantics"><a class="anchor" href="#8-honesty--the-ui-copy-matches-the-real-semantics" aria-hidden="true" tabindex="-1">#</a>8. Honesty — the UI copy matches the real semantics</h3>
+<p>The DS <code>Profil.jsx</code> delete-Sheet copy (&quot;Alle Belege … auch auf unseren Servern … nicht rückgängig&quot;) and
+the export label (&quot;PDF-Bericht + Belege (ZIP)&quot;) are <strong>corrected, not ported verbatim</strong>. The UI must state
+precisely: profile + account are permanently erased server-side; the access-log record is <strong>anonymised
+and retained</strong> as a legally-required, person-unlinkable processing record; anything under active
+Löschschutz is retained under legal obligation. The export offers <strong>JSON and PDF</strong> (no &quot;Belege ZIP&quot; until
+a receipts model exists). This is the standing honesty invariant (Slice-1 retro): a change must not leave
+the product claiming something now untrue.</p>
+<h2 id="contract-frozen--pin-before-either-track-starts-70-lesson"><a class="anchor" href="#contract-frozen--pin-before-either-track-starts-70-lesson" aria-hidden="true" tabindex="-1">#</a>Contract (frozen — pin before either track starts, #70 lesson)</h2>
+<p>Base: <code>@Controller(&#39;v1/account&#39;)</code>, <code>@UseGuards(UserContextGuard)</code>, userId only from <code>@CurrentUser()</code>.</p>
+<ul>
+<li><p><strong><code>GET /v1/account/export?format=json</code></strong> (default) → <code>200 application/json</code>,
+<code>Content-Disposition: attachment; filename=&quot;steuereule-export-&lt;YYYY-MM-DD&gt;.json&quot;</code>.</p>
+</li>
+<li><p><strong><code>GET /v1/account/export?format=pdf</code></strong> → <code>200 application/pdf</code>,
+<code>Content-Disposition: attachment; filename=&quot;steuereule-export-&lt;YYYY-MM-DD&gt;.pdf&quot;</code>.</p>
+<ul>
+<li>One route, representation selected by the <code>?format=</code> query param (chosen over <code>Accept</code>
+content-negotiation because a browser file-download <code>&lt;a href&gt;</code> cannot set an <code>Accept</code> header
+reliably). Both branches append a <code>READ</code> audit entry (<code>resource: &quot;export&quot;</code>).</li>
+</ul>
+<p>JSON body shape:</p>
+<pre><code class="language-jsonc">{
+  &quot;schemaVersion&quot;: &quot;1.0&quot;,
+  &quot;exportedAt&quot;: &quot;&lt;ISO-8601&gt;&quot;,
+  &quot;account&quot;:  { &quot;email&quot;, &quot;name&quot;, &quot;emailVerified&quot;, &quot;createdAt&quot;, &quot;authProviders&quot;: [&quot;credential&quot;, ...] },
+  &quot;profile&quot;:  { &quot;firstName&quot;, &quot;lastName&quot;, &quot;steuerId&quot;, &quot;steuernummer&quot;, &quot;createdAt&quot;, &quot;updatedAt&quot; } | null,
+  &quot;taxData&quot;:  [],                                          // honest empty set until a tax-year model exists
+  &quot;accessLog&quot;: [ { &quot;action&quot;, &quot;resource&quot;, &quot;createdAt&quot; } ]  // the subject&#39;s own audit rows
+}
+</code></pre>
+<p>The PDF-Bericht renders the same fields in human-readable German. Never included in either
+representation: password hash, session/verification tokens, other users&#39; data.</p>
+</li>
+<li><p><strong><code>DELETE /v1/account</code></strong> → confirmation payload <code>{ confirm: true }</code> + fresh-auth proof (password or a
+fresh-session assertion). <code>200</code> with an honest summary
+<code>{ deleted: { profile: boolean, account: true }, retainedAnonymisedAuditRows: &lt;n&gt;, retainedUnderLegalHold: &lt;n&gt; }</code>.
+Client clears the session on success. Rate-limited via the existing <code>RateLimit</code> store.</p>
+</li>
+</ul>
+<p>Freeze this via the OpenAPI document so orval regenerates the FE client — the FE builds against the real
+typed client, no mock (ADR-0003/0005).</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>T1 rigor.</strong> Red-first ATDD acceptance test <code>apps/api/test/acceptance/req-011-export-delete.test.ts</code>
+(tag <code>REQ-011</code>) against the real seeded compose stack: full export round-trip (JSON + PDF), then delete
+with and without an active LegalHold. Plus: trust-boundary negatives (A cannot export/delete B),
+irrecoverability, atomicity/rollback (injected mid-transaction failure), Löschschutz exemption,
+audit-count preserved under anonymisation, secrets-excluded assertions.</li>
+<li><strong>Compliance tests run in CI against real Postgres</strong> (ADR-0010); the boot-smoke job covers the new
+routes. The lead&#39;s <code>APPROVE</code> is an <em>enforced</em> invariant only once branch protection (#71) requires
+these checks — until then it is a personal promise (Slice-1 retro).</li>
+<li><strong>Expand-only migration</strong> adds one <code>LegalHold</code> table; no alteration to <code>Profile</code> / <code>TaxDataAccessLog</code>
+shape. The audit <code>userId</code> anonymisation is the <strong>second</strong> sanctioned structural exception to
+app-layer append-only (after ADR-0012 §4&#39;s guest re-key); any future DB-level append-only enforcement
+must whitelist both the re-key and the deletion-anonymise path.</li>
+<li><strong>PDF adds a runtime Chromium footprint</strong> to the API image — tracked as an infra follow-up; the
+<code>PdfRenderer</code> seam keeps it swappable.</li>
+<li><strong>Sequence diagram</strong> of the delete transaction is authored as PlantUML source
+(<a href="0013-account-deletion-transaction.puml"><code>0013-account-deletion-transaction.puml</code></a>) and exported to
+<a href="0013-account-deletion-transaction.svg"><code>0013-account-deletion-transaction.svg</code></a> — the export was the
+outstanding follow-up here and is now committed alongside the source.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Hard-delete the audit rows (option B)</strong> — rejected by the stakeholder: loses the immutable Art. 30
+accountability record.</li>
+<li><strong>Crypto-shred the encrypted fields</strong> — rejected: the field-encryption key is app-wide (ADR-0008), so
+per-user shredding is impossible without a per-user-key re-architecture that hard-delete makes
+unnecessary.</li>
+<li><strong>Soft-delete flag</strong> — rejected: not genuine erasure; the issue requires real server-side deletion.</li>
+<li><strong>better-auth <code>deleteUser</code> owns the teardown</strong> — rejected: splits teardown across two transactions and
+leaves the audit anonymisation outside atomicity; we reuse better-auth for re-auth only.</li>
+<li><strong>JSON-only export</strong> — superseded by the stakeholder&#39;s &quot;JSON <em>and</em> PDF, both now&quot; ruling.</li>
+<li><strong>A new PDF dependency (<code>pdfkit</code> / <code>pdf-lib</code> / standalone <code>puppeteer</code>)</strong> — rejected: the Chromium
+already present via Playwright renders HTML→PDF as reuse, avoiding a new heavy dependency and the
+<code>ask-matt</code> it would otherwise require.</li>
+<li><strong><code>Accept</code>-header content negotiation for JSON vs PDF</strong> — rejected in favour of <code>?format=</code> because a
+browser download link cannot set <code>Accept</code> reliably.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0012-session-guard-coexistence-and-guest-upgrade.html"><span class="eyebrow">Previous</span><span>ADR-0012</span></a><a class="step step-next" href="0014-responsive-breakpoint-strategy.html"><span class="eyebrow">Next</span><span>ADR-0014</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

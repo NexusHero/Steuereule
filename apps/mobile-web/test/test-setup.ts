@@ -74,7 +74,7 @@ vi.mock('../src/auth/auth-client', async (importOriginal) => {
 // only keeps `useFrameSize`'s own `observe()` call from throwing during mount.
 // Standing limitation this leaves: `useFrameSize` never actually sees a frame size under this
 // suite, so it cannot be exercised here — real resize behaviour is the Chromium-backed e2e
-// gate's job (docs/process/delivery-pipeline.md § Browser gates), not jsdom's, and belongs in
+// gate's job (docs/process/delivery-pipeline.html § Browser gates), not jsdom's, and belongs in
 // Salih's T1 pass for this slice, not only in this comment.
 class NoopResizeObserver implements ResizeObserver {
   observe() {}

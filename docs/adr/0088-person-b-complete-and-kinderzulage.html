@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0088 — Entering Person B completely, Swiss Kinderzulage per child — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0088</p>
+        <h1>Entering Person B completely, Swiss Kinderzulage per child <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/interview/interview.ts</code>, <code>packages/core/src/domains/{swiss-family-allowance,ch-salary-certificate-parser}.ts</code>, <code>packages/core/src/engine/married-estimate.ts</code>, <code>apps/api/src/{interview,pension,children,tax-estimate,printout,ch-certificate-scan}/</code>, <code>apps/api/src/advisor/advisor.service.ts</code>, <code>apps/api/prisma/</code>, <code>apps/mobile-web/src/screens/{catalog,children,cockpit,pension,interview}/</code>, <code>e2e/scenarios/26-familie-brandt-rente-und-zulage.mjs</code></li>
+<li><strong>Builds on:</strong> ADR-0054 (Person A enters data for B), ADR-0073 (drafts for B), ADR-0087 (escalation case)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>After the escalation case (ADR-0087) gaps remained in a Zusammenveranlagung (joint assessment) in which A enters data for B:</p>
+<ul>
+<li><strong>Kinderzulage (Swiss child allowance):</strong> the allowance from B&#39;s employer was lost as soon as A had 0. Per child it was not possible to say who receives the allowance. The Lohnausweis (Swiss salary certificate) reader did not know any family allowances.</li>
+<li><strong>Pension:</strong> B&#39;s pension could not be entered. The joint estimate knew no pension at all and silently left out a retired partner.</li>
+<li><strong>Personal items:</strong> Riester, relocation or side job of B ended up in A&#39;s answers.</li>
+<li><strong>Interview:</strong> it asked nothing about B. The cockpit always showed B the same partner fields.</li>
+<li><strong>Tax rate:</strong> a Swiss salary without Grenzgänger (cross-border commuter) status was fully taxed, although it is exempt in Germany.</li>
+<li><strong>Documents from photos:</strong> individual document drafts carried no „prüfen“ (&quot;check&quot;) marker.</li>
+</ul>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><p><strong>The interview also asks about B.</strong> After „Verheiratet“ (&quot;Married&quot;) it asks what Person B does
+(employed, retired, not working). For &quot;employed&quot; it additionally asks whether B works in
+Switzerland. The cockpit then shows only B&#39;s matching fields:</p>
+<ul>
+<li>employed: LStB and commute, for Switzerland also the Lohnausweis;</li>
+<li>retired: the pension field;</li>
+<li>without an answer (older years): as before.</li>
+</ul>
+<p>B&#39;s residence and non-return days are asked only by B&#39;s Switzerland form; the engine knows no
+conditions across several answers.</p>
+</li>
+<li><p><strong>„Für wen?“ (&quot;For whom?&quot;) in personal catalogs.</strong> In a Zusammenveranlagung, „Lebenslagen“
+(&quot;Life situations&quot;) and „Sonderausgaben“ (&quot;Special expenses&quot;) ask at the top „für mich / für
+‹Name›“ (&quot;for me / for ‹name›&quot;). B&#39;s answers are in B&#39;s record (<code>interview?person=B</code>, only these
+two catalogs). Joint catalogs stay with the user (400 or 409).</p>
+</li>
+<li><p><strong>Pension for B.</strong> The pension interface takes <code>?person=B</code>. The pension form has a partner mode.
+The joint estimate counts a pension as income: taxable share minus the €102 lump sum (§ 9a S. 1
+Nr. 3 EStG), nothing withheld. A pension alongside a salary of the same person is left out.</p>
+</li>
+<li><p><strong>Kinderzulage per child with payer.</strong> Each child can state with whose salary the allowance
+comes (A or B, new column <code>schweizerKinderzulageVon</code>). The distribution
+(<code>swissAllowancePerChild</code>) works like this:</p>
+<ul>
+<li>A separate amount on the child takes precedence.</li>
+<li>Otherwise the children of a payer share that payer&#39;s family allowances (N-Gre l. 8, in euros).</li>
+<li>Children without a payer share what is assigned to no child.</li>
+</ul>
+<p>The children form and the printout use the same function. The form shows a merely computed
+allowance as a hint and does not store it as a fixed amount.</p>
+</li>
+<li><p><strong>The Lohnausweis reads family allowances</strong> from the remarks (item 15): child, education and
+family allowances with an amount, parts with „davon“ (&quot;of which&quot;) not counted twice. From this a
+draft for N-Gre l. 8 is created for the correct person.</p>
+</li>
+<li><p><strong>No Grenzgänger, no estimate.</strong> With more than 60 non-return days or residence in Switzerland,
+the Swiss salary is exempt in Germany (Progressionsvorbehalt (progression clause)). The estimate
+then says &quot;not possible&quot; (<code>kein-grenzgaenger</code>) instead of fully taxing it.</p>
+</li>
+<li><p><strong>Documents from a photo or scan</strong> yield „prüfen“ also as a single draft (ADR-0060).</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Scenario 26 („Familie Brandt“, phone width) checks:<ul>
+<li>B retired with the pension field;</li>
+<li>the Kinderzulage with payer;</li>
+<li>„Für wen?“ in the Sonderausgaben;</li>
+<li>B&#39;s pension in the estimate;</li>
+<li>a B with their own account who enters a change year themselves.</li>
+</ul>
+</li>
+<li>Open is the assessment comparison: for A it takes only the gross salary of the LStB and needs B&#39;s
+zvE (taxable income) from the client. For Grenzgänger it is therefore incomplete.</li>
+<li>Also open: the Progressionsvorbehalt for non-genuine Grenzgänger.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0087-escalation-case-two-grenzgaenger-family.html"><span class="eyebrow">Previous</span><span>ADR-0087</span></a><a class="step step-next" href="0089-stream-instead-of-catalogs.html"><span class="eyebrow">Next</span><span>ADR-0089</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

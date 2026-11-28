@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0046 — Rental vertical: several properties per Anlage V, straight-line AfA, sale/furnished gate (Draft) — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0046</p>
+        <h1>Rental vertical: several properties per Anlage V, straight-line AfA, sale/furnished gate (Draft) <span class="status status-open">Draft</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Draft — promotion needs Musti review (ticket 10.6 review)</li>
+<li><strong>Date:</strong> 2026-10-25</li>
+<li><strong>Deciders:</strong> Suhay (agent, ticket 10.6) — draft; promotion needs Musti review</li>
+<li><strong>Implements</strong> product ADR-033 (rental income SIMPLE; sale/furnished stays gated), product ADR-010
+(income type <code>Vermietung</code>), product ADR-030 (freely combinable), product ADR-032 (no fabricated
+zero)</li>
+<li><strong>Builds on</strong> ADR-0037 (income-type set), ADR-0038 (<code>berechne</code>/<code>Posten</code>/<code>Quelle</code>), ADR-0041/0042/
+0044 (the vertical patterns), ADR-0040 (document type vocabulary)</li>
+<li><strong>Context tags:</strong> architecture, vermietung, anlage-v, determinism boundary, honesty principle,
+security</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In 1.0 rental income becomes a full income type — but SIMPLE (product ADR-033): several
+<strong>properties let for the whole year</strong>, one Anlage V (rental income form) per property, straight-line AfA (depreciation). Sale and
+furnished short-term letting stay gated (private sale transaction with holding periods, or a separate
+delimitation respectively) — the limit is named honestly, not silently extended. The interview answer
+<code>vermietung-art</code> (Einfach / Mehrere / Verkauf oder möbliert) already exists in the
+segment 2 graph (interview.ts <code>VERMIETUNG_ART_VALUES</code>) and <code>gatedEinkunftsarten</code> already gates
+<code>Vermietung</code> for the sale/furnished answer — what is missing is the
+item/Anlage V build-out: the guided data interface per property, the straight-line AfA, and the
+folding into the deterministic core.</p>
+<p>Rental income differs structurally from pensions (10.4) and capital (10.5): there are
+<strong>several properties</strong> per <code>(userId, steuerjahr)</code> — the list character is the normal case
+(ADR-030: rental income+capital+pension+Grenzgänger is a normal combination), not an edge case.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>A pure, UI-free module <code>packages/core/src/rental.ts</code> (ADR-0004, no I/O), plus the
+usual API/screen build-out:</p>
+<ol>
+<li><p><strong>Rental classification (<code>ordneVermietungEin</code>)</strong> — the <code>vermietung-art</code> answer is mapped to
+what it MEANS: <code>einfach</code>/<code>mehrere</code> are computable (let for the whole year, one
+Anlage V per property), <code>verkauf-oder-moebliert</code> stays gated (ADR-033 — named, never
+extended), <code>unbekannt</code> is never guessed. A pure derivation from the ONE source
+(interview answer), no denormalized column.</p>
+</li>
+<li><p><strong>Guided data interface per property (<code>VermietungsobjektDaten</code>)</strong> — four captured facts:
+rental income (annual base rent), acquisition costs (building share), year of construction (completion),
+ongoing Werbungskosten (work-related expenses) — each <code>erfasst</code>/<code>offen</code>/<code>unklar</code> (the same honesty
+state machine as lstb.ts/rente.ts/kapital.ts), serialization in ONE place
+(ADR-0033 one-rule instinct). Werbungskosten may be 0 — but that 0 is the user&#39;s INPUT,
+never a zero invented by the core (ADR-032).</p>
+</li>
+<li><p><strong>Straight-line AfA (<code>afaSatzProzent</code>)</strong> — § 7 Abs. 4 Satz 1 EStG, the three statutory bands
+VERBATIM (no invented percentage): completed up to and including 1924 → 2.5 %;
+1925–2022 → 2 %; from 2023 (residential buildings, § 7 Abs. 4 Satz 1 Nr. 2 i.d.F. JStG 2022) → 3 %.
+A non-integer/negative year of construction is open (null), never guessed.</p>
+</li>
+<li><p><strong>Facts per property + folding (<code>vermietungsobjektFakten</code>/<code>vermietungStand</code>)</strong> — the
+rental income becomes an income <code>Posten</code> of income type <code>Vermietung</code> with
+<code>Quelle: { art: &#39;eingabe&#39; }</code>; Werbungskosten and AfA are reported SEPARATELY (sum over
+all properties, AfA with <code>§ 7 Abs. 4 Satz 1 EStG</code> provenance) — reported, never subtracted: the
+net computation is the tax-formula slice, the same &quot;partial truth stated as a partial
+truth&quot; honesty as angestellte.ts&#39;s sonderausgaben. <code>offenePosten</code> counts the
+blocked results per property (rental income, AfA, Werbungskosten — max 3); <code>gegated</code> passes
+through unchanged, so that a sale/furnished landlord reads open with a named gate.</p>
+</li>
+<li><p><strong>API (<code>Vermietung</code> module) + screen</strong> — one row PER PROPERTY
+(<code>Vermietungsobjekt</code> model, four field-encrypted columns, ADR-0008), not a JSON column:
+the field-encryption pattern needs one row per fact. <code>GET /v1/steuerjahre/{jahr}/ vermietung</code>, <code>POST …/vermietung/objekte</code> (creates an empty property), <code>PUT …/vermietung/ objekte/{objektId}/{feld}</code> — a foreign/unknown <code>objektId</code> is a 404 (never a cross-user
+read). The screen shows the classification, per property the four fields + facts (AfA with
+provenance), „Weiteres Objekt hinzufügen&quot; (&quot;Add another property&quot;) and the sum — the sale/furnished gate hides
+the input and names the limit.</p>
+</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>M1 limit, named once:</strong> properties can be created and edited field by field;
+deleting individual properties does not exist in M1 (a wrong property is set back field by field
+to <code>offen</code>) — a named follow-up with the submission/version model, not a
+silent gap. The sale/furnished case and all special AfA cases (§ 7 Abs. 5 EStG, increased
+deductions) are NOT here.</li>
+<li><strong>Honest limit, named once:</strong> the net computation (income − Werbungskosten − AfA)
+and the resulting tax are the tax-formula slice — here the three numbers are
+honestly reported SIDE BY SIDE, never silently netted (ADR-015/032).</li>
+<li><strong>Security posture:</strong> all four numbers are field-encrypted at rest (ADR-0008) — rental income
+and acquisition costs are among the most sensitive facts, joinable to the Steuer-ID; the
+classification is NOT its own column, but the (likewise encrypted) interview answer
+<code>vermietung-art</code>; WRITE/READ audited (REQ-004). No performance axis.</li>
+<li><strong>Register:</strong> REQ-026; 10.2/10.3/10.4 occupy 022/023/024, 10.5 occupies 025 — check for
+collisions on merge (10.7 takes 027; REQ numbers are stable and never reused).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>One JSON column for all properties.</strong> Rejected: breaks the field-encrypted
+column pattern and the uniqueness per fact; one row per property is the pattern of the
+neighboring verticals (ADR-0008) and reviewable.</li>
+<li><strong>Only ONE property per year (like pensions).</strong> Rejected: product ADR-033 names &quot;several properties&quot;
+explicitly as 1.0 scope, and the list character is the normal case (ADR-030) — the
+limitation would be an avoidable gap, not honesty.</li>
+<li><strong>AfA rate as a formula instead of cited bands.</strong> Rejected: the three bands are directly
+citable from § 7 Abs. 4 Satz 1 EStG and pinned in the test; a formula drifts away from the statute more easily
+(the same reasoning as ADR-0044 for the pension tables).</li>
+<li><strong>Werbungskosten optional with a silent 0.</strong> Rejected: a silently invented 0 would be exactly the
+fabricated-zero error that ADR-032 forbids — 0 is a user input, never a
+core default.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0045-value-first-funnel.html"><span class="eyebrow">Previous</span><span>ADR-0045</span></a><a class="step step-next" href="0047-deadline-warning-mode.html"><span class="eyebrow">Next</span><span>ADR-0047</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

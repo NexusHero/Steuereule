@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0009 — better-auth as the auth server (Keycloak dropped); supersedes ADR-0007 — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0009</p>
+        <h1>better-auth as the auth server (Keycloak dropped); supersedes ADR-0007 <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#security-hardening">Security hardening</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> Accepted · 2026-07-23 · stakeholder decision (auth epic grilling, Epic #8) ·
+<strong>supersedes ADR-0007</strong> · honours the <code>UserContextGuard</code> seam (REQ-002/ADR-0007 phase 1) ·
+implements REQ-003…REQ-011 · relates to product ADR-046/027/020/006</p>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>ADR-0007 settled the auth <em>engineering</em> build as <strong>Keycloak (IdP) + better-auth (OIDC relying
+party)</strong>: a hardened JVM IdP owning users/credentials/MFA/social brokering, with better-auth
+federating to it over OIDC. The <code>UserContextGuard</code> (REQ-002, done) was built as the single seam that
+establishes <code>userId</code> for a request — phase 1 mints an opaque, HMAC-signed <strong>guest</strong> session; the guard
+is the <em>only</em> place identity is resolved, so the identity system behind it can change without touching
+any controller or service.</p>
+<p>Re-grilling the auth epic before Slice 1, the stakeholder reconsidered the operational cost of running
+and patching a separate Keycloak service against the value it adds for our 1.0 scope. The conclusion:
+for this product and team, better-auth <strong>on its own</strong> — as the auth <em>server</em>, not an OIDC client to
+Keycloak — carries the identity surface we actually need (guest, email/password, social Google/Apple,
+2FA/passkeys, DB-backed sessions) with a single TypeScript stack and first-class Expo/RN support, while
+the <code>UserContextGuard</code> seam preserves the exact property Keycloak was meant to protect: an external,
+verified IdP can slot in <strong>later</strong> behind the guard without controller/service changes. This decision
+<strong>supersedes ADR-0007</strong>. Per the log&#39;s immutability rule we supersede rather than rewrite: ADR-0007
+stays on record (its <code>UserContextGuard</code> seam — phase 1 — remains live and correct; only its Keycloak
+choice is replaced here).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ul>
+<li><strong>better-auth is the auth server</strong> (not an OIDC relying party to Keycloak). It owns users,
+credentials, social sign-in, MFA/passkeys, session issuance and revocation, mounted on the existing
+NestJS + Fastify API (product ADR-046). <strong>Keycloak is dropped</strong> — no separate JVM IdP for 1.0, and
+no Keycloak container in the compose/dev stack.</li>
+<li><strong>The <code>UserContextGuard</code> seam is unchanged and load-bearing.</strong> <code>userId</code> is established <strong>only</strong> by
+the server, inside the guard — never from a client-set header, body, query, or path (ADR-0007 phase
+1, REQ-002). Today the guard verifies an opaque HMAC-signed <strong>guest</strong> cookie; better-auth plugs in
+<strong>behind</strong> this seam so that swapping guest → authenticated <code>userId</code> (and, later, an external
+verified IdP) needs no change in any controller or service. This seam is the whole reason dropping
+Keycloak carries no downstream cost.</li>
+<li><strong>Phased scope</strong> (each phase lands behind the same seam):<ol>
+<li><strong>Guest</strong> — the live phase: a lightweight anonymous session, <code>userId</code> available immediately for
+the vertical slices (Onboarding/Cockpit). Slice 1 persists the encrypted Steuer-ID onto the
+<strong>guest <code>userId</code></strong>.</li>
+<li><strong>Email + password + guest→account upgrade</strong> — real accounts; the guest&#39;s data carries over
+<strong>atomically</strong> to the account <code>userId</code>, then the guest session is retired (REQ-005/006).</li>
+<li><strong>Social (Google, Apple) + 2FA/passkeys</strong> — Google in 1.0; Apple Sign-In built and wired but
+flagged off until an Apple Developer account + shipped iOS build exist; TOTP 2FA and WebAuthn
+passkeys as opt-in factors (REQ-007/008).</li>
+</ol>
+</li>
+<li><strong>Session model</strong> — <strong>DB-backed sessions</strong> (better-auth, in our EU Postgres, ADR-047): server-
+verified and revocable, multi-device with no device registry (product ADR-027). Transport of the
+session token is <strong>per platform</strong>: <strong>web</strong> keeps it only in an <code>httpOnly</code> + <code>Secure</code> +
+<code>SameSite=strict</code> cookie; <strong>Expo/React-Native</strong> keeps it only in <strong>SecureStore</strong> (REQ-009). No
+session token in <code>localStorage</code>/AsyncStorage.</li>
+<li><strong>Authorization</strong> — <code>userId</code> scopes every profile, tax year and document (product ADR-006); guest
+data is reachable only by its own session until claimed. <strong>ELSTER submission still requires a
+verified real identity</strong> (product ADR-005/027) — a gate above ordinary login, out of scope for the
+1.0 read/onboarding slices.</li>
+<li><strong>Data residency &amp; secrets</strong> — better-auth&#39;s user/session tables live in <strong>our EU Postgres</strong>
+(ADR-047). All <code>BETTER_AUTH_*</code> / social-provider client secrets come from the vault/sealed secrets
+(12-Factor III), never hard-coded.</li>
+</ul>
+<h2 id="security-hardening"><a class="anchor" href="#security-hardening" aria-hidden="true" tabindex="-1">#</a>Security hardening</h2>
+<p>The hardening posture from ADR-0007 carries over, now owned by better-auth + the API rather than
+Keycloak (non-exhaustive, tracked toward the infra/compliance ADR line and CI gates):</p>
+<ul>
+<li><strong>Transport:</strong> TLS 1.3, HSTS, modern ciphers, auto-renewed certs (k3s ingress, ADR-049).</li>
+<li><strong>Auth server:</strong> email verification/OTP, per-route <strong>login rate limiting</strong>, <strong>CSRF</strong> protection,
+strict redirect/origin allowlist, short session TTLs with server-side revocation, opt-in <strong>TOTP +
+WebAuthn passkeys</strong>, a <strong>known-breached-password</strong> check at signup/change (REQ-010).</li>
+<li><strong>App/API:</strong> strict CORS allowlist, input validation (class-validator), security headers/CSP
+(helmet), and <strong>audit logging of tax-data access</strong> (REQ-004 / ADR-0008).</li>
+<li><strong>DSGVO:</strong> data minimization, retention &amp; deletion paths, <strong>no real PII in non-prod</strong> (ADR-0003 §4.2),
+export/delete as first-class (Art. 15/17/20, REQ-011).</li>
+<li><strong>SDLC:</strong> dependency scanning (SCA), SAST, secret scanning in CI; the <code>security-review</code> gate runs on
+auth-touching changes; pen-test before ELSTER go-live.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>One TypeScript stack</strong> for app + auth server; no JVM IdP to run, patch, or containerize for dev.
+Operational surface shrinks materially versus ADR-0007.</li>
+<li>We <strong>own the identity hardening</strong> that Keycloak would have provided audited (MFA, brute-force
+lockout, social brokering) — now our responsibility on better-auth. This is the accepted trade and
+is why REQ-010&#39;s hardening baseline is first-class, not optional.</li>
+<li>The <code>UserContextGuard</code> seam keeps the swap-cost near zero: should we ever want an external verified
+IdP (or re-introduce one), it mounts behind the guard without reworking controllers/services.</li>
+<li>Social OAuth apps (Google, Apple) are configured against <strong>better-auth</strong> directly (not Keycloak
+brokering); Apple Sign-In still brings App Store obligations when the iOS build ships.</li>
+<li>Guest→account upgrade must migrate guest-owned data atomically to the account <code>userId</code>
+(REQ-006); for the encrypted profile this is an atomic <code>Profile.userId</code> re-assign — the encryption
+key is app-wide, so <strong>no re-encryption</strong> is needed (ADR-0008).</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Keep ADR-0007 (Keycloak IdP + better-auth OIDC RP)</strong> — audited MFA/brute-force/social brokering
+out of the box, but a separate JVM service to run, patch, secure and containerize for every dev.
+Rejected for 1.0: the hardening it buys is reproducible on better-auth for our scope, and the seam
+keeps the door open to re-introduce a hardened IdP later at low cost.</li>
+<li><strong>Auth0 / Clerk</strong> — fastest, but US-based SaaS: identity PII leaves the EU and our control, per-MAU
+cost. Wrong fit for data sovereignty (unchanged from ADR-0007).</li>
+<li><strong>Auth.js (NextAuth)</strong> — web/Next-centric; weaker first-class Expo/RN and server-session story.</li>
+<li><strong>Roll our own</strong> — rejected: auth is the last place to hand-roll security. better-auth is a vetted
+library carrying the primitives; it is not hand-rolled auth.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0008-profile-persistence-encryption.html"><span class="eyebrow">Previous</span><span>ADR-0008</span></a><a class="step step-next" href="0010-ci-postgres-and-boot-smoke.html"><span class="eyebrow">Next</span><span>ADR-0010</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

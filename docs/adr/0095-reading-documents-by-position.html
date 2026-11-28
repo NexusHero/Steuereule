@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0095 — Reading documents by position: reading order, 300 dpi, word boxes — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="index.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0095</p>
+        <h1>Reading documents by position: reading order, 300 dpi, word boxes <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-17</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/mobile-web/src/lib/documentOcr.ts</code>, <code>apps/mobile-web/src/lib/imagePreprocess.ts</code>, <code>apps/mobile-web/scripts/ocr-assets.mjs</code>, <code>packages/core/src/domains/document-kind.ts</code>, <code>packages/core/src/domains/lstb-parser.ts</code>, <code>packages/core/src/domains/ch-salary-certificate-parser.ts</code>, <code>packages/core/src/domains/ch-insurance-letters.ts</code></li>
+<li><strong>Supplements:</strong> ADR-0060 (on-device OCR), ADR-0075 (Swiss letters), ADR-0080 (health insurance statements), ADR-0092 (document assignment)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the real-data run, documents attached in the chat yielded almost no values. The text was usually
+recognized on the device and was lost afterwards:</p>
+<ul>
+<li>pdf.js outputs the text items in the order of the content stream. A form (Swiss
+Lohnausweis, salary certificate) keeps labels and amounts in separate blocks. No amount was on the line
+of its item number.</li>
+<li>Scanned pages were rendered at 144 dpi. tesseract&#39;s layout analysis loses the amount column
+in a form with lines (Lohnsteuerbescheinigung (wage tax certificate): 4 of 8 amounts).</li>
+<li>Scanners store pages as JBIG2 or JPEG 2000. pdf.js decodes both with WASM, which it loads from
+<code>wasmUrl</code>. Without that setting the page stayed empty („Text nicht lesbar“ (&quot;Text not readable&quot;)).</li>
+<li>The document type depended on an exact word sequence. A fully read scan became „sonstiges“ (&quot;other&quot;).</li>
+</ul>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Text layer in reading order.</strong> <code>joinPdfTextItems</code> orders the text items by position: from top
+to bottom, within the line from left to right. Items share a line if their baselines are
+at most 40 % of the smaller font size apart (at least 2 pt). If a position is missing
+or the page&#39;s text is rotated, the content-stream order stays.</li>
+<li><strong>Scans at 300 dpi, at most 9 million pixels per page.</strong> That is one A4 page and is below the
+canvas limit of mobile browsers. The page goes through the same preprocessing as a photo.</li>
+<li><strong>Scans by word boxes.</strong> The lines are built from the boxes of the words (<code>joinOcrWords</code>). The
+page segmentation stays tesseract&#39;s: &quot;sparse text&quot; (PSM 11) lost leading
+digits behind dotted lines in the scan corpus („5.214,00“ as „214,00“) and brought nothing on the real scans.
+Photos stay on the previous path; their corpus is calibrated for it.</li>
+<li><strong>Page limits.</strong> Up to 12 pages of text layer and 6 pages of OCR. A scanned Lohnausweis with
+supplementary sheet has five pages.</li>
+<li><strong>Image decoders self-hosted.</strong> The WASM decoders of pdf.js are pinned under <code>public/ocr/pdf/</code>
+(lock and budget per ADR-0060).</li>
+<li><strong>Document type by features.</strong> The Lohnausweis counts as recognized if enough titles and item numbers of
+Form 11 occur, even with OCR errors. Provision and benefit statements go to the Pensionskasse (Swiss pension fund)
+reader; their annual values are never offered as read.</li>
+<li><strong>Lines 22 to 27 of the Lohnsteuerbescheinigung.</strong> The sub-lines a), b), c) are assigned to their block,
+even if the block number is on a different line. Line 25 without line 26 (or
+vice versa) counts as incompletely read and must be checked.</li>
+<li><strong>No 2D code reader.</strong> None of the four real Lohnausweise carries the barcode of „eLohnausweis
+SSK“. A decoder without a document to test it against does not go into the app.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>Still only text goes to the server. No image, no PDF, no new network call with document content.</li>
+<li>OCR values stay <code>pruefen</code> (ADR-0060 §4).</li>
+<li>A scan costs several seconds per page and up to 9 million pixels of working memory.</li>
+<li>Multi-column running text is read line by line across the columns. For forms and letters
+with an amount column this is intended.</li>
+<li>Tables with borders in scans (Pensionskasse overview) still lose individual lines. For that,
+step 3c of the plan remains (fixed fields at fixed positions).</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="index.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0094-estimate-calculates-like-the-assessment-notice.html"><span class="eyebrow">Previous</span><span>ADR-0094</span></a><a class="step step-next" href="0096-selectable-model-and-thinking-depth.html"><span class="eyebrow">Next</span><span>ADR-0096</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

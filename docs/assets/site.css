@@ -1,0 +1,631 @@
+/* The app's design tokens: a copy of packages/tokens/dist/tokens.css, with the "dunkel" theme bound to the
+   reader's system setting. When the tokens change, copy this block again (ADR-0116). */
+:root {
+  --grund: #ffffff;
+  --karte: #ffffff;
+  --tinte: #0f0f14;
+  --tinte-2: #5c5c66;
+  --linie: #c6c6cc;
+  --linie-weich: #e6e6e9;
+  --funke: #c9f229;
+  --funke-hell: #e3fa8d;
+  --funke-weich: #f2fbd2;
+  --funke-tinte: #40510a;
+  --nacht: #0f0f14;
+  --nacht-karte: #191920;
+  --nacht-text: #ededf3;
+  --nacht-linie: #2a2a31;
+  --ki: #5c5c66;
+  --ki-weich: #f3f3f5;
+  --ki-linie: #d4d4da;
+  --ki-tinte: #3a3a44;
+  --ok: #1f9d55;
+  --ok-weich: #def4e2;
+  --warn: #8a6500;
+  --warn-weich: #f3f3f5;
+  --fehler: #e0362c;
+  --fehler-weich: #fde3de;
+  --schatten-hart: 0px 0px 0 var(--tinte);
+  --schatten-hart-s: 0px 0px 0 var(--tinte);
+  --schatten-hart-l: 0px 0px 0 var(--tinte);
+  --schatten-ki: 0px 0px 0 var(--ki);
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --kontur: 1px;
+  --radius-s: 10px;
+  --radius: 14px;
+  --radius-lg: 20px;
+  --radius-pille: 999px;
+  --text-xs: 12px;
+  --text-s: 14px;
+  --text-m: 16px;
+  --text-l: 18px;
+  --text-xl: 24px;
+  --text-2xl: 28px;
+  --text-3xl: 34px;
+  --text-held: 52px;
+  --schrift-display: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --schrift-text: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --schrift-mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --gewicht-normal: 400;
+  --gewicht-halb: 500;
+  --gewicht-fett: 600;
+  --gewicht-schwer: 600;
+  --zeile-eng: 1.05;
+  --zeile-normal: 1.45;
+  --spationierung-display: -0.03em;
+  --spationierung-label: 0.08em;
+  --feder: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --zack: cubic-bezier(0.2, 0.9, 0.3, 1);
+  --t-schnell: 120ms;
+  --t-flott: 220ms;
+  --t-auftritt: 380ms;
+  --bp-s: 375;
+  --bp-m: 768;
+  --bp-l: 1280;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grund: #0f0f14;
+    --karte: #191920;
+    --tinte: #ededf3;
+    --tinte-2: #a0a0ac;
+    --linie: #3c3c45;
+    --linie-weich: #27272e;
+    --funke-weich: #262d10;
+    --funke-tinte: #d9f077;
+    --nacht: #191920;
+    --nacht-karte: #23232b;
+    --nacht-text: #ededf3;
+    --nacht-linie: #33333c;
+    --ki-weich: #1f1f27;
+    --ki-linie: #3c3c45;
+    --ki-tinte: #c8c8d2;
+    --ok-weich: #143020;
+    --warn: #b5861a;
+    --warn-weich: #1f1f27;
+    --fehler: #e96a61;
+    --fehler-weich: #3b1512;
+  }
+}
+
+/* The look of the documentation: the app's look, built on its tokens. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+  scroll-padding-top: var(--s5);
+}
+
+body {
+  margin: 0;
+  background: var(--grund);
+  color: var(--tinte);
+  font-family: var(--schrift-text);
+  font-size: var(--text-m);
+  line-height: var(--zeile-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--schrift-mono);
+  font-size: var(--text-xs);
+  letter-spacing: var(--spationierung-label);
+  text-transform: uppercase;
+  color: var(--tinte-2);
+}
+
+.skip {
+  position: absolute;
+  left: var(--s4);
+  top: -100px;
+  padding: var(--s2) var(--s4);
+  background: var(--funke);
+  color: #0f0f14;
+  border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-pille);
+}
+
+.skip:focus {
+  top: var(--s4);
+}
+
+:focus-visible {
+  outline: 2px solid var(--tinte);
+  outline-offset: 2px;
+}
+
+/* Shell: the navigation rail of the app's desktop layout beside a reading column. */
+.shell {
+  display: grid;
+  grid-template-columns: 296px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.rail {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  padding: var(--s5) var(--s4);
+  border-right: var(--kontur) solid var(--linie-weich);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  text-decoration: none;
+}
+
+.brand > span {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand strong {
+  font-weight: var(--gewicht-fett);
+  font-size: var(--text-l);
+  letter-spacing: var(--spationierung-display);
+}
+
+.menu > summary {
+  display: none;
+}
+
+.nav ul {
+  list-style: none;
+  margin: var(--s2) 0 var(--s5);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border: var(--kontur) solid transparent;
+  border-radius: var(--radius-pille);
+  text-decoration: none;
+  font-size: var(--text-s);
+  font-weight: var(--gewicht-halb);
+}
+
+.nav-item:hover {
+  background: var(--ki-weich);
+}
+
+/* The selected chapter looks like the selected tab of the app: lime, with an ink outline. */
+.nav-item.is-active {
+  background: var(--funke);
+  border-color: var(--tinte);
+  color: #0f0f14;
+}
+
+.nav-number {
+  font-family: var(--schrift-mono);
+  font-size: var(--text-xs);
+  color: var(--tinte-2);
+}
+
+.nav-item.is-active .nav-number {
+  color: #40510a;
+}
+
+.rail-foot {
+  margin: auto 0 0;
+  font-size: var(--text-xs);
+  color: var(--tinte-2);
+}
+
+.content {
+  width: 100%;
+  max-width: 920px;
+  padding: var(--s7) var(--s6) var(--s7);
+  margin: 0 auto;
+}
+
+.page-head {
+  margin-bottom: var(--s6);
+}
+
+h1 {
+  margin: var(--s2) 0 var(--s4);
+  font-family: var(--schrift-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--gewicht-fett);
+  line-height: var(--zeile-eng);
+  letter-spacing: var(--spationierung-display);
+}
+
+.hero h1 {
+  font-size: var(--text-held);
+}
+
+.lead {
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--text-l);
+  color: var(--tinte-2);
+}
+
+.chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.chip {
+  display: inline-block;
+  padding: var(--s1) var(--s3);
+  border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-pille);
+  font-size: var(--text-s);
+  font-weight: var(--gewicht-halb);
+  text-decoration: none;
+}
+
+.chip:hover {
+  background: var(--funke-weich);
+}
+
+.figure {
+  margin: 0 0 var(--s6);
+}
+
+.figure img,
+.prose img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prose: what the Markdown becomes. */
+.prose {
+  max-width: 76ch;
+}
+
+.prose > *:first-child {
+  margin-top: 0;
+}
+
+.prose h1,
+.prose h2,
+.section-title {
+  margin: var(--s7) 0 var(--s3);
+  font-family: var(--schrift-display);
+  font-size: var(--text-xl);
+  font-weight: var(--gewicht-fett);
+  letter-spacing: var(--spationierung-display);
+  line-height: 1.2;
+}
+
+.prose h3 {
+  margin: var(--s6) 0 var(--s2);
+  font-size: var(--text-l);
+  font-weight: var(--gewicht-fett);
+}
+
+.prose h4 {
+  margin: var(--s5) 0 var(--s2);
+  font-size: var(--text-m);
+  font-weight: var(--gewicht-fett);
+}
+
+.anchor {
+  float: left;
+  width: 1.2em;
+  margin-left: -1.2em;
+  color: var(--tinte-2);
+  text-decoration: none;
+  opacity: 0;
+}
+
+:is(h2, h3, h4):hover .anchor,
+.anchor:focus-visible {
+  opacity: 1;
+}
+
+.prose p,
+.prose ul,
+.prose ol {
+  margin: 0 0 var(--s4);
+}
+
+.prose li + li {
+  margin-top: var(--s1);
+}
+
+.prose a {
+  /* A bare URL as link text has no place to break otherwise and widens a narrow page. */
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--funke);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.prose a:hover {
+  background: var(--funke-weich);
+}
+
+.prose code {
+  font-family: var(--schrift-mono);
+  font-size: 0.875em;
+  padding: 1px 6px;
+  background: var(--ki-weich);
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+
+.prose pre {
+  margin: 0 0 var(--s4);
+  padding: var(--s4);
+  overflow-x: auto;
+  background: var(--ki-weich);
+  border: var(--kontur) solid var(--linie-weich);
+  border-radius: var(--radius);
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+  overflow-wrap: normal;
+}
+
+.prose hr {
+  margin: var(--s6) 0;
+  border: 0;
+  border-top: var(--kontur) solid var(--linie-weich);
+}
+
+.prose blockquote {
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  background: var(--funke-weich);
+  border-radius: var(--radius);
+}
+
+.prose blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+.prose picture {
+  display: block;
+  margin: var(--s5) 0 var(--s2);
+  padding: var(--s4);
+  border: var(--kontur) solid var(--linie);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+}
+
+/* The line that names a diagram's source reads as its caption. */
+.prose picture + p,
+.prose p:has(> picture) + p {
+  font-size: var(--text-s);
+  color: var(--tinte-2);
+}
+
+.table {
+  margin: 0 0 var(--s5);
+  overflow-x: auto;
+  border: var(--kontur) solid var(--linie);
+  border-radius: var(--radius);
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-s);
+}
+
+.prose th,
+.prose td {
+  padding: var(--s3) var(--s4);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: var(--kontur) solid var(--linie-weich);
+}
+
+.prose th {
+  font-family: var(--schrift-mono);
+  font-size: var(--text-xs);
+  font-weight: var(--gewicht-normal);
+  letter-spacing: var(--spationierung-label);
+  text-transform: uppercase;
+  color: var(--tinte-2);
+  white-space: nowrap;
+}
+
+/* A header row with nothing in it (the fact sheets at the top of a document) takes no room. */
+.prose thead:not(:has(th:not(:empty))) {
+  display: none;
+}
+
+/* In the list of decisions the title takes the room; number and status keep to their content. */
+.decisions td:nth-child(2) {
+  width: 100%;
+}
+
+.prose tr:last-child td {
+  border-bottom: 0;
+}
+
+/* The status of a decision, as a pill beside its title and in the overview. */
+.status {
+  display: inline-block;
+  padding: 2px var(--s3);
+  border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius-pille);
+  font-family: var(--schrift-text);
+  font-size: var(--text-xs);
+  font-weight: var(--gewicht-halb);
+  letter-spacing: 0;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.status-ok {
+  background: var(--funke);
+  color: #0f0f14;
+}
+
+.status-past {
+  border-color: var(--linie);
+  background: var(--ki-weich);
+  color: var(--tinte-2);
+}
+
+.mono {
+  font-family: var(--schrift-mono);
+}
+
+.back {
+  margin: var(--s6) 0 0;
+  font-size: var(--text-s);
+}
+
+/* Cards and steps: the app's outlined buttons. */
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--s3);
+}
+
+.card,
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  height: 100%;
+  padding: var(--s4);
+  background: var(--karte);
+  border: var(--kontur) solid var(--tinte);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.card:hover,
+.step:hover {
+  background: var(--funke-weich);
+}
+
+.card strong {
+  font-size: var(--text-l);
+  font-weight: var(--gewicht-fett);
+  letter-spacing: var(--spationierung-display);
+}
+
+.card-lead {
+  font-size: var(--text-s);
+  color: var(--tinte-2);
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+  margin-top: var(--s7);
+}
+
+.step {
+  font-weight: var(--gewicht-fett);
+}
+
+.step-next {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* Below the app's tablet breakpoint the rail becomes a bar with a menu that opens on demand. */
+@media (max-width: 900px) {
+  .shell {
+    display: block;
+  }
+
+  .rail {
+    position: static;
+    height: auto;
+    padding: var(--s4);
+    gap: var(--s3);
+    border-right: 0;
+    border-bottom: var(--kontur) solid var(--linie-weich);
+  }
+
+  .menu > summary {
+    display: inline-block;
+    padding: var(--s2) var(--s4);
+    border: var(--kontur) solid var(--tinte);
+    border-radius: var(--radius-pille);
+    font-weight: var(--gewicht-halb);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .menu[open] > summary {
+    background: var(--funke);
+    color: #0f0f14;
+    margin-bottom: var(--s4);
+  }
+
+  .rail-foot {
+    display: none;
+  }
+
+  .content {
+    padding: var(--s5) var(--s4) var(--s7);
+  }
+
+  .hero h1 {
+    font-size: var(--text-3xl);
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media print {
+  .rail,
+  .steps,
+  .skip {
+    display: none;
+  }
+
+  .shell {
+    display: block;
+  }
+}

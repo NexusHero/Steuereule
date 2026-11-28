@@ -11,7 +11,7 @@
 // Not listed, because no official public PDF exists: Anlage G and Anlage S (the FMS shows only a
 // notice that forms for Gewinneinkünfte are filed electronically) and the Gewerbesteuererklärung
 // GewSt 1 A (not provided from 2016 on). GewSt 1 A is read from the ELSTER help instead
-// (elster-help.mjs); docs/research/self-employed-forms.md has the details.
+// (elster-help.mjs); docs/research/self-employed-forms.html has the details.
 // Tax year 2026 of ESt 1 A / Anlage Sonstiges is not yet in the FMS (November 2026).
 
 const BMF = 'https://www.bundesfinanzministerium.de/Content/DE/Downloads/BMF_Schreiben/Steuerarten'

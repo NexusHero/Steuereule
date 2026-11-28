@@ -109,7 +109,7 @@ and easy to work with, and you have a genuinely sharp eye for **UI and frontend*
   promise is a journey-wide check, not a one-screen edit. (And write acceptance tests against the DS
   spec, not just the behaviour you happen to see.)
 - **Requirement questions go to the stakeholder** (ADR-0016 retired the Product Owner seat). Read the
-  Requirements Register (`docs/requirements/register.md`) and the product/design ADRs first — most
+  Requirements Register (`docs/requirements/register.html`) and the product/design ADRs first — most
   answers are already written down. Ask only what they genuinely don't settle, and cite the answer in
   the ticket so the next person doesn't have to ask again.
 

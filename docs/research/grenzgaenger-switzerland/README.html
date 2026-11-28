@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Grenzgänger Switzerland: where the tax return and Bescheid of a real case are wrong — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Research: cross-border commuters</p>
+        <h1>Grenzgänger Switzerland: where the tax return and Bescheid of a real case are wrong</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#result-per-point">Result per point</a></li><li><a class="chip" href="#recomputed-target-calculation-core-notice-cases-from-notice-paritytestts-with-the-corrections">Recomputed target (calculation core, notice cases from <code>notice-parity.test.ts</code> with the corrections)</a></li><li><a class="chip" href="#what-this-means-for-the-acceptance-tests">What this means for the acceptance tests</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 22.11.2026. Occasion: a married couple (resident in Baden-Württemberg, both Grenzgänger (cross-border commuters) to Switzerland, one child) has tax returns and Bescheide (tax assessment notices) for 2024 and 2025 prepared by their tax advisor. Comparing them with the app showed deviations. For each one, this file states what the primary sources say. The case values are without names; the individual research notes sit alongside.</p>
+<p>Primary sources: statutory text (gesetze-im-internet.de), official guide to the income tax return 2024/2025 (ELSTER help, section Anlage N-Gre), BMF letters, BFH decisions. No result rests solely on a secondary source; whatever was not read directly is marked as „nicht geprüft“ (not verified) in the individual files.</p>
+<h2 id="result-per-point"><a class="anchor" href="#result-per-point" aria-hidden="true" tabindex="-1">#</a>Result per point</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th>#</th>
+<th>Point</th>
+<th>Tax return/Bescheid</th>
+<th>Correct</th>
+<th>Certainty</th>
+<th>File</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Collective Krankentaggeld (sickness daily allowance) in gross salary (item 8), paid by the insurer via the employer</td>
+<td>2024 left as wages, 2025 deducted</td>
+<td>tax-free, deduct in the N-Gre line „Steuerfreies Krankentaggeld“ (2024 l. 8, 2025 l. 9)</td>
+<td>high</td>
+<td><code>01-krankentaggeld.html</code></td>
+</tr>
+<tr>
+<td>1a</td>
+<td>Progressionsvorbehalt (progression proviso) on this daily allowance</td>
+<td>–</td>
+<td>according to the guide and FG BW 14 K 2647/18 no; BFH VI R 26/24 (accident daily allowance) could be transferred</td>
+<td>medium</td>
+<td><code>01-krankentaggeld.html</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Swiss Kinderzulage (child allowance, FamZG) in gross salary</td>
+<td>not deducted</td>
+<td>tax-free (guide N-Gre, § 65 EStG), deduct (2024 l. 7, 2025 l. 8); no Progressionsvorbehalt. BFH VI R 24/17: the advisor omitting it is grossly negligent</td>
+<td>high (result), medium (exact provision)</td>
+<td><code>02-kinderzulage.html</code></td>
+</tr>
+<tr>
+<td>2a</td>
+<td>Swiss withholding tax on the tax-free portion</td>
+<td>fully credited</td>
+<td>according to the guide (line 25) only to the extent the income is recorded</td>
+<td>medium (directive only secondary)</td>
+<td><code>02-kinderzulage.html</code></td>
+</tr>
+<tr>
+<td>3</td>
+<td>Second KVG basic insurer after switching insurer during the year</td>
+<td>missing</td>
+<td>contributions to both insurers in full as basic cover (§ 10 Abs. 1 Nr. 3 a EStG, BMF Rz. 140); child in Anlage Kind Kz 89</td>
+<td>high (approx. 90 %)</td>
+<td><code>03-health-insurance-switch-basic-cover.html</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Half of the NBUV premium as Werbungskosten (work-related expenses)</td>
+<td>not claimed</td>
+<td>correct: 50 % each Werbungskosten (l. 59) and provident expenses (l. 81), BMF 28.10.2009 Tz. 1.3</td>
+<td>high (employee share), medium-high (employer share)</td>
+<td><code>04-nbu-werbungskosten.html</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Cap on other provident expenses with self-paid KVG</td>
+<td>1.900 € for one person</td>
+<td>2.800 € (§ 10 Abs. 4 Satz 1); has no effect here because the basic contributions exceed the cap (Satz 4)</td>
+<td>high</td>
+<td><code>05-cap-on-other-provident-expenses.html</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="recomputed-target-calculation-core-notice-cases-from-notice-paritytestts-with-the-corrections"><a class="anchor" href="#recomputed-target-calculation-core-notice-cases-from-notice-paritytestts-with-the-corrections" aria-hidden="true" tabindex="-1">#</a>Recomputed target (calculation core, notice cases from <code>notice-parity.test.ts</code> with the corrections)</h2>
+<p>Minus = additional payment, plus = refund, after advance tax payments. Tax-free daily allowance and Kinderzulage are also not AHV wages: the deductible retirement provision decreases with them (guide N-Gre l. 75 to 77 and 83, AHV/IV 5,05 % of line 77). This consequence is included.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>2024</th>
+<th>zvE (taxable income)</th>
+<th>after advance tax payments</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bescheid</td>
+<td>174.855</td>
+<td>−4.059,90</td>
+</tr>
+<tr>
+<td><strong>all corrections, without Progressionsvorbehalt, credit reduced (target)</strong></td>
+<td><strong>153.276</strong></td>
+<td><strong>+5.082,72</strong></td>
+</tr>
+<tr>
+<td>the same with Progressionsvorbehalt on the daily allowance</td>
+<td>153.276</td>
+<td>+2.121,84</td>
+</tr>
+<tr>
+<td>the same with full credit (as the app does today)</td>
+<td>153.276</td>
+<td>+6.082,72</td>
+</tr>
+</tbody></table></div>
+<div class="table"><table>
+<thead>
+<tr>
+<th>2025</th>
+<th>zvE</th>
+<th>after advance tax payments</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bescheid</td>
+<td>221.690</td>
+<td>−4.633,52</td>
+</tr>
+<tr>
+<td><strong>all corrections, credit reduced (target)</strong></td>
+<td><strong>214.556</strong></td>
+<td><strong>−1.405,00</strong></td>
+</tr>
+<tr>
+<td>the same with full credit (as the app does today)</td>
+<td>214.556</td>
+<td>−1.281,00</td>
+</tr>
+</tbody></table></div>
+<p>The 2025 daily allowance is already deducted in the Bescheid; point 5 changes nothing. Open and not included: a second donation receipt over 230 € in 2024 (duplicate or separate donation, question for the taxpayers), the awning in 2025 (around 200 €) and the exchange rate (BMF annual average 2025 recomputed as 1,0671 instead of 1,065; under 20 € effect on health insurance).</p>
+<h2 id="what-this-means-for-the-acceptance-tests"><a class="anchor" href="#what-this-means-for-the-acceptance-tests" aria-hidden="true" tabindex="-1">#</a>What this means for the acceptance tests</h2>
+<p>The target of a real case is not the Bescheid, but the Bescheid with the documented corrections from this list. The case is an acceptance test in <code>apps/api/test/acceptance/echtfaelle/</code>. A point with medium certainty (1a, 2a) is kept in the test as a separate variant, not silently chosen. The calculation above is an estimate by the calculation core and not tax advice.</p>
+
+      </article>
+      <p class="back"><a href="../../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../../assets/site.js"></script>
+</body>
+</html>

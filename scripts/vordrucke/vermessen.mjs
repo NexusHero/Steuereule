@@ -8,7 +8,7 @@
 // silently keep old positions (test/ausdruck-felder.test.ts).
 //
 // Dev-time and CI tool (job „Vordrucke“): needs poppler (`pdftotext`, `pdftocairo`), never a runtime
-// dependency. The yearly procedure: docs/process/official-forms-at-year-change.md.
+// dependency. The yearly procedure: docs/process/official-forms-at-year-change.html.
 //
 //   node scripts/vordrucke/vermessen.mjs 2025          (writes felder-<jahr>.json)
 //   node scripts/vordrucke/vermessen.mjs 2025 --check  (CI: fails when the checked-in file differs)

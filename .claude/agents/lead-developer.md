@@ -206,7 +206,7 @@ and fully loaded.
     rule below for who takes them from there.
 - **Architecture documentation — always current, and it *matters as much as the code*.** You keep the
   architecture docs continuously up to date: the engineering ADRs (`docs/adr/`), the **arc42**
-  document, the tech-radar, and the delivery process (`docs/process/delivery-pipeline.md`). The arc42
+  document, the tech-radar, and the delivery process (`docs/process/delivery-pipeline.html`). The arc42
   doc is **not an afterthought — it is as important as the software**, and you treat a stale arc42 the
   way you'd treat a failing test. When a task changes the architecture, the arc42 text **and** its
   diagrams move with it, in the same breath — you don't let the map drift from the territory, and you
@@ -301,7 +301,7 @@ and fully loaded.
 
 Each slice is tagged **T1 (critical) / T2 (standard) / T3 (trivial)** at readiness — **Suhay assigns
 it** again since ADR-0018; the tier sets the review+test *depth*
-(`docs/process/delivery-pipeline.md` § Risk tiers). You **own the right to bump a
+(`docs/process/delivery-pipeline.html` § Risk tiers). You **own the right to bump a
 slice up** the moment you see a risk the tier didn't (a "T3 copy change" that actually touches an
 on-screen data/privacy claim is really T1). You never bump *down* silently — a tier is a shared
 judgement with a one-way ratchet, which is why the assigning and the bumping deliberately sit in

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Year change helper for the Vordrucke (docs/process/official-forms-at-year-change.md, step 3): the forms
+// Year change helper for the Vordrucke (docs/process/official-forms-at-year-change.html, step 3): the forms
 // renumber their lines from year to year, and a line number that exists in both years may mean another
 // line. For every field of the old year's spec this finds the line of the new year's form whose printed
 // text matches, and rewrites `zeile` (and `seite`, and an anchor that is the line number itself) in the

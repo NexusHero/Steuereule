@@ -12,9 +12,15 @@ pnpm register-check   # node scripts/checks/register-check.mjs
 pnpm adr-check         # node scripts/checks/adr-check.mjs
 ```
 
+> **The documentation is HTML (ADR-0116).** `register-check` and `adr-check` read
+> `docs/requirements/register.html` and `docs/adr/*.html` through `lib/html-doc.mjs`, which turns a
+> page back into the pipe tables and backtick citations the parsers were written for, one line per
+> line of the HTML file. The proof notes further down were taken when the register was Markdown and
+> name its lines of that time (`register.md:239`).
+
 ## What each check actually verifies
 
-**register-check** (`docs/requirements/register.md`):
+**register-check** (`docs/requirements/register.html`):
 
 1. every cited path exists. A citation that resolves only by a **bare filename**, not the full
    path (a sibling citation in the same cell already named the shared directory) is real
@@ -109,9 +115,9 @@ pnpm adr-check         # node scripts/checks/adr-check.mjs
 
 **adr-check** (`docs/adr/`):
 
-6. every `docs/adr/NNNN-*.md` number is unique (diagram `.puml`/`.svg` companions sharing a
+6. every `docs/adr/NNNN-*.html` number is unique (diagram `.puml`/`.svg` companions sharing a
    parent decision's number are not a violation — see the script), every such file has a row in
-   `docs/adr/index.md` and vice versa, and every `ADR-NNNN` reference **anywhere in the repo**
+   `docs/adr/index.html` and vice versa, and every `ADR-NNNN` reference **anywhere in the repo**
    resolves to a real file — widened from `docs/` only after Musti's review found the narrower
    scope flagged the prose *describing* a known dangling reference and missed the real one
    (`k8s/README.md`), see "The ignore-marker escape hatch" below.
@@ -126,7 +132,7 @@ the gap is that GitHub Actions' `pull_request` trigger checks out the synthetic 
 (`refs/pull/N/merge`) by default, so the same plain filesystem scan, run under that event,
 naturally sees the union of base + head and the second PR to run this job goes red the moment
 the first one merges — **for the auto-mergeable half of the collision space.** Two branches that
-both append a row to the same table in `docs/adr/index.md` are exactly the ones likely to
+both append a row to the same table in `docs/adr/index.html` are exactly the ones likely to
 conflict on that file first, before GitHub ever computes a merge ref for this check to run
 against — that half needs a human to resolve the textual conflict (a rebase) before the number
 collision underneath it becomes visible at all. The control proof below demonstrates the scan
@@ -143,7 +149,7 @@ open) is what would close it outright.
 
 ## The ignore-marker escape hatch
 
-Widening the scan to the whole repo turned two of `docs/adr/index.md`'s own sentences into
+Widening the scan to the whole repo turned two of `docs/adr/index.html`'s own sentences into
 false positives: its "Known inconsistency" section *describes* the `k8s/README.md` dangling
 reference and, worse, explicitly says an old NestJS-numbering coincidence with the same digits
 as the incoming register-ownership decision is *closed* — flagging that line reports the
@@ -157,7 +163,7 @@ reference someone doesn't want to fix.
 
 **It must never be used inside `desktop-companion/`.** <!-- adr-check-ignore: this line describes the dangling references below, it does not assert them --> That directory's dangling `ADR-0057`/
 `0058`/`0059` references (`README.md`, `capture.cjs`, `main.cjs`, `package.json`,
-`preload.cjs`) are not prose *describing* a known gap the way `docs/adr/index.md`'s own
+`preload.cjs`) are not prose *describing* a known gap the way `docs/adr/index.html`'s own
 "Known inconsistency" section is — they *assert* live decisions that were never written. The
 marker exists for the former shape, not the latter; muting these with `adr-check-ignore` would
 turn a real, still-open gap invisible instead of fixing it. They stay red until the directory
@@ -167,7 +173,7 @@ itself is cleaned up (or the ADRs get written) by whoever owns it.
 
 Every one of the six checks was proven by planting the exact break it exists to catch, watching
 it fail with the right message, and reverting — see the PR's evidence block for the transcript
-of each. Checks 1–5 were broken/restored directly against `docs/requirements/register.md` and
+of each. Checks 1–5 were broken/restored directly against `docs/requirements/register.html` and
 this repo's real vitest configs; check 6 was proven with a real `git merge` of two branches that
 are each individually clean but collide once merged (the mechanism has to run against an actual
 merge, not a description of one — a fixture that never merges anything wouldn't prove it).

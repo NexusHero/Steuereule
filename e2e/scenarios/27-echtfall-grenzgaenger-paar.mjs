@@ -3,7 +3,7 @@
 // and are not copied: every answer of the case is typed or tapped where a user meets it, every document is
 // uploaded as a PDF with a text layer (rendered from the case by echtfall-grenzgaenger/generate.mjs), and the
 // app's own estimate must hit the same target as the API test, to the cent: the notice with the researched
-// corrections (docs/research/grenzgaenger-switzerland/README.md), plus the app's known deviations.
+// corrections (docs/research/grenzgaenger-switzerland/README.html), plus the app's known deviations.
 //
 // A case field that no mask asks is named in NOT_ASKED with its reason; any other field the gate cannot
 // find in its mask fails the gate, so a removed field is noticed.

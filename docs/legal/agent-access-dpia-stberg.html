@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Legal classification and Datenschutz-Folgenabschätzung (DSFA, data protection impact assessment) for agent access — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22</p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Legal</p>
+        <h1>Legal classification and Datenschutz-Folgenabschätzung (DSFA, data protection impact assessment) for agent access</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#1-classification-under-the-steuerberatungsgesetz-stberg">1. Classification under the Steuerberatungsgesetz (StBerG)</a></li><li><a class="chip" href="#2-datenschutz-folgenabschätzung-dsfa-under-art-35-dsgvo">2. Datenschutz-Folgenabschätzung (DSFA under Art. 35 DSGVO)</a></li><li><a class="chip" href="#3-product-and-marketing-promises">3. Product and marketing promises</a></li></ul>
+      </header>
+      <article class="prose">
+<blockquote>
+<p><strong>Status:</strong> Valid from version 1.0 (November 2026)<br><strong>Reference:</strong> ADR-0052 (agent access via Model Context Protocol), Issue #388 (Slice 17.5)<br><strong>Legal bases:</strong> Steuerberatungsgesetz (StBerG, Tax Advisory Act), Datenschutz-Grundverordnung (DSGVO, GDPR, Art. 25, 35, 44 ff., 49)</p>
+</blockquote>
+<hr>
+<h2 id="1-classification-under-the-steuerberatungsgesetz-stberg"><a class="anchor" href="#1-classification-under-the-steuerberatungsgesetz-stberg" aria-hidden="true" tabindex="-1">#</a>1. Classification under the Steuerberatungsgesetz (StBerG)</h2>
+<h3 id="11-problem-statement-and-regulatory-framework"><a class="anchor" href="#11-problem-statement-and-regulatory-framework" aria-hidden="true" tabindex="-1">#</a>1.1 Problem statement and regulatory framework</h3>
+<p>Under § 2 and § 3 StBerG, <em>geschäftsmäßige Hilfeleistung in Steuersachen</em> (business-like assistance in tax matters) is permitted only to persons and associations authorized to provide it (e.g. Steuerberater (tax advisors), Steuerbevollmächtigte (authorized tax agents), Rechtsanwälte (attorneys)). <em>Unbefugte geschäftsmäßige Hilfeleistung in Steuersachen</em> (unauthorized business-like assistance in tax matters) is prohibited under § 5 StBerG and can be punished as an administrative offense (<em>Ordnungswidrigkeit</em>) under § 160 StBerG.</p>
+<h3 id="12-technical-and-legal-delimitation-of-steuereule-agent-access"><a class="anchor" href="#12-technical-and-legal-delimitation-of-steuereule-agent-access" aria-hidden="true" tabindex="-1">#</a>1.2 Technical and legal delimitation of SteuerEule agent access</h3>
+<p>By providing the Model Context Protocol (MCP) interface, SteuerEule provides <strong>no <em>Hilfeleistung in Steuersachen</em> (assistance in tax matters)</strong>, but a technical software tool:</p>
+<ol>
+<li><strong>The user&#39;s own assistant (tool character):</strong><ul>
+<li>SteuerEule does not itself operate the AI agent as a closed advisory instance.</li>
+<li>The user, on their own responsibility, concludes an agreement with a model provider (e.g. Anthropic, OpenAI, local LLM) or operates their own client.</li>
+<li>The agent acts as the extended arm and personal tool of the taxpayer (<em>Steuerpflichtiger</em>) themselves.</li>
+</ul>
+</li>
+<li><strong>No legal subsumption or client mandate (<em>Mandatsverhältnis</em>):</strong><ul>
+<li>SteuerEule does not give binding legal advice through the MCP tools.</li>
+<li>Calculations of the core (<code>@steuereule/core</code>) are deterministic calculation paths based on the official statutes (e.g. § 32a EStG tariff, commuter allowance (<em>Pendlerpauschale</em>), official BMF tables), which do not invent open values but honestly show them as open (ADR-0032/0034).</li>
+</ul>
+</li>
+<li><strong>Mandatory human intermediation („Der Nutzer gewinnt“ (&quot;the user wins&quot;) &amp; confirmation requirement):</strong><ul>
+<li>All values entered by the AI assistant are mandatorily marked server-side as <strong>unconfirmed</strong> (<code>unbestaetigt</code>) (ADR-0052 §6).</li>
+<li>Unconfirmed values block the pre-check, the form printout and the payment (REQ-032). A printout or a submission without explicit visual review and confirmation, annex by annex, by the human user is technically impossible.</li>
+<li>If the user has entered a value themselves, the assistant can never overwrite it; a suggestion is created instead.</li>
+</ul>
+</li>
+<li><strong>No electronic transmission to tax authorities (paper route):</strong><ul>
+<li>In version 1.0, SteuerEule does not connect an ELSTER certificate and transmits no data to the Finanzämter (tax offices) (ADR-0050). The user prints the forms themselves, checks them and signs them by hand.</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="2-datenschutz-folgenabschätzung-dsfa-under-art-35-dsgvo"><a class="anchor" href="#2-datenschutz-folgenabschätzung-dsfa-under-art-35-dsgvo" aria-hidden="true" tabindex="-1">#</a>2. Datenschutz-Folgenabschätzung (DSFA under Art. 35 DSGVO)</h2>
+<h3 id="21-threshold-analysis-art-351-dsgvo"><a class="anchor" href="#21-threshold-analysis-art-351-dsgvo" aria-hidden="true" tabindex="-1">#</a>2.1 Threshold analysis (Art. 35(1) DSGVO)</h3>
+<p>Tax data is financial data of high sensitivity (partly including Art. 9 DSGVO data such as religious affiliation for church tax purposes). Because an automated interface (OAuth 2.1 + remote MCP) is opened to external AI systems, a formalized DSFA was carried out.</p>
+<h3 id="22-data-flows-and-interface-architecture"><a class="anchor" href="#22-data-flows-and-interface-architecture" aria-hidden="true" tabindex="-1">#</a>2.2 Data flows and interface architecture</h3>
+<ol>
+<li><strong>Authentication:</strong><ul>
+<li>Authentication is strictly per OAuth 2.1 with PKCE.</li>
+<li>Authorization requests require explicit scopes (<code>steuerdaten:read</code>, <code>steuerdaten:write</code>, <code>belege:write</code>, <code>zahllink:read</code>).</li>
+<li>The consent screen explicitly informs the user about the requested permissions and the third-country risk.</li>
+</ul>
+</li>
+<li><strong>Read access and PII masking (privacy by design, Art. 25 DSGVO):</strong><ul>
+<li>When an assistant calls the tool <code>steuerjahr_stand</code>, personal identifiers (PII) are <strong>masked</strong> server-side:<ul>
+<li>Steuer-ID (tax identification number): <code>12*******01</code></li>
+<li>IBAN: <code>DE** **** **** **** **** 00</code></li>
+<li>First/last name: first letter + <code>***</code></li>
+<li>Street &amp; house number: masked</li>
+<li>Phone number: area code + <code>***</code></li>
+</ul>
+</li>
+<li>Planning-relevant tax key data (postal code, place of residence, amounts, tax year) remains in plain text, so that the assistant can do tax calculations without being able to identify the person.</li>
+</ul>
+</li>
+<li><strong>Write access and account protection:</strong><ul>
+<li>Assistant tokens can only write domain data (<code>maske_eintragen</code>, <code>beleg_hochladen</code>).</li>
+<li>Administrative actions (password change, account deletion, passkeys, OAuth management, data export under Art. 20) are <strong>blocked server-side</strong> for bearer tokens (<code>ForbidAssistantGuard</code>).</li>
+</ul>
+</li>
+<li><strong>Auditing and transparency (Art. 30 DSGVO):</strong><ul>
+<li>Every read and write access by an assistant is logged atomically in the <code>AuditEntry</code> table (with timestamp, client ID and client name).</li>
+<li>The user can view these accesses in the Art. 15/20 DSGVO data export.</li>
+</ul>
+</li>
+<li><strong>Revocation:</strong><ul>
+<li>The user can block connected assistants at any time, with immediate effect, under <code>Profil → Verbundene Assistenten</code>. Token and session are invalidated in the database.</li>
+</ul>
+</li>
+</ol>
+<h3 id="23-third-country-transfer-art-44-ff-dsgvo"><a class="anchor" href="#23-third-country-transfer-art-44-ff-dsgvo" aria-hidden="true" tabindex="-1">#</a>2.3 Third-country transfer (Art. 44 ff. DSGVO)</h3>
+<ul>
+<li><strong>Risk:</strong> Leading AI model providers (Anthropic, OpenAI, Google) are headquartered in the USA (third country per Art. 44 DSGVO).</li>
+<li><strong>Legal basis:</strong><ol>
+<li>The transfer takes place exclusively at the direct initiation and instruction of the user (the user connects their client).</li>
+<li>On the OAuth consent screen, SteuerEule obtains <strong>explicit consent per Art. 49(1)(a) DSGVO</strong>. The user is informed that government access risks exist in the USA (e.g. FISA 702).</li>
+<li>In addition, the server-side PII masking substantially minimizes the identifiability of the user in the third country.</li>
+</ol>
+</li>
+</ul>
+<h3 id="24-risk-assessment-and-residual-risk"><a class="anchor" href="#24-risk-assessment-and-residual-risk" aria-hidden="true" tabindex="-1">#</a>2.4 Risk assessment and residual risk</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Threat / risk</th>
+<th align="left">Likelihood</th>
+<th align="left">Severity</th>
+<th align="left">Technical/organizational measure</th>
+<th align="left">Residual risk</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Model reads plain-text identifiers</td>
+<td align="left">Very low</td>
+<td align="left">High</td>
+<td align="left">Automatic server-side PII masking before transfer</td>
+<td align="left">Minimal</td>
+</tr>
+<tr>
+<td align="left">Assistant enters incorrect figures</td>
+<td align="left">Medium</td>
+<td align="left">Medium</td>
+<td align="left">Unconfirmed values block the printout; mandatory user review per annex</td>
+<td align="left">Low</td>
+</tr>
+<tr>
+<td align="left">Token theft / misuse</td>
+<td align="left">Low</td>
+<td align="left">High</td>
+<td align="left">Scoped OAuth token; administrative actions blocked; immediate revocation in the UI</td>
+<td align="left">Low</td>
+</tr>
+<tr>
+<td align="left">Unnoticed data leakage</td>
+<td align="left">Low</td>
+<td align="left">Medium</td>
+<td align="left">Complete DSGVO Art. 30 audit trail for every tool call</td>
+<td align="left">Very low</td>
+</tr>
+<tr>
+<td align="left">Assistant reads more than necessary (names, dates of birth, identifiers)</td>
+<td align="left">Low</td>
+<td align="left">High</td>
+<td align="left">Read view (ADR-0052 Amendment 3): amounts in plain text, persons only derived (age, federal state), third parties and free text only as „gesetzt“ (&quot;set&quot;); the token is valid only at the MCP endpoint (Amendment 4), not at the rest of the API</td>
+<td align="left">Low</td>
+</tr>
+<tr>
+<td align="left">Inference of religious affiliation (Art. 9 DSGVO)</td>
+<td align="left">Low</td>
+<td align="left">High</td>
+<td align="left">Only the user enters the denomination and the assistant never reads it; it writes and reads only „kirchensteuerpflichtig ja/nein“ (&quot;liable to church tax yes/no&quot;). The attribute remains an indirect indication of religious affiliation and is covered by the consent given when connecting</td>
+<td align="left">Low</td>
+</tr>
+<tr>
+<td align="left">Misleading task text from a third-party model in the app</td>
+<td align="left">Low</td>
+<td align="left">Medium</td>
+<td align="left">Fixed types, 300 characters, no identifiers and no links, displayed as plain text with the assistant&#39;s name; the user discards the task. Names in the text are prevented only by the tool description</td>
+<td align="left">Low</td>
+</tr>
+<tr>
+<td align="left">Third-party client impersonates a connected assistant</td>
+<td align="left">Very low</td>
+<td align="left">Medium</td>
+<td align="left">Own entries and tasks are keyed by the OAuth client ID, not by the name; a registration grants nothing without the user&#39;s sign-in and approval, is rate-limited per address, and clients that were never approved are deleted after 7 days</td>
+<td align="left">Minimal</td>
+</tr>
+</tbody></table></div>
+<p><strong>Result:</strong> The remaining residual risk is appropriate and effectively contained by the implemented security controls.</p>
+<hr>
+<h2 id="3-product-and-marketing-promises"><a class="anchor" href="#3-product-and-marketing-promises" aria-hidden="true" tabindex="-1">#</a>3. Product and marketing promises</h2>
+<p>To avoid misleading advertising (§ 5 UWG, Act Against Unfair Competition) and to respect the limits of professional law, the following binding rules apply to all marketing and product copy:</p>
+<ul>
+<li><strong>Not permitted:</strong><ul>
+<li>„SteuerEule macht deine Steuererklärung vollautomatisch ohne dein Zutun.“ (&quot;SteuerEule does your tax return fully automatically without any input from you.&quot;)</li>
+<li>„Unsere KI übernimmt die steuerliche Verantwortung.“ (&quot;Our AI takes on the tax responsibility.&quot;)</li>
+<li>„Steuerberatung per Knopfdruck.“ (&quot;Tax advice at the push of a button.&quot;)</li>
+</ul>
+</li>
+<li><strong>Permitted and binding:</strong><ul>
+<li>„Verbinde deinen eigenen KI-Assistenten, um Daten vorzubereiten.“ (&quot;Connect your own AI assistant to prepare data.&quot;)</li>
+<li>„Der Assistent füllt aus – du prüfst und bestätigst jede Anlage selbst.“ (&quot;The assistant fills in – you check and confirm every annex yourself.&quot;)</li>
+<li>„Volle Kontrolle: Du entscheidest, welche Werte in deine Steuererklärung einfließen.“ (&quot;Full control: you decide which values go into your tax return.&quot;)</li>
+</ul>
+</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>
