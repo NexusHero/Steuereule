@@ -4,6 +4,7 @@ import type { AdvisorConnection } from '@steuereule/core'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQueryClient } from '@tanstack/react-query'
+import { OwlVoiceContext, useOwlVoiceOfDeployment } from '../../lib/readAloud/useOwlVoice'
 import { useBreakpoint } from '@steuereule/ui'
 import { PROFESSION_VALUES, type AdvisorChatMessageView, type OwlCardsDisplay, type Profession } from '@steuereule/core'
 import {
@@ -66,6 +67,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
   const bp = useBreakpoint()
   const { t: tr } = useTranslation(APP_NS)
   const queryClient = useQueryClient()
+  const owlVoice = useOwlVoiceOfDeployment()
   const bridge = useOptionalCopilotBridge()
   const settingQuery = useOwlModeControllerGetSetting()
   const cardsQuery = useOwlModeControllerGetCards(taxYear)
@@ -218,7 +220,7 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
   const serverMessages = session ? (session.messages as unknown as readonly AdvisorChatMessageView[]) : undefined
 
   return (
-    <>
+    <OwlVoiceContext.Provider value={owlVoice}>
     <SaveFailedNotice visible={actionError !== null} error={actionError} />
     <OwlModeScreenView
       onDone={onDone}
@@ -369,6 +371,6 @@ export function ConnectedOwlModeScreen({ onDone = () => {}, onBack, taxYear = ru
         await invalidate()
       }}
     />
-    </>
+    </OwlVoiceContext.Provider>
   )
 }

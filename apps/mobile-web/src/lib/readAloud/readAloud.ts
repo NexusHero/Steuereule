@@ -1,8 +1,10 @@
 import { useSyncExternalStore } from 'react'
+import type { ServerVoice } from './serverVoice'
 
 /**
- * Reading an answer aloud with the device's own voice (Web Speech API): nothing is sent anywhere, and
- * where the device has no voice for the language there is nothing to offer. One answer at a time.
+ * Reading an answer aloud, one answer at a time. With the owl's voice (ADR-0115) the server speaks each
+ * passage; without it the device's own voice reads (Web Speech API) and nothing is sent anywhere. Where
+ * there is neither, there is nothing to offer.
  */
 interface Voice {
   readonly lang: string
@@ -48,12 +50,15 @@ function setSpeaking(next: string | null): void {
   for (const listener of listeners) listener()
 }
 
-/** Reads `chunks` as the answer `id`; whatever was being read stops. */
-export function readAloud(id: string, chunks: readonly string[], language: string, device: SpeechDevice | null = browserSpeechDevice()): void {
+/** Ends whatever the server voice is fetching or playing. */
+let stopServerVoice: (() => void) | null = null
+
+function readOnDevice(id: string, chunks: readonly string[], language: string, device: SpeechDevice | null, mine: number): void {
   const voice = voiceFor(device, language)
-  if (!device || !voice || chunks.length === 0) return
-  const mine = ++run
-  device.synth.cancel()
+  if (!device || !voice || chunks.length === 0) {
+    if (run === mine) setSpeaking(null)
+    return
+  }
   setSpeaking(id)
   const done = (): void => {
     // A cancelled utterance ends too; only the run that is still current may clear the state.
@@ -69,8 +74,63 @@ export function readAloud(id: string, chunks: readonly string[], language: strin
   })
 }
 
+async function readWithServer(id: string, chunks: readonly string[], language: string, voice: ServerVoice, device: SpeechDevice | null, mine: number): Promise<void> {
+  const output = voice.output()
+  if (!output) return readOnDevice(id, chunks, language, device, mine)
+  const abort = new AbortController()
+  stopServerVoice = () => {
+    abort.abort()
+    output.stop()
+  }
+  setSpeaking(id)
+  const fetchPassage = (index: number): Promise<Blob> | null => {
+    const chunk = chunks[index]
+    if (chunk === undefined) return null
+    const passage = voice.passage(chunk, language, abort.signal)
+    // Fetched ahead of its turn: a failure is dealt with when the turn comes.
+    passage.catch(() => undefined)
+    return passage
+  }
+  let next = fetchPassage(0)
+  for (let index = 0; next !== null; index += 1) {
+    try {
+      const audio = await next
+      if (run !== mine) return
+      next = fetchPassage(index + 1)
+      await output.play(audio)
+      if (run !== mine) return
+    } catch {
+      if (run !== mine) return
+      // The voice failed mid-answer: the device reads the rest, so the answer is not cut off.
+      stopServerVoice = null
+      return readOnDevice(id, chunks.slice(index), language, device, mine)
+    }
+  }
+  stopServerVoice = null
+  setSpeaking(null)
+}
+
+export interface ReadAloudWith {
+  readonly device?: SpeechDevice | null
+  /** The owl's voice from the server; null or absent reads on the device. */
+  readonly voice?: ServerVoice | null
+}
+
+/** Reads `chunks` as the answer `id`; whatever was being read stops. */
+export function readAloud(id: string, chunks: readonly string[], language: string, { device = browserSpeechDevice(), voice = null }: ReadAloudWith = {}): void {
+  if (chunks.length === 0 || (!voice && !voiceFor(device, language))) return
+  const mine = ++run
+  stopServerVoice?.()
+  stopServerVoice = null
+  device?.synth.cancel()
+  if (voice) void readWithServer(id, chunks, language, voice, device, mine)
+  else readOnDevice(id, chunks, language, device, mine)
+}
+
 export function stopReadingAloud(device: SpeechDevice | null = browserSpeechDevice()): void {
   run += 1
+  stopServerVoice?.()
+  stopServerVoice = null
   device?.synth.cancel()
   setSpeaking(null)
 }
@@ -100,5 +160,7 @@ export function useCanReadAloud(language: string, device: SpeechDevice | null = 
 /** For tests: nothing is being read. */
 export function resetReadAloud(): void {
   run += 1
+  stopServerVoice?.()
+  stopServerVoice = null
   setSpeaking(null)
 }
