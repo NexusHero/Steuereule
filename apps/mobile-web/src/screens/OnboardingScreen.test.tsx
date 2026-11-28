@@ -103,21 +103,32 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('Steht auf Briefen vom Finanzamt.')).toBeTruthy()
   })
 
-  it('formats the Steuer-ID live, shows the running counter, and confirms at exactly 11 digits', async () => {
+  it('formats the Steuer-ID live, shows the running counter, and says „gültig“ only for a number that passes the check (#67)', async () => {
     renderOnboarding()
     await fillNameStep()
 
     fillTaxId('1234567890')
     expect(screen.getByText('10/11 Ziffern')).toBeTruthy()
     expect(screen.queryByText('gültig')).toBeNull()
+    // Too short is said by the counter alone; the hint stays quiet while the number is being typed.
+    expect(screen.queryByTestId('onboarding-steuerid-hinweis')).toBeNull()
     fireEvent.click(screen.getByText('Weiter'))
     // CTA stayed disabled: still on step 2.
     expect(screen.queryByText('Steht auf deinem letzten Bescheid.')).toBeNull()
 
+    // Eleven digits with a correct check digit: the sticker, and no hint.
+    fillTaxId('86095742719')
+    expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
+    expect(screen.getByText('gültig')).toBeTruthy()
+    expect(screen.queryByTestId('onboarding-steuerid-hinweis')).toBeNull()
+
+    // Eleven digits that cannot be a Steuer-ID: no sticker, the hint says so, and the step still goes on
+    // (the hint never blocks, #452 decision 11).
     fillTaxId('12345678901')
     expect(screen.getByDisplayValue('12 345 678 901')).toBeTruthy()
     expect(screen.getByText('11/11 Ziffern')).toBeTruthy()
-    expect(screen.getByText('gültig')).toBeTruthy()
+    expect(screen.queryByText('gültig')).toBeNull()
+    expect(screen.getByTestId('onboarding-steuerid-hinweis').textContent).toBe('Diese Steuer-ID kann so nicht stimmen. Prüf bitte die Ziffern auf dem Brief vom Bundeszentralamt für Steuern.')
     fireEvent.click(screen.getByText('Weiter'))
     expect(screen.getByText('Steht auf deinem letzten Bescheid.')).toBeTruthy()
   })

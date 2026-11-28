@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ScrollView, View, Text } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { Button, Input, Feld, Chip, Pill, Sticker, useTheme, useBreakpoint } from '@steuereule/ui'
-import { isValidTaxId } from '@steuereule/core'
+import { inspectTaxId, isValidTaxId } from '@steuereule/core'
 import { useProfileControllerGetProfile, useProfileControllerPutProfile } from '@steuereule/api-client'
 import { APP_NS } from '../i18n/resources'
 import { formatTaxId, sanitizeTaxNumberInput, countDigits } from './onboarding/format'
@@ -10,6 +10,7 @@ import { toOnboardingProfile, toPutProfileDto, type OnboardingProfile } from './
 import { makeOnboardingStyles } from './onboarding/styles'
 import { OnboardingSummary } from './onboarding/OnboardingSummary'
 import { LoadingState, LoadFailedState } from './shared/ScreenState'
+import { TaxIdHint } from './shared/TaxIdHint'
 import { StepIndicator } from './shared/StepIndicator'
 import { BackButton, BackButtonSpacer } from './shared/BackButton'
 import { triggerSaveErrorHaptic } from './shared/saveFeedback'
@@ -57,8 +58,10 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
   const set = (key: keyof OnboardingProfile) => (value: string) =>
     setProfile((p) => (p ? { ...p, [key]: value } : p))
   const idDigits = countDigits(profile.steuerId)
-  const taxIdOk = isValidTaxId(profile.steuerId.replace(/\D/g, ''))
-  const stepOk = [profile.firstName.trim() !== '' && profile.lastName.trim() !== '', taxIdOk, true]
+  // Eleven digits let the step go on, as the server accepts them. The sticker says more, so it asks for more (#67).
+  const taxIdComplete = isValidTaxId(profile.steuerId.replace(/\D/g, ''))
+  const taxIdChecked = inspectTaxId(profile.steuerId) === 'valid'
+  const stepOk = [profile.firstName.trim() !== '' && profile.lastName.trim() !== '', taxIdComplete, true]
 
   function next() {
     setStep((s) => (s === STEP_COUNT - 1 ? STEP_COUNT : s + 1))
@@ -159,8 +162,9 @@ export function OnboardingScreen({ onDone }: OnboardingScreenProps) {
           </Feld>
           <View style={styles.counterRow}>
             <Pill>{tr('onboarding.step2.counter', { count: idDigits })}</Pill>
-            {taxIdOk ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
+            {taxIdChecked ? <Sticker>{tr('onboarding.step2.confirmed')}</Sticker> : null}
           </View>
+          <TaxIdHint value={profile.steuerId} testID="onboarding-steuerid-hinweis" />
           <Chip style={{ marginTop: t.space.s3 }} onPress={() => { set('steuerId')(stored.steuerId); next(); }}>{tr('onboarding.step2.later')}</Chip>
         </>
       ) : null}
