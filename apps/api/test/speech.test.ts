@@ -10,7 +10,7 @@ import { SpeechProviderError } from '../src/speech/speech.port.js'
 import { SpeechService } from '../src/speech/speech.service.js'
 import { isWav, sampleRateOf, wavFromPcm } from '../src/speech/wav.js'
 
-const KEY = 'AIzaSyTestKeyForSpeech000'
+const KEY = 'speech-key'
 const CONFIG = { provider: 'google-genai' as const, model: DEFAULT_SPEECH_MODEL, voice: DEFAULT_SPEECH_VOICE, apiKey: KEY, timeoutMs: 1_000 }
 const pcm = Buffer.alloc(480, 1)
 const answerWith = (inlineData: { data: string; mimeType: string }): Fetch => vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ inlineData }] } }] }) }))

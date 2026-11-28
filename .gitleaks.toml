@@ -23,4 +23,7 @@ regexes = [
   '''vermietung-obj-1''',
   # Sign-up password typed in RegistrationScreen.test.tsx, flagged by the generic rule.
   '''geheim-123-lang''',
+  # A made-up provider key that apps/api/test/speech.test.ts carried in commit 738141ed; the test has a plain
+  # placeholder since, the value stays in that commit.
+  '''AIzaSyTestKeyForSpeech000''',
 ]
