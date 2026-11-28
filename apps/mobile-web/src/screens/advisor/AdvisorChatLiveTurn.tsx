@@ -20,7 +20,7 @@ interface AdvisorChatLiveTurnProps {
 export function AdvisorChatLiveTurn({ chat, stream, styles }: AdvisorChatLiveTurnProps) {
   const { isSending, pendingUserMessage, plan, abortedTurn, streamSteps, streamedText, streamedReasoning, reconnecting } = stream
   const { t: tr } = useTranslation(APP_NS)
-  const { showPendingUser, lastIsStoredInterrupted, setSelectedSource, handleSubmit } = chat
+  const { showPendingUser, lastIsStoredInterrupted, setSelectedSource, handleSubmit, planExpanded, togglePlan } = chat
   return (
     <>
       {showPendingUser && pendingUserMessage !== null ? (
@@ -32,7 +32,7 @@ export function AdvisorChatLiveTurn({ chat, stream, styles }: AdvisorChatLiveTur
         </View>
       ) : null}
 
-      {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} /> : null}
+      {plan !== null && (isSending || abortedTurn !== null) ? <PlanChecklist plan={plan} expanded={planExpanded} onToggle={togglePlan} /> : null}
 
       {isSending ? <ThoughtBlock reasoning={streamedReasoning} steps={streamSteps} live /> : null}
 

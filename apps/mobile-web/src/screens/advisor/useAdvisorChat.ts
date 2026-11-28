@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { matchingSkillCommands, parseSkillCommand, type AdvisorLegalSource, type AdvisorQuickAction, type AdvisorSkillId } from '@steuereule/core'
 import { APP_NS } from '../../i18n/resources'
@@ -172,6 +172,14 @@ export function useAdvisorChat({
     setInputText('')
   }
   const planAboveLastAnswer = plan !== null && !isSending && abortedTurn === null
+  // Whether the finished plan is open belongs to the plan, wherever it is drawn. A plan that is not finished
+  // (a new turn has begun) or gone starts collapsed the next time.
+  const [planExpanded, setPlanExpanded] = useState(false)
+  const planFinished = plan?.finished === true
+  useEffect(() => {
+    if (!planFinished) setPlanExpanded(false)
+  }, [planFinished])
+  const togglePlan = useCallback(() => setPlanExpanded((open) => !open), [])
 
   async function handleReceiptSubmit() {
     if (!onAttachReceipt || isParsingReceipt) return
@@ -258,6 +266,8 @@ export function useAdvisorChat({
     startEdit,
     cancelEdit,
     planAboveLastAnswer,
+    planExpanded,
+    togglePlan,
     handleReceiptSubmit,
     sendFromComposer,
     isEmpty,
