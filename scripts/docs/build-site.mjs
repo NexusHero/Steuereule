@@ -26,11 +26,49 @@ const SUBSYSTEMS = 'docs/architecture-subsystems.md'
 const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const twoDigits = (number) => String(number).padStart(2, '0')
 
+// The text helpers below walk their input once. A lazy or unanchored pattern over a whole document
+// can take quadratic time, and these run over every page of the site.
+
+/** The text without its tags: everything from a `<` to the next `>` is left out. */
+function stripTags(html) {
+  let text = ''
+  let at = 0
+  while (at < html.length) {
+    const open = html.indexOf('<', at)
+    if (open === -1) return text + html.slice(at)
+    const close = html.indexOf('>', open)
+    if (close === -1) return text + html.slice(at)
+    text += html.slice(at, open)
+    at = close + 1
+  }
+  return text
+}
+
+/** What stands between the first `open` and the `close` that follows it; empty when either is missing. */
+function between(text, open, close) {
+  const start = text.indexOf(open)
+  if (start === -1) return ''
+  const end = text.indexOf(close, start + open.length)
+  return end === -1 ? '' : text.slice(start + open.length, end)
+}
+
+const isDigits = (text) => text !== '' && [...text].every((char) => char >= '0' && char <= '9')
+
+/** `file.ts:351` and `file.ts:351:7` name a place in a file; this is the file. */
+function withoutLineSuffix(filePath) {
+  let result = filePath
+  for (let round = 0; round < 2; round += 1) {
+    const colon = result.lastIndexOf(':')
+    if (colon === -1 || !isDigits(result.slice(colon + 1))) break
+    result = result.slice(0, colon)
+  }
+  return result
+}
+
 /** The anchor GitHub gives a heading, so links written for the Markdown keep working here. */
 function slugOf(text) {
-  return text
+  return stripTags(text)
     .toLowerCase()
-    .replace(/<[^>]+>/g, '')
     .replace(/[^\p{L}\p{N}\s-]/gu, '')
     .trim()
     .replace(/\s/g, '-')
@@ -65,15 +103,18 @@ function titleAndBody(source) {
 
 /** A heading may name its own anchor: `## Use cases {#section-use-cases}`. */
 function ownAnchor(heading) {
-  const match = /^(.*?)\s*\{#([\w-]+)\}\s*$/.exec(heading)
-  return match ? { text: match[1], id: match[2] } : { text: heading, id: null }
+  const trimmed = heading.trimEnd()
+  const open = trimmed.lastIndexOf('{#')
+  if (open === -1 || !trimmed.endsWith('}')) return { text: heading, id: null }
+  const id = trimmed.slice(open + 2, -1)
+  return /^[\w-]+$/.test(id) ? { text: trimmed.slice(0, open).trimEnd(), id } : { text: heading, id: null }
 }
 
 const decodeEntities = (text) => text.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
 
 const inline = new Marked({ gfm: true })
 const inlineHtml = (markdown) => inline.parseInline(markdown)
-const plainText = (markdown) => decodeEntities(inlineHtml(markdown).replace(/<[^>]+>/g, ''))
+const plainText = (markdown) => decodeEntities(stripTags(inlineHtml(markdown)))
 
 function renderMarkdown(markdown) {
   const headings = []
@@ -103,9 +144,13 @@ function renderMarkdown(markdown) {
 
 /** The first sentence of a page's prose, for its card on an overview. */
 function leadOf(html) {
-  const paragraph = /<p>(.*?)<\/p>/s.exec(html)?.[1] ?? ''
-  const text = decodeEntities(paragraph.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim()
-  const sentence = /^.*?[.!?](?=\s|$)/.exec(text)?.[0] ?? text
+  const text = decodeEntities(stripTags(between(html, '<p>', '</p>'))).replace(/\s+/g, ' ').trim()
+  // A sentence ends at a full stop, question or exclamation mark that a space or the end follows.
+  let end = -1
+  for (let at = 0; at < text.length && end === -1; at += 1) {
+    if ('.!?'.includes(text[at]) && (at === text.length - 1 || text[at + 1] === ' ')) end = at
+  }
+  const sentence = end === -1 ? text : text.slice(0, end + 1)
   return sentence.length > 180 ? `${sentence.slice(0, 177).trimEnd()}…` : sentence
 }
 
@@ -124,7 +169,9 @@ function markdownSources(dir = 'docs') {
 function statusOf(markdown) {
   const status = /\*\*Status:\*\*\s*([^\n·]+)/.exec(markdown)?.[1] ?? ''
   // The pill carries the state itself ("Accepted", "Superseded by 0009"); who decided and when stays in the record.
-  return plainText(status).split(/\s+[—–(]/)[0].replace(/[.;,]\s*$/, '').trim()
+  const text = plainText(status)
+  const cut = [...text].findIndex((char, at) => at > 0 && '—–('.includes(char) && text[at - 1] === ' ')
+  return (cut === -1 ? text : text.slice(0, cut)).trim().replace(/[.;,]$/, '')
 }
 
 const FOLDER_LABELS = {
@@ -205,7 +252,7 @@ function rewriteReferences(html, page, site) {
     const targetFile = (anchor !== null && site.pageOfAnchor.get(`${repoPath}#${anchor}`)) || site.pageOfSource.get(repoPath)
     if (targetFile !== undefined) return anchor === null ? fromPage(page, targetFile) : `${fromPage(page, targetFile)}#${anchor}`
     // `file.ts:351` names a line for the reader; the link goes to the file.
-    const filePath = repoPath.replace(/:\d+(?::\d+)?$/, '')
+    const filePath = withoutLineSuffix(repoPath)
     if (!fs.existsSync(path.join(ROOT, filePath))) site.deadLinks.push(`${page.source}: ${url}`)
     const href = toRepoFile(page, filePath)
     return anchor === null ? href : `${href}#${anchor}`
@@ -404,9 +451,10 @@ function documentsBody(page, pages, leads) {
 function buildCss() {
   // The app's tokens, with the "dunkel" theme following the reader's system setting.
   const tokens = readSource('packages/tokens/dist/tokens.css')
-  const dark = /\[data-theme="dunkel"\] \{([\s\S]*?)\n\}/.exec(tokens)
-  if (!dark) throw new Error('packages/tokens/dist/tokens.css: no [data-theme="dunkel"] block found')
-  const themed = tokens.replace(dark[0], `@media (prefers-color-scheme: dark) {\n  :root {${dark[1].replace(/\n/g, '\n  ')}\n  }\n}`)
+  const opening = '[data-theme="dunkel"] {'
+  const darkRules = between(tokens, opening, '\n}')
+  if (darkRules === '') throw new Error('packages/tokens/dist/tokens.css: no [data-theme="dunkel"] block found')
+  const themed = tokens.replace(`${opening}${darkRules}\n}`, `@media (prefers-color-scheme: dark) {\n  :root {${darkRules.replace(/\n/g, '\n  ')}\n  }\n}`)
   return `${themed}\n${read(path.join(TEMPLATE, 'site.css'))}`
 }
 
