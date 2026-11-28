@@ -66,6 +66,7 @@ const BOUNDARIES: readonly Boundary[] = [
       'ki/advisor-prompt.ts',
       'ki/advisor-tool-round.ts',
       'ki/advisor-tools.ts',
+      'llm/agent/agent-loop.ts',
       'llm/chat-model.factory.ts',
       'ki/fake-chat-model.ts',
       'llm/langchain-single-shot.adapter.ts',

@@ -1,3 +1,4 @@
+import type { AgentEnginePort, AgentHistoryEntry, AgentStreamEvent, AgentTurnInput, AgentTurnTimings, AgentTurnUsage } from '../common/agent-run'
 import type { Item, Source } from '../domains/calculation'
 import type { IncomeType } from '../domains/income-types'
 import type { AdvisorActionProposal, AdvisorChatMessageView, AdvisorMessageMeta, AdvisorTwoPathsProposal, CaseDigest } from './advisor'
@@ -20,10 +21,7 @@ export interface AiProposal {
   readonly receiptId?: string
 }
 
-export interface AdvisorHistoryEntry {
-  readonly role: 'user' | 'assistant'
-  readonly content: string
-}
+export type AdvisorHistoryEntry = AgentHistoryEntry
 
 /**
  * Whose share of the day's model calls a call draws from (H2-40): a paid account may use the part of the
@@ -31,8 +29,8 @@ export interface AdvisorHistoryEntry {
  */
 export type ModelCallTier = 'paid' | 'free'
 
-export interface AdvisorTurnRequest {
-  readonly message: string
+/** One turn of the owl: the agent's turn (message, history, signal) and what the owl knows about the return. */
+export interface AdvisorTurnRequest extends AgentTurnInput {
   /** Absent counts as `free`. */
   readonly callTier?: ModelCallTier | undefined
   /** The chat model of the conversation, when the user picked one (ADR-0094); else the operator's. */
@@ -41,10 +39,7 @@ export interface AdvisorTurnRequest {
   readonly depth?: AdvisorDepth | undefined
   readonly activeScreen?: Screen | undefined
   readonly digest: CaseDigest
-  readonly history?: readonly AdvisorHistoryEntry[] | undefined
   readonly actionIdFactory?: (() => string) | undefined
-  /** Aborted when the client disconnects or the turn budget runs out; stops the paid model call. */
-  readonly signal?: AbortSignal | undefined
   /** The „Was hab ich vergessen?“ quick start always opens with a plan (#451 decision 17). */
   readonly planRequired?: boolean | undefined
   /** The stored records of the per-record masks under their neutral names; ids never reach the model. */
@@ -152,33 +147,8 @@ export type AdvisorPreviewEffect =
   | { readonly kind: 'computed'; readonly beforeRefundEur: number; readonly afterRefundEur: number; readonly deltaEur: number }
   | { readonly kind: 'not-computable'; readonly hint: string }
 
-/** Token counts of one turn, summed over all model rounds. */
-export interface AdvisorTurnUsage {
-  readonly inputTokens: number
-  readonly outputTokens: number
-  /** Input tokens the provider served from its prompt cache. */
-  readonly cachedInputTokens: number
-  /**
-   * Input tokens written to the prompt cache (Anthropic bills them above the normal input price).
-   * Writes that are never read again cost more than no caching at all; this is what shows them.
-   */
-  readonly cacheWriteInputTokens: number
-}
-
-/**
- * Where the time of one turn went, in milliseconds. Kept beside the token counts so a slow turn can
- * be read (model, tools, guard or the app's own preparation) instead of guessed.
- */
-export interface AdvisorTurnTimings {
-  /** The topic guard, from its call to its verdict; absent where none ran. */
-  readonly guardMs?: number | undefined
-  /** Each model round, from the request to its last chunk. */
-  readonly roundMs: readonly number[]
-  /** All tool rounds together. */
-  readonly toolMs: number
-  /** The app's own work before the engine was called (history, summary, case digest); set by the turn service. */
-  readonly prepMs?: number | undefined
-}
+export type AdvisorTurnUsage = AgentTurnUsage
+export type AdvisorTurnTimings = AgentTurnTimings
 
 export interface AdvisorTurnResult {
   readonly replyText: string
@@ -210,27 +180,17 @@ export interface AdvisorPlanStep {
 export const ADVISOR_QUICK_ACTIONS = ['forgotten_check', 'savings_plan', 'assessment_check', 'opening'] as const
 export type AdvisorQuickAction = (typeof ADVISOR_QUICK_ACTIONS)[number]
 
-export type AdvisorStreamEvent =
-  /** First event of a run: the ids a client needs to render, stop and re-attach (#476). */
-  | {
-      readonly event: 'start'
-      readonly data: { readonly runId: string; readonly userMessage: AdvisorChatMessageView; readonly assistantMessageId: string }
-    }
-  | { readonly event: 'status'; readonly data: { readonly text: string } }
-  /** A piece of the provider's reasoning summary; never the answer itself. */
-  | { readonly event: 'reasoning'; readonly data: { readonly text: string } }
-  | { readonly event: 'tool'; readonly data: { readonly name: string; readonly label: string } }
-  /** What a tool found, after it ran: a few words without personal data, shown under its step. */
-  | { readonly event: 'tool_result'; readonly data: { readonly name: string; readonly ok: boolean; readonly result: string } }
-  | { readonly event: 'token'; readonly data: { readonly text: string } }
+/** What only the owl sends: choices, drafts, a command to the workbench, her plan. */
+export type AdvisorOwnEvent =
   | { readonly event: 'choices'; readonly data: { readonly choices: readonly string[] } }
   | { readonly event: 'action'; readonly data: AdvisorActionProposal }
   | { readonly event: 'twoPaths'; readonly data: AdvisorTwoPathsProposal }
   | { readonly event: 'ui_command'; readonly data: AdvisorUiCommand }
   /** The full current plan (never a diff), sent whenever the model updates it. */
   | { readonly event: 'plan'; readonly data: { readonly steps: readonly AdvisorPlanStep[] } }
-  | { readonly event: 'error'; readonly data: { readonly code: string; readonly message: string; readonly failure?: AdvisorModelFailure } }
-  | { readonly event: 'done'; readonly data: unknown }
+
+/** The owl's stream: the events of every agent run (`common/agent-run.ts`) and her own. */
+export type AdvisorStreamEvent = AgentStreamEvent<AdvisorOwnEvent, AdvisorChatMessageView, AdvisorModelFailure>
 
 /** Tells the workbench to open a mask itself, e.g. when the model aimed at a field it may never write. */
 export interface AdvisorUiCommand {
@@ -248,9 +208,7 @@ export interface AdvisorSummaryRequest {
   readonly callTier?: ModelCallTier | undefined
 }
 
-export interface AdvisorEnginePort {
-  runTurn(input: AdvisorTurnRequest): Promise<AdvisorTurnResult>
-  streamTurn(input: AdvisorTurnRequest): AsyncIterable<AdvisorStreamEvent>
+export interface AdvisorEnginePort extends AgentEnginePort<AdvisorTurnRequest, AdvisorTurnResult, AdvisorStreamEvent> {
   /**
    * Condenses the older part of a conversation (#481). Null when no model is available or its
    * answer cannot be used; the caller then falls back to a summary without a model.

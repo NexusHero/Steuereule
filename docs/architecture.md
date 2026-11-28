@@ -202,7 +202,7 @@ Both tests run in the CI job `test` of the workflow *Quality*.
 
 ### 4.1.4 Known limits
 
-- **LangChain is in eight files, not behind a port.** The owl's advisory turn is written in LangChain types: prompt assembly (`ki/advisor-prompt.ts`), the tool round (`ki/advisor-tool-round.ts`, `ki/advisor-tools.ts`) and the tool context (`ki/tools/tool-call-context.ts`). Changing the framework would mean rewriting those files. Changing the *provider* is configuration.
+- **LangChain is in nine files, not behind a port.** The agent loop every model agent runs on is `llm/agent/agent-loop.ts`. The owl's advisory turn is written in LangChain types: prompt assembly (`ki/advisor-prompt.ts`), the tool round (`ki/advisor-tool-round.ts`, `ki/advisor-tools.ts`) and the tool context (`ki/tools/tool-call-context.ts`). Changing the framework would mean rewriting those files. Changing the *provider* is configuration.
 - **`mcp/` loads LangChain too**, because it imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts`.
 - **`pdf-lib` has no port.** Only `printout/form-renderer.ts` imports it, but services call `renderForms` directly.
 - **better-auth is confined to two modules, not one file.** Twelve files in `auth/` and `device/` use it, among them the guard for JWT verification.

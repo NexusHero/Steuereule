@@ -40,7 +40,7 @@ The test reads every static and dynamic import under `apps/api/src` and checks i
 |---|---|---|
 | Database client | `@prisma/*`, `@prisma-keystore/*`, `prisma-field-encryption`, `@better-auth/prisma-adapter`, everything under `src/prisma/` except `prisma.module.ts` | `*.prisma.ts`, `prisma/`, and seven infrastructure files listed by name |
 | Prisma adapters | every `*.prisma.ts` file | `*.module.ts` (binds a port to its adapter), `*.prisma.ts`, `auth/better-auth.ts` |
-| LangChain | `@langchain/*` | eight files in `ki/`, listed by name |
+| LangChain | `@langchain/*` | nine files in `ki/` and `llm/`, listed by name |
 | Stripe | `stripe` | `unlock/stripe-payment-provider.ts` |
 | nodemailer | `nodemailer` | `auth/smtp-email-sender.ts` |
 | better-auth | `better-auth`, `@better-auth/*` | `auth/`, `device/` |
@@ -98,7 +98,7 @@ The same test computes every *module → module* edge (a module is a folder dire
 
 ## Known limits
 
-- **LangChain is not behind a port; it is in eight files.** The owl's prompt assembly (`ki/advisor-prompt.ts`), tool round and tool context are written in LangChain types. `mcp/` imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts` and loads LangChain with it.
+- **LangChain is not behind a port; it is in nine files.** The owl's prompt assembly (`ki/advisor-prompt.ts`), tool round and tool context are written in LangChain types. `mcp/` imports `TOOL_ARG_SCHEMAS` from `ki/advisor-tools.ts` and loads LangChain with it.
 - **`pdf-lib` has no port.** `printout/form-renderer.ts` is the only file importing it, but services call `renderForms` directly.
 - **DI tokens are not type-checked.** `@Inject(TOKEN) x: Port` trusts the module to bind a matching adapter. A missing binding fails at start-up (`test/boot/build-app-stays-database-free.test.ts`), a wrong one only in integration tests.
 
@@ -148,3 +148,25 @@ the owl's tools; `ki/advisor-chat-model.ts` hands it to the factory. `createChat
 New edges in the baseline: `ki -> llm`, `advisor -> llm`, `receipt -> llm`, `lstb-scan -> llm`,
 `ch-certificate-scan -> llm`, `llm -> common`, `advisor -> run-log`, `run-log -> common`. No edge was
 removed and no module joined the cycle.
+
+### The agent loop and the contract of a run (same day)
+
+The loop of a tool-using model agent left the owl's engine. `llm/agent/agent-loop.ts` holds the model
+round (streaming reasoning and words, one nudge for a model that ended a round silently, answering without
+tools once the rounds or the time are spent), the tools round with its timing, the routing between them,
+following a graph stream, summing token counts, and the clock of a turn. It reads two channels of the
+graph state (`messages`, `toolRounds`); an agent spreads them into its own state and brings its prompt, its
+tools and its words. `ki/langgraph-advisor.engine.ts` is the owl on that loop: her graph state, her tool
+round, the topic guard beside the first round, the failover to the fallback slot, the answer of the fixed
+rules. The guard and the failover are still written for the owl and are not part of the loop.
+
+The types every such agent shares are in `packages/core/src/common/agent-run.ts`: `AgentTurnInput`
+(message, history, signal), `AgentRunEvent` (start, status, reasoning, tool, tool_result, token, error,
+done), `AgentStreamEvent<Own, Message, Failure>` for an agent with events of its own, `AgentTurnUsage`,
+`AgentTurnTimings` and `AgentEnginePort`. The owl's types are built from them
+(`AdvisorTurnRequest extends AgentTurnInput`, `AdvisorStreamEvent = AgentStreamEvent<AdvisorOwnEvent, …>`);
+their shape on the wire is unchanged.
+
+`apps/api/test/agent-loop.test.ts` runs the loop with an agent that keeps a list and knows nothing about
+tax returns. LangChain is now in nine files; `llm/agent/agent-loop.ts` is the ninth in the boundary table.
+No module edge changed.
