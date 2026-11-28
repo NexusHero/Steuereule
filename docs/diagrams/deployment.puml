@@ -1,0 +1,22 @@
+@startuml deployment
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/architecture.md §7: the deployment on Google Cloud.
+left to right direction
+
+rectangle "Browser" as Browser
+rectangle "Google Cloud · europe-west4" as GCP {
+  rectangle "Cloud Run: steuereule-web\n1 vCPU · 512 MiB · 0–10 instances" as WebSvc
+  rectangle "Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 instances" as ApiSvc
+  database "Cloud SQL PostgreSQL\napplication data" as Db
+  database "Cloud SQL PostgreSQL\nkeystore for receipt keys" as Keys
+  database "Memorystore Redis\noptional" as Redis
+  rectangle "Secret Manager" as Secrets
+}
+Browser --> WebSvc
+Browser --> ApiSvc
+ApiSvc --> Db
+ApiSvc --> Keys
+ApiSvc ..> Redis
+ApiSvc --> Secrets
+@enduml

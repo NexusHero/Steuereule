@@ -93,7 +93,10 @@ The snapshot only means anything if its module is evaluated before anything reac
 otherwise-alphabetical import order (`./app.module.js` would sort first). Nothing enforces this:
 `.oxlintrc.json` has no import-sort rule today.
 
-![Boot ordering](0028-boot-env-snapshot-ordering.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="0028-boot-env-snapshot-ordering.dark.svg">
+  <img src="0028-boot-env-snapshot-ordering.svg" alt="Boot ordering">
+</picture>
 
 *(source: [`0028-boot-env-snapshot-ordering.puml`](0028-boot-env-snapshot-ordering.puml))*
 

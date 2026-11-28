@@ -1,0 +1,52 @@
+@startuml owl-end-to-end
+!include ../diagram-style.puml
+' docs/in-app-tax-advisor-agent.md §5.1: one question to the owl, end to end.
+hide footbox
+autonumber
+actor "Client (user)" as User
+participant "mobile-web (OwlModeScreen / Drawer)" as UI
+participant "apps/api (AdvisorController)" as API
+participant "PII scrubber & CaseDigest" as Scrubber
+participant "@steuereule/core (tariff & OwlEngine)" as Core
+participant "PostgreSQL (Prisma)" as DB
+participant "AI provider (Claude / Gemini / fallback)" as LLM
+
+User -> UI : Opens owl tab or in-mask drawer
+UI -> API : GET /v1/steuerjahre/2026/advisor/session
+API -> DB : Load chat history + open OwlCards + case state
+API --> UI : { greeting, openCards, messages, quickChips }
+
+User -> UI : Sends message / clicks prompt or answer pill
+UI -> API : POST /v1/steuerjahre/2026/advisor/chat (SSE)
+API -> DB : Check daily budget (< 50 msg today)
+API -> Scrubber : Scrub user free text + build anonymous CaseDigest
+Scrubber -> Core : Calculate current tax state (berechne)
+API -> LLM : Stream with system prompt + CaseDigest + last 10 msg
+
+loop SSE token stream
+  LLM --> API : Text token
+  API --> UI : event: token { text }
+end
+
+opt Facts missing -> client intake
+  LLM --> API : Tool: ask_clarification({ question, choices })
+  API --> UI : event: choices { choices: ["90% beruflich", "50% beruflich"] }
+end
+
+opt Facts complete -> before/after simulation & suggestion
+  LLM --> API : Tool: propose_entry({ screen, field, newValue, reason })
+  API -> Core : Simulate tax refund before vs. after (zero DB write!)
+  Core --> API : { beforeRefundEur: 1420, afterRefundEur: 1459, deltaEur: +39 }
+  API --> UI : event: action { actionId, screen, field, oldValue, newValue, deltaEur }
+end
+
+API -> DB : Store encrypted AdvisorChatMessage (incl. pending action)
+API --> UI : event: done
+
+User -> UI : Clicks "✓ Jetzt übernehmen (+39 €)"
+UI -> API : POST /v1/steuerjahre/2026/advisor/actions/:actionId/apply
+API -> DB : Write value into form + mark confirmed=true (provenance: SteuerEule)
+API -> DB : Write AuditEntry & set action status to 'applied'
+API --> UI : 200 OK { status: 'applied', previousValue, newValue, deltaEur }
+UI --> User : Card shows "✓ Übernommen" + "↩ Rückgängig" button (form updates live!)
+@enduml

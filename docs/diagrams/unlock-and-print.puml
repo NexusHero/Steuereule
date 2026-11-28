@@ -1,0 +1,27 @@
+@startuml unlock-and-print
+!include ../diagram-style.puml
+' docs/architecture.md §6.2: unlocking and printing.
+hide footbox
+autonumber
+actor "User" as U
+participant "PrintoutController" as P
+participant "PrintoutService" as S
+participant "UnlockService" as X
+participant "PaymentProvider (Stripe)" as Pay
+participant "renderForms (pdf-lib)" as R
+
+U -> P : GET …/:jahr/ausdruck/pruefung
+P --> U : pre-check: what is missing, what will be printed
+U -> P : POST …/:jahr/ausdruck/checkout
+P -> S : startCheckout
+S -> X : create checkout
+X -> Pay : createCheckout
+Pay --> U : redirect to the Stripe checkout
+Pay -> X : POST /v1/zahlung/stripe/webhook
+X -> Pay : verifyEvent (signature)
+note over X : unlock stored for user and tax year
+U -> P : GET …/:jahr/ausdruck
+P -> S : assemble the values
+S -> R : renderForms
+R --> U : PDF: main form and the annexes needed
+@enduml

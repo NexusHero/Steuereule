@@ -165,7 +165,7 @@ note bottom of Account
   (ADR-0013 §4).
 end note
 
-class DeviceCode #e3fa8d;line.dashed {
+class DeviceCode $neu;line.dashed {
   id : uuid <<PK>>
   deviceCode : string <<unique>>
   userCode : string <<unique>>

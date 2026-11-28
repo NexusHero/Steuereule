@@ -19,10 +19,10 @@ title SteuerEule — Building Block View (Level 1) · arc42 §5\ngreen = added s
 actor "User\n(guest session or\nverified account)" as user
 
 package "apps/mobile-web  ·  Expo / React-Native-Web" as fe {
-  component "App.tsx — composition root\n@react-navigation/native + native-stack\nroute table + linking config\n**the one @react-navigation import site**" as router #e3fa8d;line.dashed
+  component "App.tsx — composition root\n@react-navigation/native + native-stack\nroute table + linking config\n**the one @react-navigation import site**" as router $neu;line.dashed
   component "SplashScreen" as splash
   component "LoginScreen · RegistrierungScreen\nemail/password · guest · Google\n+ open QR column (QrMark)" as login
-  component "GeraetefreigabeScreen\nmatch verification: is this code\non your screen? + warning copy" as approval #e3fa8d;line.dashed
+  component "GeraetefreigabeScreen\nmatch verification: is this code\non your screen? + warning copy" as approval $neu;line.dashed
   component "OnboardingScreen" as onb
   component "CockpitScreen\n(hero estimate card,\nhonest states)" as cockpitScreen
   component "ProfilScreen\n(view/edit stored profile)\n+ device list · per-entry revoke" as profilScreen
@@ -42,14 +42,14 @@ package "apps/api  ·  NestJS on Fastify" as api {
   component "better-auth\nFastify catch-all on /api/auth/*\n(mounted outside Nest)\ndevice-authorization plugin:\nHTTP routes disabledPaths-off" as betterauth
   component "UserContextGuard\nidentity seam (ADR-0007/0012):\nverified session OR signed guest cookie" as guard
   component "AuthModule\ncapabilities · guest→account upgrade\nFreshAuthChecker · breach-check\nEmailSender seam" as authMod
-  component "DeviceModule  (ADR-0024)\n/v1/device/{code,pending,approve,token}\nour surface in front of the plugin\nsession-cookie after-hook · throttler limits" as deviceMod #e3fa8d;line.dashed
-  component "RegionResolver  (ADR-0024)\ncountry-level geo-IP, self-hosted\nnever guesses — resolves to 'unknown'\ntwo consumers: approval + device list" as region #e3fa8d;line.dashed
+  component "DeviceModule  (ADR-0024)\n/v1/device/{code,pending,approve,token}\nour surface in front of the plugin\nsession-cookie after-hook · throttler limits" as deviceMod $neu;line.dashed
+  component "RegionResolver  (ADR-0024)\ncountry-level geo-IP, self-hosted\nnever guesses — resolves to 'unknown'\ntwo consumers: approval + device list" as region $neu;line.dashed
   component "ProfileModule\nGET/PUT /v1/profile" as profile
   component "CockpitModule\nGET /v1/steuerjahre/{jahr}/cockpit" as cockpitMod
   component "AccountModule\nGET /v1/account/export (JSON · PDF)\nDELETE /v1/account (teardown txn)\nPdfRenderer seam" as accountMod
   component "AuditModule\nTaxDataAccessLog (append-only)" as audit
   component "PrismaModule\nfield-encrypted Prisma client" as prisma
-  component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP ·\nrate limits (@nestjs/throttler +\nbetter-auth) — keyed on the address\nFastify resolves (ADR-0106)" as crosscut #e3fa8d
+  component "Cross-cutting\nCORS allowlist (ADR-0011) ·\nhelmet/CSP ·\nrate limits (@nestjs/throttler +\nbetter-auth) — keyed on the address\nFastify resolves (ADR-0106)" as crosscut $neu
 }
 
 database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
@@ -58,7 +58,7 @@ database "Postgres (EU)\nexpand-only migrations (ADR-047)" as db {
   component "TaxYear" as tTaxYear
   component "User · Session ·\nAccount · Verification\n(better-auth)" as tAuth
   component "LegalHold" as tHold
-  component "DeviceCode\n9 plugin fields + our 4\nrequest-context columns" as tDevice #e3fa8d;line.dashed
+  component "DeviceCode\n9 plugin fields + our 4\nrequest-context columns" as tDevice $neu;line.dashed
 }
 
 user --> fe

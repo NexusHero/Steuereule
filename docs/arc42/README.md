@@ -31,15 +31,15 @@ Every diagram is authored as **PlantUML** and the `.puml` **text source is commi
 prose references the SVG so it renders everywhere. Regenerate after any edit:
 
 ```sh
-# pure-Java layout (the sources set `!pragma layout smetana`), so no Graphviz/dot needed
-java -jar plantuml.jar -tsvg docs/arc42/*.puml docs/adr/*.puml
+./scripts/docs/render-diagrams.sh   # needs `plantuml` and Graphviz (`dot`) on the PATH
 ```
 
-Every diagram includes [`../diagram-style.puml`](../diagram-style.puml), which sets fonts, lines and colours
-from the app's design tokens (`packages/tokens/dist/tokens.css`, light theme). PlantUML writes fixed colours
-into the SVG, so these diagrams stay light in a dark reader. The Ports & Adapters picture
-(`images/architecture-hexagon.svg`) is drawn by hand with the same tokens and follows the reader's
-light or dark setting.
+The script renders every `.puml` under `docs/arc42/`, `docs/adr/` and `docs/diagrams/` twice: `<name>.svg` in the
+light theme and `<name>.dark.svg` in the app's dark theme. Every source includes
+[`../diagram-style.puml`](../diagram-style.puml), which sets fonts, lines and colours from the app's design tokens
+(`packages/tokens/dist/tokens.css`). The documents embed both files in a `<picture>` element, so a reader sees
+the one that fits their light or dark setting. The Ports & Adapters picture (`images/architecture-hexagon.svg`)
+is drawn by hand with the same tokens and carries both themes in one file.
 
 | View | Source | Rendered |
 |------|--------|----------|
@@ -68,7 +68,10 @@ carried `DatenschutzScreen` through `steuereule#153` and came off when that slic
 map may show what is coming, but only for as long as it says so. When #239 merges, the dashes
 come off these five blocks.
 
-![Building block view](./building-block-view.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./building-block-view.dark.svg">
+  <img src="./building-block-view.svg" alt="Building block view">
+</picture>
 
 **Frontend — `apps/mobile-web`** (Expo / React-Native-Web). Screen-by-screen takeover
 (ADR-0005, walking skeleton), now: Splash → Login/Registrierung → Onboarding → the tabbed
@@ -202,7 +205,10 @@ The persisted schema (`apps/api/prisma/schema.prisma`). Green = added since the 
 revision: the better-auth identity tables (Slice 2) and `LegalHold`
 (REQ-011's Löschschutz seam).
 
-![Data model](./data-model.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./data-model.dark.svg">
+  <img src="./data-model.svg" alt="Data model">
+</picture>
 
 - **`userId` is a logical scoping key on the domain tables, not a DB foreign key**
   (ADR-0007). `Profile` / `TaxDataAccessLog` / `TaxYear` / `LegalHold` carry **no FK** to
@@ -299,7 +305,10 @@ make module-evaluation order load-bearing. This is the one place in the system w
 two import statements is an architectural constraint**, so it belongs on the map rather than only in
 the file that happens to contain it.
 
-![Boot ordering](../adr/0028-boot-env-snapshot-ordering.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../adr/0028-boot-env-snapshot-ordering.dark.svg">
+  <img src="../adr/0028-boot-env-snapshot-ordering.svg" alt="Boot ordering">
+</picture>
 
 *(source: [`0028-boot-env-snapshot-ordering.puml`](../adr/0028-boot-env-snapshot-ordering.puml))*
 

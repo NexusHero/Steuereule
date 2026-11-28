@@ -231,21 +231,12 @@ As soon as the user has made the most important entries (or clicks *„Kanzlei-E
 
 ### 3.6 UI components & interaction state machine
 
-```mermaid
-stateDiagram-v2
-    [*] --> Ready: Case digest & history loaded
-    Ready --> Thinking: User sends question / clicks prompt or pill
-    Thinking --> Streaming: SSE 'event: token' starts
-    Streaming --> Streaming: Tokens flow word by word (auto-scroll)
-    Streaming --> AwaitingAnamnese: SSE 'event: choices' (follow-up pills)
-    AwaitingAnamnese --> Thinking: User clicks answer pill
-    Streaming --> AwaitingAction: SSE 'event: action' (suggestion card with before/after)
-    AwaitingAction --> ApplyingAction: Click on 'Jetzt übernehmen'
-    ApplyingAction --> ActionApplied: 200 OK (value booked as confirmed)
-    ActionApplied --> UndoingAction: Click on 'Rückgängig machen'
-    UndoingAction --> AwaitingAction: Old value restored
-    Streaming --> Ready: SSE 'event: done'
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/owl-chat-states.dark.svg">
+  <img src="diagrams/owl-chat-states.svg" alt="The states of the chat, from ready through streaming to an applied suggestion">
+</picture>
+
+*(source: [`owl-chat-states.puml`](diagrams/owl-chat-states.puml))*
 
 ---
 
@@ -344,56 +335,12 @@ Documents (invoices, PDFs) potentially contain hostile third-party text.
 
 ### 5.1 End-to-end sequence diagram
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Client (user)
-    participant UI as mobile-web (OwlModeScreen / Drawer)
-    participant API as apps/api (AdvisorController)
-    participant Scrubber as PII scrubber & CaseDigest
-    participant Core as @steuereule/core (tariff & OwlEngine)
-    participant DB as PostgreSQL (Prisma)
-    participant LLM as AI provider (Claude / Gemini / fallback)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/owl-end-to-end.dark.svg">
+  <img src="diagrams/owl-end-to-end.svg" alt="Sequence: one question to the owl, from the session to the applied suggestion">
+</picture>
 
-    User->>UI: Opens owl tab or in-mask drawer
-    UI->>API: GET /v1/steuerjahre/2026/advisor/session
-    API->>DB: Load chat history + open OwlCards + case state
-    API-->>UI: { greeting, openCards, messages, quickChips }
-
-    User->>UI: Sends message / clicks prompt or answer pill
-    UI->>API: POST /v1/steuerjahre/2026/advisor/chat (SSE)
-    API->>DB: Check daily budget (< 50 msg today)
-    API->>Scrubber: Scrub user free text + build anonymous CaseDigest
-    Scrubber->>Core: Calculate current tax state (berechne)
-    API->>LLM: Stream with system prompt + CaseDigest + last 10 msg
-
-    loop SSE token stream
-        LLM-->>API: Text token
-        API-->>UI: event: token { text }
-    end
-
-    opt Facts missing -> client intake
-        LLM-->>API: Tool: ask_clarification({ question, choices })
-        API-->>UI: event: choices { choices: ["90% beruflich", "50% beruflich"] }
-    end
-
-    opt Facts complete -> before/after simulation & suggestion
-        LLM-->>API: Tool: propose_entry({ screen, field, newValue, reason })
-        API->>Core: Simulate tax refund before vs. after (zero DB write!)
-        Core-->>API: { beforeRefundEur: 1420, afterRefundEur: 1459, deltaEur: +39 }
-        API-->>UI: event: action { actionId, screen, field, oldValue, newValue, deltaEur }
-    end
-
-    API->>DB: Store encrypted AdvisorChatMessage (incl. pending action)
-    API-->>UI: event: done
-
-    User->>UI: Clicks "✓ Jetzt übernehmen (+39 €)"
-    UI->>API: POST /v1/steuerjahre/2026/advisor/actions/:actionId/apply
-    API->>DB: Write value into form + mark confirmed=true (provenance: SteuerEule)
-    API->>DB: Write AuditEntry & set action status to 'applied'
-    API-->>UI: 200 OK { status: 'applied', previousValue, newValue, deltaEur }
-    UI-->>User: Card shows "✓ Übernommen" + "↩ Rückgängig" button (form updates live!)
-```
+*(source: [`owl-end-to-end.puml`](diagrams/owl-end-to-end.puml))*
 
 ---
 

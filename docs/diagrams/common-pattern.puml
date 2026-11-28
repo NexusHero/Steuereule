@@ -1,0 +1,21 @@
+@startuml common-pattern
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/architecture-subsystems.md: the pattern every module follows.
+left to right direction
+
+rectangle "Controller\n~*.controller.ts" as Ctrl
+rectangle "Service\n~*.service.ts" as Svc
+rectangle "@steuereule/core\npure functions" as Core
+rectangle "Port\n~*.repository.ts" as Port
+rectangle "Adapter\n~*.repository.prisma.ts" as Adapter
+database "PostgreSQL" as Db
+rectangle "~*.module.ts" as Module
+
+Ctrl --> Svc
+Svc --> Core
+Svc --> Port
+Adapter ..> Port : implements
+Adapter --> Db
+Module ..> Adapter : binds
+@enduml
