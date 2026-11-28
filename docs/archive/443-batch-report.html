@@ -27,11 +27,11 @@
         <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
-        <p class="eyebrow">Agent prompts</p>
+        <p class="eyebrow">Archive</p>
         <h1>Batch report: ticket #443 (slices 1–7)</h1>
         <ul class="chips" aria-label="On this page"><li><a class="chip" href="#slice-1--navigation-tab-stacks--a-url-per-screen">Slice 1 — Navigation (tab stacks &amp; a URL per screen)</a></li><li><a class="chip" href="#slice-2--hub-cockpit">Slice 2 — Hub cockpit</a></li><li><a class="chip" href="#slice-3--submission-gate">Slice 3 — Submission gate</a></li><li><a class="chip" href="#slice-4--sheets">Slice 4 — Sheets</a></li><li><a class="chip" href="#slice-5--persona-boosters--dual-cockpit">Slice 5 — Persona boosters &amp; dual cockpit</a></li><li><a class="chip" href="#slice-6--dark-mode">Slice 6 — Dark mode</a></li><li><a class="chip" href="#slice-7--keyboard--haptics">Slice 7 — Keyboard &amp; haptics</a></li><li><a class="chip" href="#overall-part-d">Overall (part D)</a></li></ul>
       </header>
@@ -68,7 +68,7 @@
 <li><code>apps/mobile-web/src/screens/funnel/sessionMemory.ts</code>: adds <code>rememberReturnTo</code>/<code>rememberedReturnTo</code> for <code>/app/…</code> paths under the <code>sessionStorage</code> key <code>steuereule.returnTo</code>.</li>
 <li><code>apps/mobile-web/src/screens/funnel/sessionMemory.test.tsx</code>: tests <code>rememberReturnTo</code>/<code>rememberedReturnTo</code>, including rejection of paths outside <code>/app/</code> and a blocked <code>sessionStorage</code>.</li>
 <li><code>e2e/scenarios/08-navigation-gast-und-alle-screens.mjs</code>: adds the check for a direct visit to <code>/app/steuerjahr/2025/kapital</code>, <code>page.reload()</code> and browser back (<code>page.goBack()</code>).</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: creates this batch report (section Slice 1).</li>
+<li><code>docs/archive/443-batch-report.html</code>: creates this batch report (section Slice 1).</li>
 </ul>
 <h3 id="4-deviations-from-the-assignment"><a class="anchor" href="#4-deviations-from-the-assignment" aria-hidden="true" tabindex="-1">#</a>4. Deviations from the assignment</h3>
 <ul>
@@ -153,7 +153,7 @@
 <li><code>apps/mobile-web/src/screens/shared/usePendingMutations.ts</code>: new small helper hook (<code>useIsMutating</code>-based waiting for open writes before a screen completes).</li>
 <li><code>apps/mobile-web/src/screens/workdays/WorkdaysScreen.test.tsx</code>: adds tests for <code>onBack</code> and cache invalidation after saving.</li>
 <li><code>apps/mobile-web/src/screens/workdays/WorkdaysScreen.tsx</code>: adds <code>onBack</code>, waits for running commute mutations and invalidates dependent queries before <code>onDone</code>.</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: updates the section „Slice 2 — Hub cockpit“ to the finished state with all check and file evidence.</li>
+<li><code>docs/archive/443-batch-report.html</code>: updates the section „Slice 2 — Hub cockpit“ to the finished state with all check and file evidence.</li>
 <li><code>e2e/scenarios/01-lena-hoffmann-angestellt.mjs</code>: switches the tunnel run to <code>nextStep(page)</code> and temporarily bridges the removed automatic plausibility edge until slice 3 via the direct URL <code>/plausibilitaet</code>.</li>
 <li><code>e2e/scenarios/02-markus-brenner-grenzgaenger-ch.mjs</code>: replaces automatic tunnel transitions after the Swiss Lohnausweis (Swiss salary certificate) and catalog screens with <code>nextStep(page)</code>.</li>
 <li><code>e2e/scenarios/03-julia-brenner-grenzgaengerin-ch.mjs</code>: replaces automatic tunnel transitions in Markus&#39; and Julia&#39;s runs with <code>nextStep(page)</code>.</li>
@@ -253,7 +253,7 @@
 <li><code>apps/mobile-web/src/screens/submission/SubmissionScreen.tsx</code>: new screen for the three-stage submission gate (plausibility with tile buttons &amp; <code>gate-warnung-bestaetigen</code>, Veranlagungsartenvergleich (comparison of assessment types) only for married + Zusammenveranlagung with <code>abgabe-vergleich-ueberspringen</code>, printout button <code>abgabe-zum-ausdruck</code>).</li>
 <li><code>apps/mobile-web/src/screens/submission/SubmissionScreen.test.tsx</code>: new TDD test suite for the conflict lock, notice confirmation including the renewed confirmation requirement on a new notice, the conditional assessment comparison and <code>abgabe-zum-ausdruck</code>.</li>
 <li><code>e2e/scenarios/{01,03,04,05,06,07,08,14,16,18,21,24}</code>: switch direct <code>/plausibilitaet</code> navigation and <code>cockpit-ausdruck</code> transitions to the submission gate; scenario <code>08</code> checks the blocked direct visit to <code>/app/steuerjahr/2025/ausdruck</code> with an open LStB.</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: documents slice 3 in this section.</li>
+<li><code>docs/archive/443-batch-report.html</code>: documents slice 3 in this section.</li>
 </ul>
 <h3 id="4-deviations-from-the-assignment"><a class="anchor" href="#4-deviations-from-the-assignment" aria-hidden="true" tabindex="-1">#</a>4. Deviations from the assignment</h3>
 <ul>
@@ -313,7 +313,7 @@
 <li><code>packages/ui/src/gallery/Gallery.tsx</code>: adds an interactive „Sheet“ section to the UI gallery.</li>
 <li><code>packages/ui/src/i18n/resources.ts</code>: adds the default label <code>sheet.schliessen</code> in the <code>UI_NS</code> namespace.</li>
 <li><code>packages/ui/src/index.ts</code>: exports <code>Sheet</code> and <code>SheetProps</code>.</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: documents slice 4 in this section.</li>
+<li><code>docs/archive/443-batch-report.html</code>: documents slice 4 in this section.</li>
 </ul>
 <h3 id="4-deviations-from-the-assignment"><a class="anchor" href="#4-deviations-from-the-assignment" aria-hidden="true" tabindex="-1">#</a>4. Deviations from the assignment</h3>
 <ul>
@@ -373,7 +373,7 @@
 <li><code>apps/mobile-web/src/screens/cockpit/CockpitPartnerSection.tsx</code>, <code>CockpitTiles.tsx</code>, <code>CockpitScreen.tsx</code>, <code>CockpitDetailRoutes.tsx</code>, <code>CockpitStack.tsx</code> &amp; <code>CockpitSlice5.test.tsx</code>: implements the booster heading, the collapsible „Weitere Themen“ section (<code>cockpit-weitere-themen</code>), the dual cockpit (<code>Du</code> &amp; <code>{{name}}</code> with <code>partner-lstb</code>/<code>partner-arbeitsweg</code>, partner name never in the URL) and direct back navigation from <code>Partner</code> to <code>CockpitHome</code> (if not opened from master data).</li>
 <li><code>apps/mobile-web/src/screens/catalog/CatalogScreen.tsx</code> &amp; <code>CatalogScreen.boosters.test.tsx</code>: supports all 6 <code>CatalogEntryParam</code> entries and renders optional notices (<code>katalog-hinweis-&lt;step&gt;</code>).</li>
 <li><code>e2e/scenarios/{04-weber-ehepaar-zusammenveranlagung,05-hans-meyer-rentner-kapital,07-david-richter-alleinerziehend}.mjs</code>: checks dual cockpit partner tiles after returning from master data (04), <code>kapital</code> in the main section and <code>arbeitsweg</code> under <code>cockpit-weitere-themen</code> (05), and <code>cockpit-kachel-alleinerziehend</code> (07).</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: updates the report for slice 5 after the decision to continue.</li>
+<li><code>docs/archive/443-batch-report.html</code>: updates the report for slice 5 after the decision to continue.</li>
 </ul>
 <h3 id="4-deviations-from-the-assignment"><a class="anchor" href="#4-deviations-from-the-assignment" aria-hidden="true" tabindex="-1">#</a>4. Deviations from the assignment</h3>
 <ul>
@@ -430,7 +430,7 @@
 <li><code>apps/mobile-web/src/i18n/resources.ts</code>, <code>apps/mobile-web/src/screens/profile/{ProfileAppearanceSection,ProfileView}.tsx</code> &amp; <code>ProfileScreen.test.tsx</code>: add i18n (<code>profil.darstellung.{titel,system,hell,dunkel}</code>, <code>de</code> &amp; <code>en</code>) and the profile section „Darstellung“ (&quot;Appearance&quot;) with <code>Option</code> buttons (<code>profil-darstellung-system</code>, <code>profil-darstellung-hell</code>, <code>profil-darstellung-dunkel</code>), which takes effect immediately and persists only on click.</li>
 <li><code>apps/mobile-web/src/navigation/AppTabs.tsx</code>, <code>apps/mobile-web/src/screens/{LoginScreen,RegistrationScreen}.tsx</code>, <code>login/loginStyles.ts</code>, <code>profile/styles.ts</code>, <code>workdays/WorkdaysScreen.tsx</code>, <code>deadlines/DeadlinesBanner.tsx</code>, <code>interview/styles.ts</code>, <code>onboarding/styles.ts</code>, <code>funnel/KontoWandScreen.tsx</code>, <code>pension/PensionerScreen.tsx</code> &amp; <code>advisor/{AdvisorChatPanel,InMaskAdvisorCompanion,OwlModeScreen}.tsx</code>: switch text/icon colors on <code>funke</code> surfaces to <code>inkOnFunke(t)</code> and AI texts to <code>t.color.kiTinte</code>, so that dark and light contrasts are correct.</li>
 <li><code>e2e/responsive/dark-mode.mjs</code> &amp; <code>e2e/package.json</code>: add the E2E script <code>dark-mode</code> (<code>colorScheme: &#39;dark&#39;</code>, checks cockpit, sheet screen and profile for a dark <code>grund</code>, switches to <code>Immer hell</code> (&quot;Always light&quot;) and checks after reload).</li>
-<li><code>docs/agent-prompts/443-batch-report.html</code>: adds this section, slice 6.</li>
+<li><code>docs/archive/443-batch-report.html</code>: adds this section, slice 6.</li>
 </ul>
 <h3 id="4-deviations-from-the-assignment"><a class="anchor" href="#4-deviations-from-the-assignment" aria-hidden="true" tabindex="-1">#</a>4. Deviations from the assignment</h3>
 <ul>

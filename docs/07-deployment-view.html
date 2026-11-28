@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -38,7 +38,7 @@
       <article class="prose">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="diagrams/deployment.dark.svg">
-  <img src="diagrams/deployment.svg" alt="Deployment: two Cloud Run services, two Cloud SQL databases, optional Redis and Secret Manager in europe-west4">
+  <img src="diagrams/deployment.svg" alt="Deployment: two Cloud Run services, two Cloud SQL databases, Redis and Secret Manager in europe-west4">
 </picture><p><em>(source: <a href="diagrams/deployment.puml"><code>deployment.puml</code></a>)</em></p>
 <div class="table"><table>
 <thead>
@@ -55,7 +55,7 @@
 </tr>
 <tr>
 <td align="left">Database</td>
-<td align="left">Cloud SQL, one zone, automated backups with point-in-time recovery</td>
+<td align="left">Cloud SQL with daily backups and point-in-time recovery (7 days of logs, 7 backups). Regional with a standby by default in production; one zone on a shared-core tier in beta and staging, which the Cloud SQL SLA does not cover (<code>db_high_availability</code>, <code>db_tier</code>)</td>
 <td align="left"><code>infra/gcp/main.tf</code></td>
 </tr>
 <tr>
@@ -65,8 +65,8 @@
 </tr>
 <tr>
 <td align="left">Redis</td>
-<td align="left">optional (<code>enable_redis</code>): the owl&#39;s run log across instances and the sign-in rate limit</td>
-<td align="left"><a href="adr/0064-owl-chat-answer-runs-and-resumption.html">ADR-0064</a></td>
+<td align="left">Memorystore with AUTH and TLS, on by default (<code>enable_redis</code>): the owl&#39;s run log across instances and every rate limit</td>
+<td align="left"><a href="adr/0064-owl-chat-answer-runs-and-resumption.html">ADR-0064</a>, <a href="adr/0109-security-report-hardening.html">ADR-0109</a></td>
 </tr>
 <tr>
 <td align="left">Delivery</td>
@@ -80,7 +80,7 @@
 </tr>
 </tbody></table></div>
 <p>Hosting decision: <a href="adr/0053-beta-hosting-cloud-run.html">ADR-0053</a>. <code>infra/terraform</code>, <code>infra/k3s</code> and <code>infra/manifests</code> additionally hold an older target environment on Hetzner with k3s (§11).</p>
-<p>Because the API runs on up to ten instances, any state in process memory is separate per instance and is lost on scale-down. Today that affects the asynchronous print jobs and part of the rate limiting (§11).</p>
+<p>Because the API runs on up to ten instances, any state in process memory is separate per instance and is lost on scale-down. Today that affects the asynchronous print jobs (§11). Rate limits count in the shared storage since ADR-0109.</p>
 <hr>
 
       </article>

@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="../adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -48,18 +48,11 @@ Their final GitHub pass is an <em>audit</em> of the evidence, not a <em>discover
 review and QA&#39;s test report, so the trail shows <code>Lead → QA → Stakeholder</code> at a glance.</li>
 </ul>
 <h2 id="the-flow"><a class="anchor" href="#the-flow" aria-hidden="true" tabindex="-1">#</a>The flow</h2>
-<pre><code class="language-mermaid">flowchart TD
-    A[Suhay + Musti · joint grilling&lt;br/&gt;refinement block: REQ, one Given-When-Then,&lt;br/&gt;ADR check, scope, honesty check, risk tier] --&gt; A2[Stakeholder rules on the block]
-    A2 --&gt; B[Musti · Lead&lt;br/&gt;break down, dispatch]
-    B --&gt; C[Kaan / Robin · Dev&lt;br/&gt;implement tests-first, own gate green]
-    C --&gt; D[Dev opens a DRAFT PR&lt;br/&gt;CI starts running here]
-    D -- the draft itself is the trigger --&gt; E{Musti · Lead&lt;br/&gt;reviews on the draft, comments in public as Musti&lt;br/&gt;posts his record even when he finds nothing}
-    E -- unresolved findings --&gt; C
-    E -- no unresolved findings --&gt; F{Salih · QA&lt;br/&gt;tests per risk tier: T3 not at all,&lt;br/&gt;T2 if user-visible, T1 in full}
-    F -- fails --&gt; C
-    F -- passes --&gt; G[Salih posts his test record&lt;br/&gt;and flips the PR to READY]
-    G --&gt; H[Stakeholder · final human pass on GitHub → merge]
-</code></pre>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/delivery-pipeline.dark.svg">
+  <img src="../diagrams/delivery-pipeline.svg" alt="Flow: refinement, breakdown, implementation, draft PR, lead review, QA by risk tier, ready, merge; findings and failed tests lead back to the developer">
+</picture>
+<p><em>(source: <a href="../diagrams/delivery-pipeline.puml"><code>delivery-pipeline.puml</code></a>)</em></p>
 <h2 id="the-gates-in-order"><a class="anchor" href="#the-gates-in-order" aria-hidden="true" tabindex="-1">#</a>The gates, in order</h2>
 <ol>
 <li><p><strong>Refinement — no dev starts without it, and no one half of it counts.</strong> <strong>Suhay and Musti grill

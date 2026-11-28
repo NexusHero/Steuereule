@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -95,7 +95,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 </tr>
 </thead>
 <tbody><tr>
-<td align="left">Persistence per feature module (33 repositories as of 2026-11-22)</td>
+<td align="left">Persistence per feature module (36 repository ports as of 2026-11-28)</td>
 <td align="left">e.g. <code>ReceiptRepository</code> · <code>RECEIPT_REPOSITORY</code></td>
 <td align="left"><code>PrismaReceiptRepository</code> in <code>*.repository.prisma.ts</code></td>
 <td align="left"><code>apps/api/test/fakes/fake-*.repository.ts</code></td>
@@ -187,7 +187,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 <td align="left">found one superfluous exception on its first run</td>
 </tr>
 <tr>
-<td align="left">The set of <em>module → module</em> imports in <code>apps/api/src</code> equals the baseline (334 edges between 53 folders as of 2026-11-23, after ADR-0106 removed <code>auth → config</code>; 352 between 50 on 2026-11-22).</td>
+<td align="left">The set of <em>module → module</em> imports in <code>apps/api/src</code> equals the baseline (383 edges between 59 folders as of 2026-11-28; 352 between 50 on 2026-11-22).</td>
 <td align="left">the same test, baseline <code>apps/api/test/architecture-module-edges.json</code></td>
 <td align="left">a difference in either direction fails</td>
 </tr>
@@ -197,14 +197,9 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 <td align="left">a constructed three-module cycle must be found, a chain must not</td>
 </tr>
 <tr>
-<td align="left">In the core: <code>math</code> imports nothing, <code>common</code> only <code>math</code>, <code>engine</code> never <code>interview</code>; no new direction between the folders.</td>
+<td align="left">In the core: each folder imports only the folders below it (<code>math → common → domains → engine → interview</code>), with no exceptions (§5.2).</td>
 <td align="left"><code>packages/core/src/architecture.test.ts</code></td>
 <td align="left">broken with probe files on 2026-11-22 (<a href="adr/0102-ports-and-adapters-enforced-by-architecture-tests.html">ADR-0102</a>)</td>
-</tr>
-<tr>
-<td align="left">In the core: the files importing against the intended order are exactly the 23 known ones.</td>
-<td align="left">the same test</td>
-<td align="left">as above</td>
 </tr>
 <tr>
 <td align="left">In the core: no cycle of value imports between files.</td>
@@ -224,8 +219,7 @@ constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptReposi
 <li><strong><code>mcp/</code> loads LangChain too</strong>, because it imports <code>TOOL_ARG_SCHEMAS</code> from <code>ki/advisor-tools.ts</code>.</li>
 <li><strong><code>pdf-lib</code> has no port.</strong> Only <code>printout/form-renderer.ts</code> imports it, but services call <code>renderForms</code> directly.</li>
 <li><strong>better-auth is confined to two modules, not one file.</strong> Twelve files in <code>auth/</code> and <code>device/</code> use it, among them the guard for JWT verification.</li>
-<li><strong>Modules are still coupled.</strong> 334 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).</li>
-<li><strong>The core has two folder-level cycles</strong>, see §5.2.</li>
+<li><strong>Modules are still coupled.</strong> 383 edges; 4 pairs of modules import each other (2026-11-28: <code>advisor ↔ business</code>, <code>advisor ↔ receipt</code>, <code>auth ↔ receipt</code>, <code>business ↔ confirmation</code>; 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).</li>
 <li><strong>DI tokens are not type-checked.</strong> A missing binding fails at start-up, a wrong one only in an integration test.</li>
 <li><strong>Imports are found by pattern.</strong> An import path computed at runtime is invisible.</li>
 </ul>

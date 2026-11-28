@@ -27,7 +27,7 @@
         <ul><li><a class="nav-item" href="adr/index.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
       </nav>
       </details>
-      <p class="rail-foot">Architecture as of 2026-11-22</p>
+      <p class="rail-foot">Architecture as of 2026-11-28</p>
     </aside>
     <main id="content" class="content">
       <header class="page-head">
@@ -36,6 +36,7 @@
         <ul class="chips" aria-label="On this page"><li><a class="chip" href="#81-authentication-and-identity">8.1 Authentication and identity</a></li><li><a class="chip" href="#82-encryption">8.2 Encryption</a></li><li><a class="chip" href="#83-the-boundary-to-the-language-models">8.3 The boundary to the language models</a></li><li><a class="chip" href="#84-persistence-and-transactions">8.4 Persistence and transactions</a></li><li><a class="chip" href="#85-observability">8.5 Observability</a></li><li><a class="chip" href="#86-supply-chain">8.6 Supply chain</a></li><li><a class="chip" href="#87-rate-limiting">8.7 Rate limiting</a></li></ul>
       </header>
       <article class="prose">
+<p>The security controls of this chapter are set against the threats they answer in the <a href="security/threat-model.html">threat model</a>; what protects the running service and what is missing is in <a href="sre/reliability-spec.html">the reliability page</a>.</p>
 <h2 id="81-authentication-and-identity"><a class="anchor" href="#81-authentication-and-identity" aria-hidden="true" tabindex="-1">#</a>8.1 Authentication and identity</h2>
 <ul>
 <li><strong>better-auth</strong> is the auth server (<a href="adr/0009-better-auth-as-auth-server.html">ADR-0009</a>): e-mail and password, Google, passkeys, TOTP, device approval by QR code (<a href="adr/0024-qr-device-authorization-endpoints.html">ADR-0024</a>).</li>
@@ -53,9 +54,9 @@
 </tr>
 </thead>
 <tbody><tr>
-<td align="left">Fields marked <code>/// @encrypted</code> in the Prisma schema (190 markers as of 2026-11-22)</td>
+<td align="left">Fields marked <code>/// @encrypted</code> in the Prisma schema (199 markers as of 2026-11-28)</td>
 <td align="left">AES-256-GCM through <code>prisma-field-encryption</code>, installed in <code>prisma/encrypted-prisma.provider.ts</code></td>
-<td align="left">one application key, <code>PRISMA_FIELD_ENCRYPTION_KEY</code>; earlier keys in <code>PRISMA_FIELD_DECRYPTION_KEYS</code> stay readable</td>
+<td align="left">one application key, <code>PRISMA_FIELD_ENCRYPTION_KEY</code>; earlier keys in <code>PRISMA_FIELD_DECRYPTION_KEYS</code> stay readable. A key per row owner is decided and migrates in stages (<a href="adr/0110-per-user-field-keys.html">ADR-0110</a>); on 2026-11-28 the library with the one key is still in use</td>
 </tr>
 <tr>
 <td align="left">Receipt files</td>
@@ -87,9 +88,9 @@
 <li><strong>Targets.</strong> SLOs, error budget and recovery objectives are in <a href="sre/reliability-spec.html"><code>sre/reliability-spec.html</code></a>. They are targets; no alerting for them exists as code.</li>
 </ul>
 <h2 id="86-supply-chain"><a class="anchor" href="#86-supply-chain" aria-hidden="true" tabindex="-1">#</a>8.6 Supply chain</h2>
-<p>The workflow <em>Security</em> checks every pull request for secrets (gitleaks), unsafe patterns (semgrep) and misconfiguration (trivy, hadolint, actionlint). <em>Build &amp; E2E</em> scans the container images and fails on high and critical findings; <code>.trivyignore</code> exempts known findings (120 entries as of 2026-11-22). CycloneDX SBOMs are produced for the repository and both images. They are stored as artefacts and are not signed.</p>
+<p>The workflow <em>Security</em> checks every pull request for secrets (gitleaks), unsafe patterns (semgrep) and misconfiguration (trivy, hadolint, actionlint). <em>Build &amp; E2E</em> scans the container images and fails on high and critical findings; <code>.trivyignore</code> exempts known findings (5 entries as of 2026-11-28). CycloneDX SBOMs are produced for the repository and both images. They are stored as artefacts and are not signed.</p>
 <h2 id="87-rate-limiting"><a class="anchor" href="#87-rate-limiting" aria-hidden="true" tabindex="-1">#</a>8.7 Rate limiting</h2>
-<p>Two mechanisms: better-auth&#39;s limiter for sign-in and registration, which uses Redis when <code>REDIS_URL</code> is set; and NestJS&#39;s <code>ThrottlerModule</code> for individual routes, which counts in process memory.</p>
+<p>Two limiters over one storage (<a href="adr/0109-security-report-hardening.html">ADR-0109</a>): better-auth&#39;s for sign-in and registration, and NestJS&#39;s <code>ThrottlerModule</code> for individual routes through <code>rate-limit/shared-throttler-storage.ts</code>. The storage is Redis when <code>REDIS_URL</code> is set, which is the default in every environment, and process memory otherwise. The same storage counts the day&#39;s model calls, upload budgets and held print jobs.</p>
 <hr>
 
       </article>

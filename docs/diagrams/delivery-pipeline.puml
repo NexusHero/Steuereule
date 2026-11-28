@@ -1,0 +1,26 @@
+@startuml delivery-pipeline
+!include ../diagram-style.puml
+' docs/process/delivery-pipeline.html: from refinement to merge.
+' Laid out by Graphviz (`dot`): the flow has two loops back to the developer.
+
+rectangle "Suhay + Musti · joint grilling\nrefinement block: REQ, one Given-When-Then,\nADR check, scope, honesty check, risk tier" as A
+rectangle "Stakeholder rules on the block" as A2
+rectangle "Musti · Lead\nbreak down, dispatch" as B
+rectangle "Kaan / Robin · Dev\nimplement tests-first, own gate green" as C
+rectangle "Dev opens a DRAFT PR\nCI starts running here" as D
+rectangle "Musti · Lead\nreviews on the draft, comments in public as Musti\nposts his record even when he finds nothing" as E
+rectangle "Salih · QA\ntests per risk tier: T3 not at all,\nT2 if user-visible, T1 in full" as F
+rectangle "Salih posts his test record\nand flips the PR to READY" as G
+rectangle "Stakeholder · final human pass on GitHub → merge" as H
+
+A --> A2
+A2 --> B
+B --> C
+C --> D
+D --> E : the draft itself is the trigger
+E --> C : unresolved findings
+E --> F : no unresolved findings
+F --> C : fails
+F --> G : passes
+G --> H
+@enduml
