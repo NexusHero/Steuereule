@@ -117,6 +117,11 @@ jobs:
         run: pnpm -r --workspace-concurrency=1 test --coverage
       - name: Web server headers (CSP, HSTS, framing) — node tests of e2e/cross-origin/static-server.mjs
         run: node --test e2e/cross-origin/static-server.test.mjs
+      # docs/site/ is built from docs/architecture.md and committed, so it can be read without a build.
+      # This fails when a change to the Markdown, the template or the tokens was not followed by
+      # `pnpm docs:site`. It runs here because it needs the Markdown parser from node_modules.
+      - name: Architecture site — docs/site/ matches its Markdown sources
+        run: node scripts/docs/build-site.mjs --check
       - name: Upload the coverage reports for SonarQube Cloud
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

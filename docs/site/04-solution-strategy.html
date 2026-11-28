@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Solution strategy — SteuerEule Architecture</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Chapters</summary>
+        <nav class="nav" aria-label="Chapters">
+      <p class="eyebrow">arc42</p>
+      <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item is-active" href="04-solution-strategy.html" aria-current="page"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+      <p class="eyebrow">Companion</p>
+      <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+    </nav>
+      </details>
+      <p class="rail-foot">As of 2026-11-22<br>Built from <code>docs/architecture.md</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 4 of 12</p>
+        <h1 id="4-solution-strategy">Solution strategy</h1>
+        
+      </header>
+      <article class="prose">
+<ol>
+<li><strong>A pure calculation core.</strong> Tax rules are functions without input or output in <code>packages/core</code>. The API and the web app use the same core, so each rule exists exactly once.</li>
+<li><strong>Parameters per tax year.</strong> Allowances, lump sums and deadlines are in <code>math/tax-parameters.ts</code>, the tariff and surcharge tables in <code>math/tarif.ts</code>. Every year in which a rule changes is named there too (<code>RULE_CHANGE_YEARS</code>, the <code>*_STEPS</code> tables, §5.2). A few feature modules still carry their own per-year tables, see §11.</li>
+<li><strong>Ports &amp; Adapters around the core.</strong> The database and external SDKs are reachable only from named places. §4.1 describes this in detail.</li>
+<li><strong>Draft before entry.</strong> Whatever the owl, a receipt reader or an external assistant proposes is a draft with a computed effect. Only confirmation writes (<a href="../adr/0066-owl-field-catalog-and-one-write-path.md">ADR-0066</a>).</li>
+<li><strong>Encryption at the edge of persistence.</strong> The Prisma adapter encrypts fields, the storage adapter encrypts receipt files. Services see plaintext and know nothing of the mechanism.</li>
+<li><strong>Official forms as data.</strong> 18 forms per tax year (2022 to 2025) are stored unmodified in the repository; their checksums are pinned in <code>apps/api/src/printout/vordrucke-&lt;year&gt;.json</code>.</li>
+</ol>
+<h2 id="41-architecture-style-ports--adapters"><a class="anchor" href="#41-architecture-style-ports--adapters" aria-hidden="true" tabindex="-1">#</a>4.1 Architecture style: Ports &amp; Adapters</h2>
+<p><img src="../../images/architecture-hexagon.svg" alt="Ports &amp; Adapters: the pure core in the centre, the application services around it, adapters at the edge"></p>
+<p>Three rings and one rule: <strong>every dependency points inward.</strong> The core knows nothing about HTTP, the database or a language model. The application services know the core and ports. An SDK is known only to the file named for it.</p>
+<h3 id="411-the-three-rings"><a class="anchor" href="#411-the-three-rings" aria-hidden="true" tabindex="-1">#</a>4.1.1 The three rings</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Ring</th>
+<th align="left">Where</th>
+<th align="left">May depend on</th>
+<th align="left">Must not depend on</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>Core</strong></td>
+<td align="left"><code>packages/core/src/{math,common,domains,engine,interview}</code></td>
+<td align="left">itself and <code>node:crypto</code></td>
+<td align="left">npm packages, <code>apps/*</code></td>
+</tr>
+<tr>
+<td align="left"><strong>Application</strong></td>
+<td align="left"><code>apps/api/src/&lt;module&gt;/</code>: services, guards, parse strategies and the ports (<code>*.repository.ts</code>, <code>common/transaction-runner.ts</code>, <code>llm/single-shot-model.ts</code>, <code>unlock/payment-provider.ts</code>, <code>auth/email-sender.ts</code>)</td>
+<td align="left">core, ports, NestJS</td>
+<td align="left">the database client, external SDKs</td>
+</tr>
+<tr>
+<td align="left"><strong>Adapters</strong></td>
+<td align="left">driving: <code>*.controller.ts</code>, <code>mcp/</code>; driven: <code>*.prisma.ts</code>, <code>prisma/</code>, the LangChain files in <code>ki/</code> and <code>llm/</code>, <code>unlock/stripe-payment-provider.ts</code>, <code>auth/smtp-email-sender.ts</code>, <code>account/export/pdf-renderer.playwright.ts</code>, <code>receipt/storage/postgres-bytea-storage.adapter.ts</code></td>
+<td align="left">ports, core, their own SDK</td>
+<td align="left">the SDKs of other adapters</td>
+</tr>
+</tbody></table></div>
+<p>The Nest modules (<code>*.module.ts</code>) are the <strong>composition root</strong>. Only there is a port bound to an adapter:</p>
+<pre><code class="language-ts">// apps/api/src/receipt/receipt-storage.module.ts
+{ provide: STORAGE_PORT, useExisting: PostgresByteaStorageAdapter },
+{ provide: RECEIPT_REPOSITORY, useClass: PrismaReceiptRepository },
+</code></pre>
+<pre><code class="language-ts">// a service sees only the interface
+constructor(@Inject(RECEIPT_REPOSITORY) private readonly receipts: ReceiptRepository) {}
+</code></pre>
+<h3 id="412-the-main-ports"><a class="anchor" href="#412-the-main-ports" aria-hidden="true" tabindex="-1">#</a>4.1.2 The main ports</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Capability</th>
+<th align="left">Port · DI token</th>
+<th align="left">Adapter in production</th>
+<th align="left">Stand-in for tests</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Persistence per feature module (33 repositories as of 2026-11-22)</td>
+<td align="left">e.g. <code>ReceiptRepository</code> · <code>RECEIPT_REPOSITORY</code></td>
+<td align="left"><code>PrismaReceiptRepository</code> in <code>*.repository.prisma.ts</code></td>
+<td align="left"><code>apps/api/test/fakes/fake-*.repository.ts</code></td>
+</tr>
+<tr>
+<td align="left">A transaction across repositories</td>
+<td align="left"><code>TransactionRunner</code> · <code>TRANSACTION_RUNNER</code></td>
+<td align="left"><code>PrismaTransactionRunner</code></td>
+<td align="left"><code>passThroughTransactionRunner</code></td>
+</tr>
+<tr>
+<td align="left">The owl&#39;s advisory turn</td>
+<td align="left"><code>AdvisorEnginePort</code> (in the core) · <code>ADVISOR_ENGINE</code></td>
+<td align="left"><code>LangGraphAdvisorEngine</code></td>
+<td align="left"><code>FakeKiChatModel</code>, <code>test/fakes/scripted-model.ts</code></td>
+</tr>
+<tr>
+<td align="left">A single model call</td>
+<td align="left"><code>SingleShotModel</code> · <code>SINGLE_SHOT_MODEL_FACTORY</code></td>
+<td align="left"><code>llm/langchain-single-shot.adapter.ts</code></td>
+<td align="left"><code>noSingleShotModel</code></td>
+</tr>
+<tr>
+<td align="left">Domain-level AI capabilities</td>
+<td align="left"><code>KiPort</code> (in the core) · <code>KI_PORT</code></td>
+<td align="left"><code>RagKiAdapter</code></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">Payment</td>
+<td align="left"><code>PaymentProvider</code> · <code>PAYMENT_PROVIDER</code></td>
+<td align="left"><code>StripePaymentProvider</code></td>
+<td align="left"><code>FakeProvider</code> in <code>unlock.service.test.ts</code></td>
+</tr>
+<tr>
+<td align="left">E-mail</td>
+<td align="left"><code>EmailSender</code> · <code>EMAIL_SENDER</code></td>
+<td align="left"><code>SmtpEmailSender</code>, <code>BrevoEmailSender</code></td>
+<td align="left"><code>LoggingEmailSender</code></td>
+</tr>
+<tr>
+<td align="left">Receipt files</td>
+<td align="left"><code>StoragePort</code> · <code>STORAGE_PORT</code></td>
+<td align="left"><code>PostgresByteaStorageAdapter</code></td>
+<td align="left">the in-memory adapter of the receipt tests</td>
+</tr>
+<tr>
+<td align="left">PDF of the GDPR export</td>
+<td align="left"><code>PdfRenderer</code> · <code>PDF_RENDERER</code></td>
+<td align="left"><code>PlaywrightPdfRenderer</code></td>
+<td align="left"></td>
+</tr>
+<tr>
+<td align="left">Checking assistant tokens</td>
+<td align="left"><code>BearerTokenRepository</code> · <code>BEARER_TOKEN_REPOSITORY</code></td>
+<td align="left"><code>PrismaBearerTokenRepository</code></td>
+<td align="left">a fake in the guard test</td>
+</tr>
+<tr>
+<td align="left">The tax case of a person and year, for the seven services that compute on a return (estimate, printout, Cockpit, Abgabe, Verlauf, Bescheid, Veranlagungsvergleich)</td>
+<td align="left"><code>TaxCaseReader</code> · <code>TAX_CASE_READER</code> (<code>tax-case/</code>)</td>
+<td align="left"><code>RepositoryTaxCaseReader</code></td>
+<td align="left"><code>taxCaseReaderOver({ … })</code> over the fake repositories</td>
+</tr>
+<tr>
+<td align="left">The estimate, for modules the estimate itself reads</td>
+<td align="left"><code>HouseholdEstimate</code> · <code>HOUSEHOLD_ESTIMATE</code> (owned by <code>capital/</code>), <code>PrintoutEstimate</code> · <code>PRINTOUT_ESTIMATE</code> (owned by <code>printout/</code>)</td>
+<td align="left"><code>TaxEstimateService</code>, bound by the global <code>TaxEstimatePortsModule</code> that only <code>AppModule</code> imports</td>
+<td align="left">the service over fakes, or a stub</td>
+</tr>
+</tbody></table></div>
+<h3 id="413-what-is-checked"><a class="anchor" href="#413-what-is-checked" aria-hidden="true" tabindex="-1">#</a>4.1.3 What is checked</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Invariant</th>
+<th align="left">Test</th>
+<th align="left">How it proves that it can fail</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">The database client and eleven further SDK groups are imported only by the files named for them. That includes <code>src/prisma/**</code> and adapter classes in <code>*.prisma.ts</code>. No file imports <code>ModuleRef</code> from <code>@nestjs/core</code> (no service locator); <code>Reflector</code> and <code>NestFactory</code> stay allowed.</td>
+<td align="left"><code>apps/api/test/architecture.test.ts</code></td>
+<td align="left">fourteen constructed violations in the test, two of them imports of <code>ModuleRef</code> (named and namespace); each must yield exactly one finding</td>
+</tr>
+<tr>
+<td align="left">A named exception that no longer imports its SDK is an error.</td>
+<td align="left">the same test</td>
+<td align="left">found one superfluous exception on its first run</td>
+</tr>
+<tr>
+<td align="left">The set of <em>module → module</em> imports in <code>apps/api/src</code> equals the baseline (334 edges between 53 folders as of 2026-11-23, after ADR-0106 removed <code>auth → config</code>; 352 between 50 on 2026-11-22).</td>
+<td align="left">the same test, baseline <code>apps/api/test/architecture-module-edges.json</code></td>
+<td align="left">a difference in either direction fails</td>
+</tr>
+<tr>
+<td align="left">The modules of <code>apps/api/src</code> on an import cycle are exactly the 28 listed in <code>MODULES_ON_A_CYCLE</code> (one strongly connected group as of 2026-11-25); none may join it. <code>account</code> and <code>personal-data</code> are on no cycle; <code>personal-data</code> (the personal-data registry, legal holds, the erasure flag) imports only <code>common</code> and <code>prisma</code>.</td>
+<td align="left">the same test</td>
+<td align="left">a constructed three-module cycle must be found, a chain must not</td>
+</tr>
+<tr>
+<td align="left">In the core: <code>math</code> imports nothing, <code>common</code> only <code>math</code>, <code>engine</code> never <code>interview</code>; no new direction between the folders.</td>
+<td align="left"><code>packages/core/src/architecture.test.ts</code></td>
+<td align="left">broken with probe files on 2026-11-22 (<a href="../adr/0102-ports-and-adapters-enforced-by-architecture-tests.md">ADR-0102</a>)</td>
+</tr>
+<tr>
+<td align="left">In the core: the files importing against the intended order are exactly the 23 known ones.</td>
+<td align="left">the same test</td>
+<td align="left">as above</td>
+</tr>
+<tr>
+<td align="left">In the core: no cycle of value imports between files.</td>
+<td align="left">the same test</td>
+<td align="left">as above</td>
+</tr>
+<tr>
+<td align="left">The core has no npm dependency.</td>
+<td align="left">pnpm does not resolve undeclared packages; <code>pnpm -r typecheck</code></td>
+<td align="left"><code>packages/core/package.json</code> has no <code>dependencies</code></td>
+</tr>
+</tbody></table></div>
+<p>Both tests run in the CI job <code>test</code> of the workflow <em>Quality</em>.</p>
+<h3 id="414-known-limits"><a class="anchor" href="#414-known-limits" aria-hidden="true" tabindex="-1">#</a>4.1.4 Known limits</h3>
+<ul>
+<li><strong>LangChain is in nine files, not behind a port.</strong> The agent loop every model agent runs on is <code>llm/agent/agent-loop.ts</code>. The owl&#39;s advisory turn is written in LangChain types: prompt assembly (<code>ki/advisor-prompt.ts</code>), the tool round (<code>ki/advisor-tool-round.ts</code>, <code>ki/advisor-tools.ts</code>) and the tool context (<code>ki/tools/tool-call-context.ts</code>). Changing the framework would mean rewriting those files. Changing the <em>provider</em> is configuration.</li>
+<li><strong><code>mcp/</code> loads LangChain too</strong>, because it imports <code>TOOL_ARG_SCHEMAS</code> from <code>ki/advisor-tools.ts</code>.</li>
+<li><strong><code>pdf-lib</code> has no port.</strong> Only <code>printout/form-renderer.ts</code> imports it, but services call <code>renderForms</code> directly.</li>
+<li><strong>better-auth is confined to two modules, not one file.</strong> Twelve files in <code>auth/</code> and <code>device/</code> use it, among them the guard for JWT verification.</li>
+<li><strong>Modules are still coupled.</strong> 334 edges; 3 pairs of modules import each other (2026-11-23, down from 16 on 2026-11-22). The ratchet prevents growth; removing an edge means rewriting the baseline (§11, finding 4).</li>
+<li><strong>The core has two folder-level cycles</strong>, see §5.2.</li>
+<li><strong>DI tokens are not type-checked.</strong> A missing binding fails at start-up, a wrong one only in an integration test.</li>
+<li><strong>Imports are found by pattern.</strong> An import path computed at runtime is invisible.</li>
+</ul>
+<h3 id="415-recipe-connecting-an-external-dependency"><a class="anchor" href="#415-recipe-connecting-an-external-dependency" aria-hidden="true" tabindex="-1">#</a>4.1.5 Recipe: connecting an external dependency</h3>
+<ol>
+<li><strong>Port</strong> in the module that needs it: interface, DI token, result types. No SDK import. The types belong to the port.</li>
+<li><strong>Adapter</strong> in a file of its own. For Prisma the suffix <code>.prisma.ts</code> is mandatory.</li>
+<li><strong>Table</strong> in <code>apps/api/test/architecture.test.ts</code>: add the SDK and the adapter file, plus one constructed violation.</li>
+<li><strong>Binding</strong> in the <code>*.module.ts</code>: <code>{ provide: FOO_PORT, useClass: TechFooAdapter }</code>.</li>
+<li><strong>Fake</strong> under <code>apps/api/test/fakes/</code> for unit tests; an integration test covers the real adapter.</li>
+</ol>
+<h3 id="416-trade-offs"><a class="anchor" href="#416-trade-offs" aria-hidden="true" tabindex="-1">#</a>4.1.6 Trade-offs</h3>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Gain</th>
+<th align="left">Cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">The core is testable without infrastructure: 2067 tests in 155 files run without a database (as of 2026-11-22).</td>
+<td align="left">Four artefacts per external dependency: interface, token, adapter, fake.</td>
+</tr>
+<tr>
+<td align="left">Three model providers and a fake for CI behind one factory.</td>
+<td align="left">One indirection when reading: what stands behind <code>RECEIPT_REPOSITORY</code> is stated only in the module.</td>
+</tr>
+<tr>
+<td align="left">Field encryption sits in the Prisma adapter; services do not see it.</td>
+<td align="left">The compiler does not check DI tokens.</td>
+</tr>
+<tr>
+<td align="left">A violation costs a red test run instead of an architecture review.</td>
+<td align="left">Exception lists and the edge baseline have to be maintained.</td>
+</tr>
+</tbody></table></div>
+<hr>
+
+      </article>
+      <nav class="steps" aria-label="Previous and next chapter"><a class="step step-previous" href="03-context-and-scope.html"><span class="eyebrow">Previous</span><span>Context and scope</span></a><a class="step step-next" href="05-building-block-view.html"><span class="eyebrow">Next</span><span>Building block view</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

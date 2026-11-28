@@ -15,10 +15,13 @@
     "gate": "pnpm -r typecheck && pnpm -r test",
     "register-check": "node scripts/checks/register-check.mjs",
     "adr-check": "node scripts/checks/adr-check.mjs",
+    "docs:site": "node scripts/docs/build-site.mjs",
+    "docs:diagrams": "./scripts/docs/render-diagrams.sh",
     "check:better-auth": "node scripts/checks/better-auth-version-check.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.12",
+    "marked": "^18.1.2",
     "oxlint": "^1.95.0",
     "turbo": "^2.11.13",
     "typescript": "^7.0.0",

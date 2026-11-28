@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Building block view — SteuerEule Architecture</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Chapters</summary>
+        <nav class="nav" aria-label="Chapters">
+      <p class="eyebrow">arc42</p>
+      <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item is-active" href="05-building-block-view.html" aria-current="page"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+      <p class="eyebrow">Companion</p>
+      <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+    </nav>
+      </details>
+      <p class="rail-foot">As of 2026-11-22<br>Built from <code>docs/architecture.md</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 5 of 12</p>
+        <h1 id="5-building-block-view">Building block view</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#51-packages">5.1 Packages</a></li><li><a class="chip" href="#52-inside-the-core">5.2 Inside the core</a></li></ul>
+      </header>
+      <article class="prose">
+<h2 id="51-packages"><a class="anchor" href="#51-packages" aria-hidden="true" tabindex="-1">#</a>5.1 Packages</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/packages.dark.svg">
+  <img src="../diagrams/packages.svg" alt="Packages: the clients use api-client, ui and core; the API uses core and PostgreSQL">
+</picture><p><em>(source: <a href="../diagrams/packages.puml"><code>packages.puml</code></a>)</em></p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Package</th>
+<th align="left">Responsibility</th>
+<th align="left">Workspace dependencies</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>packages/core</code></td>
+<td align="left">tax law as pure functions, interview rules, the owl&#39;s domain logic</td>
+<td align="left">none</td>
+</tr>
+<tr>
+<td align="left"><code>packages/api-client</code></td>
+<td align="left">typed client, generated from <code>apps/api/openapi.json</code></td>
+<td align="left">none</td>
+</tr>
+<tr>
+<td align="left"><code>packages/tokens</code>, <code>packages/ui</code></td>
+<td align="left">design tokens and components</td>
+<td align="left"><code>ui</code> uses <code>tokens</code></td>
+</tr>
+<tr>
+<td align="left"><code>apps/api</code></td>
+<td align="left">REST API under <code>/v1</code>, MCP server under <code>/mcp</code>, authentication, persistence</td>
+<td align="left"><code>core</code></td>
+</tr>
+<tr>
+<td align="left"><code>apps/mobile-web</code></td>
+<td align="left">the application in the browser</td>
+<td align="left"><code>core</code>, <code>api-client</code>, <code>ui</code>, <code>tokens</code></td>
+</tr>
+<tr>
+<td align="left"><code>apps/website</code></td>
+<td align="left">public website</td>
+<td align="left">none</td>
+</tr>
+</tbody></table></div>
+<p>The API is split into 50 folders under <code>apps/api/src</code>, one per topic (<code>lstb</code>, <code>rental</code>, <code>receipt</code>, <code>advisor</code>, …) plus cross-cutting ones (<code>auth</code>, <code>prisma</code>, <code>audit</code>, <code>common</code>, <code>config</code>, <code>telemetry</code>). <a href="subsystems.html"><code>architecture-subsystems.md</code></a> shows the most important ones from the inside.</p>
+<h2 id="52-inside-the-core"><a class="anchor" href="#52-inside-the-core" aria-hidden="true" tabindex="-1">#</a>5.2 Inside the core</h2>
+<p>The five folders are layers. Each one imports only the folders below it:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Folder</th>
+<th align="left">Content</th>
+<th align="center">Files</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><code>math/</code></td>
+<td align="left">the tariff of § 32a EStG (Income Tax Act), solidarity surcharge, parameters per tax year and the years in which rules change</td>
+<td align="center">3</td>
+</tr>
+<tr>
+<td align="left"><code>common/</code></td>
+<td align="left">working days and public holidays, postal codes, tax offices, bank codes, tax-id check, PII masking, the <code>Range</code> of an estimate</td>
+<td align="center">18</td>
+</tr>
+<tr>
+<td align="left"><code>domains/</code></td>
+<td align="left">verticals: wages, pensions, capital income, rental, cross-border, church tax, pension provision, self-employment (<code>business/</code>, <code>ledger/</code>), receipts, year history; the calculation model <code>calculation.ts</code>, the assessment reconciliation, the filing-type comparison and the answer model <code>answers.ts</code></td>
+<td align="center">89</td>
+</tr>
+<tr>
+<td align="left"><code>engine/</code></td>
+<td align="left">the tax estimate for one person and for a married couple, business income, the couple comparison</td>
+<td align="center">6</td>
+</tr>
+<tr>
+<td align="left"><code>interview/</code></td>
+<td align="left">question catalogue and reachability, the cockpit range, the owl&#39;s domain logic and ports</td>
+<td align="center">42</td>
+</tr>
+</tbody></table></div>
+<p>Measured imports between the folders (number of import statements, tests excluded, as of 2026-11-23):</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">from ↓ to →</th>
+<th align="center">math</th>
+<th align="center">common</th>
+<th align="center">domains</th>
+<th align="center">engine</th>
+<th align="center">interview</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>math</strong></td>
+<td align="center"></td>
+<td align="center">0</td>
+<td align="center">0</td>
+<td align="center">0</td>
+<td align="center">0</td>
+</tr>
+<tr>
+<td align="left"><strong>common</strong></td>
+<td align="center">2</td>
+<td align="center"></td>
+<td align="center">0</td>
+<td align="center">0</td>
+<td align="center">0</td>
+</tr>
+<tr>
+<td align="left"><strong>domains</strong></td>
+<td align="center">37</td>
+<td align="center">13</td>
+<td align="center"></td>
+<td align="center">0</td>
+<td align="center">0</td>
+</tr>
+<tr>
+<td align="left"><strong>engine</strong></td>
+<td align="center">8</td>
+<td align="center">5</td>
+<td align="center">17</td>
+<td align="center"></td>
+<td align="center">0</td>
+</tr>
+<tr>
+<td align="left"><strong>interview</strong></td>
+<td align="center">8</td>
+<td align="center">7</td>
+<td align="center">42</td>
+<td align="center">2</td>
+<td align="center"></td>
+</tr>
+</tbody></table></div>
+<p>Every cell above the diagonal is 0: the order is <code>math → common → domains → engine → interview</code>, and there is no cycle between folders. The architecture test (<code>packages/core/src/architecture.test.ts</code>) enforces this without exceptions. Until 2026-11-22, 23 files in <code>domains</code> imported from <code>engine</code> (the calculation model, the assessment types) or from <code>interview</code> (the answer model); those modules now sit in <code>domains</code>, and <code>Range</code> sits in <code>common</code>. Between individual files there is no cycle of value imports either.</p>
+<p>The same test forbids a year compared with a bare literal (<code>year &gt;= 2025</code>) anywhere in the core except <code>math/tax-parameters.ts</code>. A rule that changes with the year names that year there, in <code>RULE_CHANGE_YEARS</code> (read with <code>appliesFrom</code>) or in a <code>*_STEPS</code> table (read with <code>valueForYear</code>).</p>
+<hr>
+
+      </article>
+      <nav class="steps" aria-label="Previous and next chapter"><a class="step step-previous" href="04-solution-strategy.html"><span class="eyebrow">Previous</span><span>Solution strategy</span></a><a class="step step-next" href="06-runtime-view.html"><span class="eyebrow">Next</span><span>Runtime view</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

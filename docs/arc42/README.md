@@ -41,6 +41,17 @@ light theme and `<name>.dark.svg` in the app's dark theme. Every source includes
 the one that fits their light or dark setting. The Ports & Adapters picture (`images/architecture-hexagon.svg`)
 is drawn by hand with the same tokens and carries both themes in one file.
 
+**The architecture site.** `docs/site/` holds `docs/architecture.md` and `docs/architecture-subsystems.md` as
+static HTML pages in the app's design, one page per chapter. It is generated, never edited by hand:
+
+```sh
+pnpm docs:site                               # writes docs/site/
+node scripts/docs/build-site.mjs --check     # what CI runs: fails when docs/site/ is stale
+```
+
+The generator is `scripts/docs/build-site.mjs`; its template is `scripts/docs/site/site.css` on top of
+`packages/tokens/dist/tokens.css`. The pages follow the reader's light or dark setting and need no server.
+
 | View | Source | Rendered |
 |------|--------|----------|
 | §5 Building block view | [`building-block-view.puml`](./building-block-view.puml) | [`building-block-view.svg`](./building-block-view.svg) |
