@@ -1,0 +1,37 @@
+@startuml context
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/architecture.md §3: the system and its neighbours.
+' What an arrow carries stands in the box it starts from: beside three arrows that meet at the API,
+' a label on the line cannot be told from its neighbour's.
+left to right direction
+
+rectangle "User\n(browser)" as User
+rectangle "The user's own AI assistant\n(MCP client · OAuth 2.1)" as Assistant
+
+rectangle "SteuerEule" as System {
+  rectangle "Web app\napps/mobile-web" as Web
+  rectangle "API\napps/api" as Api
+}
+
+rectangle "Stripe" as Stripe
+rectangle "SMTP or Brevo" as Mail
+rectangle "Language model providers\nAnthropic · OpenAI · Google" as LLM
+rectangle "Google OAuth" as Google
+rectangle "Have I Been Pwned" as HIBP
+rectangle "formulare-bfinv.de\nofficial forms, at build time" as Bfinv
+rectangle "ERiC process\n(ELSTER)" as Eric
+rectangle "Tax office" as TaxOffice
+
+User --> Web
+Web --> Api
+Assistant --> Api
+Api --> Stripe
+Api --> Mail
+Api --> LLM
+Api --> Google
+Api --> HIBP
+Api ..> Eric
+Bfinv ..> Api
+User ..> TaxOffice : printout by post
+@enduml

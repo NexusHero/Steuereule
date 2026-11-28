@@ -59,7 +59,10 @@ the `SameSite=strict` session-cookie wording** in ADR-0009 §Session model and i
 
 ### 2. The guard accepts guest **OR** session — precedence: verified session wins
 
-![Guard: guest OR verified session](./0012-guard-guest-or-session.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./0012-guard-guest-or-session.dark.svg">
+  <img src="./0012-guard-guest-or-session.svg" alt="Guard: guest OR verified session">
+</picture>
 
 *(source: [`0012-guard-guest-or-session.puml`](./0012-guard-guest-or-session.puml))*
 
@@ -110,7 +113,10 @@ At signup **from a guest session**, the request carries both the guest `userId` 
 freshly created account `userId` (better-auth). The carry-over is a re-key of the ownership FK — **no
 re-encryption** (the field-encryption key is app-wide, ADR-0008/0009):
 
-![Guest→account upgrade sequence](./0012-guest-account-upgrade.svg)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./0012-guest-account-upgrade.dark.svg">
+  <img src="./0012-guest-account-upgrade.svg" alt="Guest→account upgrade sequence">
+</picture>
 
 *(source: [`0012-guest-account-upgrade.puml`](./0012-guest-account-upgrade.puml))*
 

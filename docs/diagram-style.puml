@@ -1,0 +1,91 @@
+' The look of every PlantUML diagram in docs/: the app's design tokens
+' (packages/tokens/dist/tokens.css). Include it right after @startuml:
+'   !include ../diagram-style.puml
+' PlantUML writes fixed colours into the SVG, so every diagram is rendered twice, light and "dunkel"
+' (scripts/docs/render-diagrams.sh passes -DDARK=1 for the second), and the documents show the one
+' that fits the reader's setting.
+!if %variable_exists("DARK")
+!$grund = "#0f0f14"
+!$karte = "#191920"
+!$tinte = "#ededf3"
+!$tinte2 = "#a0a0ac"
+!$linie = "#3c3c45"
+!$weich = "#1f1f27"
+!$funkeweich = "#262d10"
+' Marks what a diagram calls "added": the lime of the theme, with the theme's text on it.
+!$neu = "#262d10"
+!else
+!$grund = "#ffffff"
+!$karte = "#ffffff"
+!$tinte = "#0f0f14"
+!$tinte2 = "#5c5c66"
+!$linie = "#c6c6cc"
+!$weich = "#f3f3f5"
+!$funkeweich = "#f2fbd2"
+!$neu = "#e3fa8d"
+!endif
+
+skinparam shadowing false
+skinparam roundCorner 14
+skinparam defaultFontName "Geist, system-ui, -apple-system, Segoe UI, sans-serif"
+skinparam defaultFontSize 13
+skinparam defaultFontColor $tinte
+skinparam backgroundColor $grund
+skinparam ArrowColor $tinte
+skinparam ArrowFontColor $tinte2
+skinparam ArrowFontSize 12
+skinparam ArrowThickness 1
+skinparam TitleFontSize 16
+skinparam TitleFontStyle bold
+skinparam TitleFontColor $tinte
+
+<style>
+element {
+  LineColor $tinte
+  LineThickness 1
+  BackgroundColor $karte
+  FontColor $tinte
+}
+title {
+  FontColor $tinte
+  FontSize 16
+}
+package, rectangle, frame, node, database, folder, cloud {
+  LineColor $linie
+  BackgroundColor $karte
+}
+component, class, activity, participant, actor, entity, control, boundary, collections, queue, state {
+  LineColor $tinte
+  BackgroundColor $karte
+}
+note {
+  LineColor $linie
+  BackgroundColor $weich
+  FontColor $tinte
+}
+activityDiagram {
+  diamond {
+    LineColor $tinte
+    BackgroundColor $funkeweich
+  }
+}
+sequenceDiagram {
+  lifeLine {
+    LineColor $linie
+  }
+  group, box {
+    LineColor $linie
+    BackgroundColor $karte
+  }
+  groupHeader {
+    BackgroundColor $funkeweich
+    LineColor $linie
+    FontColor $tinte
+  }
+}
+arrow {
+  LineColor $tinte
+  LineThickness 1
+  FontColor $tinte2
+}
+</style>

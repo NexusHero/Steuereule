@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Tech Radar — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision log</p>
+        <h1>Tech Radar</h1>
+        
+      </header>
+      <article class="prose">
+<p>One line per technology so &quot;what&#39;s our stance on X&quot; is answerable without skimming the ADR log
+(ultimate-dev-process §1.4). Rings: <strong>Adopt</strong> (default choice) · <strong>Trial</strong> (use with care, gaining
+confidence) · <strong>Assess</strong> (evaluating, not yet committed) · <strong>Hold</strong> (avoid / legacy).</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Ring</th>
+<th>Decided in</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>pnpm workspace + Turborepo</td>
+<td>Adopt</td>
+<td>ADR-043</td>
+</tr>
+<tr>
+<td>Expo + React-Native-Web (universal app)</td>
+<td>Adopt</td>
+<td>ADR-044</td>
+</tr>
+<tr>
+<td>React DOM (marketing site, separate)</td>
+<td>Adopt</td>
+<td>ADR-044</td>
+</tr>
+<tr>
+<td>RN <code>StyleSheet</code> + Style Dictionary tokens</td>
+<td>Adopt</td>
+<td>ADR-050</td>
+</tr>
+<tr>
+<td>NestJS + Fastify (API-only)</td>
+<td>Adopt</td>
+<td>ADR-046</td>
+</tr>
+<tr>
+<td>REST + OpenAPI</td>
+<td>Adopt</td>
+<td>ADR-046</td>
+</tr>
+<tr>
+<td>better-auth (auth <strong>server</strong>, behind the UserContextGuard seam)</td>
+<td>Adopt</td>
+<td>ADR-046 / ADR-0009</td>
+</tr>
+<tr>
+<td>better-auth client SDK (<code>createAuthClient</code>, Expo/RN + web)</td>
+<td>Adopt</td>
+<td>ADR-0012</td>
+</tr>
+<tr>
+<td>better-auth Have-I-Been-Pwned plugin (breach check, k-anonymity)</td>
+<td>Adopt</td>
+<td>ADR-0012 (REQ-010)</td>
+</tr>
+<tr>
+<td><code>@fastify/helmet</code> (security headers / CSP)</td>
+<td>Adopt</td>
+<td>ADR-0009 hardening / ADR-0012</td>
+</tr>
+<tr>
+<td>better-auth <code>device-authorization</code> plugin (RFC 8628, behind our own <code>/v1/device/*</code>)</td>
+<td>Adopt</td>
+<td>ADR-0024</td>
+</tr>
+<tr>
+<td>Keycloak (self-hosted IdP)</td>
+<td>Hold</td>
+<td>ADR-0009 (dropped; better-auth is the server)</td>
+</tr>
+<tr>
+<td>Prisma + managed EU Postgres</td>
+<td>Adopt</td>
+<td>ADR-047</td>
+</tr>
+<tr>
+<td>prisma-field-encryption (AES-256-GCM, randomized)</td>
+<td>Adopt</td>
+<td>ADR-0008</td>
+</tr>
+<tr>
+<td>Redis (BullMQ queues)</td>
+<td>Adopt</td>
+<td>ADR-047</td>
+</tr>
+<tr>
+<td>Google Cloud Run + Cloud SQL (europe-west4) for the beta</td>
+<td>Adopt</td>
+<td>ADR-0053</td>
+</tr>
+<tr>
+<td>k3s on Hetzner (EU)</td>
+<td>Assess (after the beta)</td>
+<td>ADR-049, ADR-0053</td>
+</tr>
+<tr>
+<td>LangChain.js / LangGraph.js (v1.x, behind KiService port)</td>
+<td>Adopt</td>
+<td>ADR-048</td>
+</tr>
+<tr>
+<td><code>@react-navigation/native</code> + <code>native-stack</code> (router at the composition root only)</td>
+<td>Adopt</td>
+<td>ADR-0023</td>
+</tr>
+<tr>
+<td><code>react-native-screens</code> · <code>react-native-safe-area-context</code> (navigator&#39;s required deps)</td>
+<td>Adopt</td>
+<td>ADR-0023 (entered with the navigator, not chosen separately)</td>
+</tr>
+<tr>
+<td><code>expo-router</code></td>
+<td>Hold</td>
+<td>ADR-0023 (not chosen — needs Metro <code>require.context</code> + <code>jest-expo</code>)</td>
+</tr>
+<tr>
+<td><code>qrcode-generator</code> (QR encoding; drawn with <code>react-native-svg</code> off theme tokens)</td>
+<td>Adopt</td>
+<td>ADR-0024 (MIT, zero deps, leaf — adopted without escalation, deliberately)</td>
+</tr>
+<tr>
+<td>DB-IP IP-to-Country Lite (self-hosted, country-level geo-IP)</td>
+<td>Trial</td>
+<td>ADR-0024 — <strong>licence line unconfirmed</strong>; source unreachable from the build environment</td>
+</tr>
+<tr>
+<td>MaxMind GeoLite2</td>
+<td>Hold</td>
+<td>ADR-0024 (EULA&#39;s 30-day update-or-delete duty)</td>
+</tr>
+<tr>
+<td>Third-party geo-IP lookup APIs (ip-api, ipinfo, …)</td>
+<td>Hold</td>
+<td>ADR-0024 (would transfer user IPs to a processor we have no agreement with)</td>
+</tr>
+<tr>
+<td>TanStack Query</td>
+<td>Adopt</td>
+<td>ADR-0001</td>
+</tr>
+<tr>
+<td>OpenAPI-generated typed client (orval)</td>
+<td>Adopt</td>
+<td>ADR-0001</td>
+</tr>
+<tr>
+<td>i18next / react-i18next</td>
+<td>Adopt</td>
+<td>ADR-0002</td>
+</tr>
+<tr>
+<td>Prisma seed from single synthetic fixture</td>
+<td>Adopt</td>
+<td>ADR-0003</td>
+</tr>
+<tr>
+<td>Vitest · jest-expo + RN Testing Library · Playwright · MSW</td>
+<td>Adopt</td>
+<td>ADR-0004</td>
+</tr>
+<tr>
+<td>oxlint (static lint gate, own parser — no compiler-API coupling)</td>
+<td>Adopt</td>
+<td>ADR-0019</td>
+</tr>
+<tr>
+<td>ESLint + typescript-eslint</td>
+<td>Hold</td>
+<td>ADR-0019 (dropped; cannot run at TS 7)</td>
+</tr>
+<tr>
+<td>oxlint type-aware rules (<code>oxlint-tsgolint</code>)</td>
+<td>Assess</td>
+<td>ADR-0019 §4 (deferred, proven to work at TS 7)</td>
+</tr>
+<tr>
+<td>Walking-skeleton / vertical-slice delivery</td>
+<td>Adopt</td>
+<td>ADR-0005</td>
+</tr>
+<tr>
+<td>React Hook Form + Zod (forms)</td>
+<td>Assess</td>
+<td><em>(later slice: Interview)</em></td>
+</tr>
+<tr>
+<td>Chart library (victory-native / visx)</td>
+<td>Hold</td>
+<td>tech-direktion (no chart lib in V1)</td>
+</tr>
+<tr>
+<td>Cloud LLM provider (OpenAI/Anthropic/Gemini/OpenRouter)</td>
+<td>Assess</td>
+<td>ADR-048 (parked, data-protection)</td>
+</tr>
+<tr>
+<td>LangGraph RAG for legal knowledge (Eulen-Modus)</td>
+<td>Assess</td>
+<td>ADR-048</td>
+</tr>
+</tbody></table></div>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

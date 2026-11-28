@@ -88,36 +88,12 @@ The governing principle ([ADR-0038](adr/0038-calculation-core-and-ai-port.md)):
 
 # 3. Context and scope
 
-```mermaid
-flowchart LR
-  User["User\n(browser)"]
-  Assistant["The user's own AI assistant\n(MCP client)"]
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/context.dark.svg">
+  <img src="diagrams/context.svg" alt="Context: the user and their AI assistant reach SteuerEule; the API talks to Stripe, mail, language model providers, Google OAuth, Have I Been Pwned and the ERiC process">
+</picture>
 
-  subgraph System ["SteuerEule"]
-    Web["Web app\napps/mobile-web"]
-    Api["API\napps/api"]
-  end
-
-  Stripe["Stripe"]
-  Mail["SMTP or Brevo"]
-  LLM["Language model providers\nAnthropic · OpenAI · Google"]
-  Google["Google OAuth"]
-  HIBP["Have I Been Pwned"]
-  Bfinv["formulare-bfinv.de"]
-  Eric["ERiC process\n(ELSTER)"]
-  TaxOffice["Tax office"]
-
-  User --> Web --> Api
-  Assistant -->|"MCP, OAuth 2.1"| Api
-  Api --> Stripe
-  Api --> Mail
-  Api --> LLM
-  Api --> Google
-  Api --> HIBP
-  Api -.-> Eric
-  Bfinv -.->|"official forms, at build time"| Api
-  User -.->|"printout by post"| TaxOffice
-```
+*(source: [`context.puml`](diagrams/context.puml))*
 
 | Neighbour | Purpose | Adapter in the code | What the API sends there |
 | :--- | :--- | :--- | :--- |
@@ -234,27 +210,12 @@ Both tests run in the CI job `test` of the workflow *Quality*.
 
 ## 5.1 Packages
 
-```mermaid
-flowchart TD
-  subgraph Clients
-    Web["apps/mobile-web\nExpo, React Native Web"]
-    Site["apps/website\npublic website"]
-  end
-  subgraph Shared ["packages"]
-    ApiClient["api-client\ngenerated from OpenAPI (Orval)"]
-    Ui["ui · tokens\ndesign system"]
-    Core["core\ntax rules, interview, the owl's domain logic"]
-  end
-  Api["apps/api\nNestJS, 50 modules"]
-  Db[("PostgreSQL")]
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/packages.dark.svg">
+  <img src="diagrams/packages.svg" alt="Packages: the clients use api-client, ui and core; the API uses core and PostgreSQL">
+</picture>
 
-  Web --> ApiClient
-  Web --> Ui
-  Web --> Core
-  ApiClient -.->|"HTTP /v1"| Api
-  Api --> Core
-  Api --> Db
-```
+*(source: [`packages.puml`](diagrams/packages.puml))*
 
 | Package | Responsibility | Workspace dependencies |
 | :--- | :--- | :--- |
@@ -299,83 +260,34 @@ The same test forbids a year compared with a bare literal (`year >= 2025`) anywh
 
 ## 6.1 From guest to cockpit
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as User
-  participant W as Web app
-  participant G as UserContextGuard
-  participant I as InterviewController
-  participant C as CockpitController
-  participant K as @steuereule/core
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/guest-to-cockpit.dark.svg">
+  <img src="diagrams/guest-to-cockpit.svg" alt="Sequence: from the first request of a guest to the cockpit">
+</picture>
 
-  U->>W: opens the app
-  W->>I: POST /v1/steuerjahre/:jahr/interview/antworten
-  I->>G: canActivate
-  Note over G: no session cookie, no guest cookie:<br/>new guest id, signed cookie se_guest_session
-  I->>K: isValidAnswer, nextStepFor
-  I-->>W: next step, open items
-  W->>C: GET /v1/steuerjahre/:jahr/cockpit
-  C->>K: cockpitRangeFromInputs
-  C-->>W: refund range, open items
-```
+*(source: [`guest-to-cockpit.puml`](diagrams/guest-to-cockpit.puml))*
 
 The guard is the only place that sets the user id of a request (`auth/user-context.guard.ts`). No route issues a guest session: the first guarded request without a cookie creates one. Routes marked `@RequiresAccount()` reject guests, among them the wage tax certificate and the detailed tax estimate. When the guest creates an account, `auth/guest-account-upgrade.prisma.ts` moves their data in one transaction ([ADR-0012](adr/0012-session-guard-coexistence-and-guest-upgrade.md), [ADR-0045](adr/0045-value-first-funnel.md)).
 
 ## 6.2 Unlocking and printing
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as User
-  participant P as PrintoutController
-  participant S as PrintoutService
-  participant X as UnlockService
-  participant Pay as PaymentProvider (Stripe)
-  participant R as renderForms (pdf-lib)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/unlock-and-print.dark.svg">
+  <img src="diagrams/unlock-and-print.svg" alt="Sequence: pre-check, Stripe checkout, webhook, unlock and the printed PDF">
+</picture>
 
-  U->>P: GET …/:jahr/ausdruck/pruefung
-  P-->>U: pre-check: what is missing, what will be printed
-  U->>P: POST …/:jahr/ausdruck/checkout
-  P->>S: startCheckout
-  S->>X: create checkout
-  X->>Pay: createCheckout
-  Pay-->>U: redirect to the Stripe checkout
-  Pay->>X: POST /v1/zahlung/stripe/webhook
-  X->>Pay: verifyEvent (signature)
-  Note over X: unlock stored for user and tax year
-  U->>P: GET …/:jahr/ausdruck
-  P->>S: assemble the values
-  S->>R: renderForms
-  R-->>U: PDF: main form and the annexes needed
-```
+*(source: [`unlock-and-print.puml`](diagrams/unlock-and-print.puml))*
 
 The price is not in the code; it is a price id in the configuration. `renderForms` writes into the official PDF templates with `pdf-lib` and throws when a value does not fit its box.
 
 ## 6.3 Reading a receipt
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor U as User
-  participant W as Web app
-  participant C as ReceiptParseController
-  participant S as Parse strategy
-  participant K as @steuereule/core
-  participant M as SingleShotModel
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/reading-a-receipt.dark.svg">
+  <img src="diagrams/reading-a-receipt.svg" alt="Sequence: a receipt is read in the browser, by fixed rules and, where needed, by one model call">
+</picture>
 
-  U->>W: uploads a PDF or a photo
-  Note over W: the text is produced in the browser:<br/>PDF text layer or on-device OCR (ADR-0060)
-  W->>C: POST /v1/belege/parse (text, no image data)
-  C->>S: strategy by document kind
-  S->>K: fixed rules read what they recognise with certainty
-  S->>K: scrubDocumentTextPii
-  S->>M: one call with the scrubbed text
-  M-->>S: JSON
-  Note over S: schema check; on error, timeout<br/>or refusal the result of the rules stands
-  S-->>W: draft with fields and provenance
-  U->>W: confirms field by field
-```
+*(source: [`reading-a-receipt.puml`](diagrams/reading-a-receipt.puml))*
 
 Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server ([ADR-0058](adr/0058-lstb-text-fallback-allowlist.md)), and the model is asked only when the fixed rules left a field empty. Then `scrubDocumentTextPii` removes names, addresses and identifiers. Finally `checkPiiFree` aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.
 
@@ -385,24 +297,12 @@ Each strategy's `parse()` is a short sequence of named steps: read with the fixe
 
 # 7. Deployment view
 
-```mermaid
-flowchart LR
-  Browser["Browser"]
-  subgraph GCP ["Google Cloud · europe-west4"]
-    WebSvc["Cloud Run: steuereule-web\n1 vCPU · 512 MiB · 0–10 instances"]
-    ApiSvc["Cloud Run: steuereule-api\n1 vCPU · 2 GiB · 0–10 instances"]
-    Db[("Cloud SQL PostgreSQL\napplication data")]
-    Keys[("Cloud SQL PostgreSQL\nkeystore for receipt keys")]
-    Redis[("Memorystore Redis\noptional")]
-    Secrets["Secret Manager"]
-  end
-  Browser --> WebSvc
-  Browser --> ApiSvc
-  ApiSvc --> Db
-  ApiSvc --> Keys
-  ApiSvc -.-> Redis
-  ApiSvc --> Secrets
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/deployment.dark.svg">
+  <img src="diagrams/deployment.svg" alt="Deployment: two Cloud Run services, two Cloud SQL databases, optional Redis and Secret Manager in europe-west4">
+</picture>
+
+*(source: [`deployment.puml`](diagrams/deployment.puml))*
 
 | Element | Setting | Source |
 | :--- | :--- | :--- |

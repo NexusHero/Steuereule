@@ -1,0 +1,24 @@
+@startuml packages
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/architecture.md §5.1: the workspace packages and who depends on whom.
+
+rectangle "Clients" as Clients {
+  rectangle "apps/mobile-web\nExpo, React Native Web" as Web
+  rectangle "apps/website\npublic website" as Site
+}
+rectangle "packages" as Shared {
+  rectangle "api-client\ngenerated from OpenAPI (Orval)" as ApiClient
+  rectangle "ui · tokens\ndesign system" as Ui
+  rectangle "core\ntax rules, interview, the owl's domain logic" as Core
+}
+rectangle "apps/api\nNestJS, 50 modules" as Api
+database "PostgreSQL" as Db
+
+Web --> ApiClient
+Web --> Ui
+Web --> Core
+ApiClient ..> Api : HTTP /v1
+Api --> Core
+Api --> Db
+@enduml

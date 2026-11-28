@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0078 — Reading tradesman invoices (§ 35a Abs. 3 EStG) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0078</p>
+        <h1>Reading tradesman invoices (§ 35a Abs. 3 EStG) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/domains/craftsman-invoice.ts</code>, <code>packages/core/src/interview/{interview,advisor,owl-mode}.ts</code>, <code>apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts</code>, <code>apps/api/src/advisor/advisor.service.ts</code>, <code>apps/api/src/printout/</code>, <code>apps/api/src/ki/ki.adapter.ts</code></li>
+<li><strong>Builds on:</strong> ADR-0077 (§ 35a enabled), ADR-0076 (documents add up)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the 2024 real case the tax advisor had claimed the labor costs from six tradesman invoices (up to
+the cap of the reduction). The app created a draft from none of the invoices: the field was not
+enabled for documents, and the labor share rarely appears as a separate line on the invoice.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Fixed rule in the core.</strong> A stated labor share („…sind … € inkl. 19 % MwSt. Lohnkosten
+enthalten“ (&quot;…includes … € labor costs incl. 19 % VAT&quot;)) wins. Otherwise the items with labor
+count (hours, installation, travel to and from, excavator, drilling, manufacturing, laying …),
+read as blocks from item number to item number, with the invoice&#39;s discount and its VAT (from
+the gross and net amount, 0 % for photovoltaics). Material never counts.</li>
+<li><strong>Always „prüfen“ (&quot;check&quot;).</strong> The labor share is an assessment; the draft names the counted
+items, warns about subsidies (BAFA, KfW) and reminds about bank transfer and payment year. An
+order confirmation or a quotation gets no draft.</li>
+<li><strong>Annual total.</strong> The draft adds onto the stored value or onto the still open draft; with it,
+the invoice amount moves into the new question <code>haushalt-handwerker-rechnungsbetrag</code>, which
+appears in the printout in line 6 of the Anlage Haushaltsnahe Aufwendungen.</li>
+<li><strong>Legal source <code>estg-35a</code></strong> for drafts and answers of the owl.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>2024 real case: five of six invoices yield the same labor share as with the tax advisor; for the
+solar installation it differs (which installation items count is a matter of judgment).</li>
+<li>Several invoices appear in the printout as one line with totals, not individually.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0077-medical-costs-and-35a-enabled.html"><span class="eyebrow">Previous</span><span>ADR-0077</span></a><a class="step step-next" href="0079-move-year-germany-switzerland.html"><span class="eyebrow">Next</span><span>ADR-0079</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

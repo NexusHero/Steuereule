@@ -1,0 +1,24 @@
+@startuml reading-a-receipt
+!include ../diagram-style.puml
+' docs/architecture.md §6.3: reading a receipt.
+hide footbox
+autonumber
+actor "User" as U
+participant "Web app" as W
+participant "ReceiptParseController" as C
+participant "Parse strategy" as S
+participant "@steuereule/core" as K
+participant "SingleShotModel" as M
+
+U -> W : uploads a PDF or a photo
+note over W : the text is produced in the browser:\nPDF text layer or on-device OCR (ADR-0060)
+W -> C : POST /v1/belege/parse (text, no image data)
+C -> S : strategy by document kind
+S -> K : fixed rules read what they recognise with certainty
+S -> K : scrubDocumentTextPii
+S -> M : one call with the scrubbed text
+M --> S : JSON
+note over S : schema check; on error, timeout\nor refusal the result of the rules stands
+S --> W : draft with fields and provenance
+U -> W : confirms field by field
+@enduml

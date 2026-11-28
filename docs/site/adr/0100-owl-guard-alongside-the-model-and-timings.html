@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0100 — The owl: guard alongside the model, timings per round, form before the question — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0100</p>
+        <h1>The owl: guard alongside the model, timings per round, form before the question <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#measurement">Measurement</a></li><li><a class="chip" href="#rejected">Rejected</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-19</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/ki/{langgraph-advisor.engine,advisor-prompt,advisor-topic-guard,fake-chat-model}.ts</code>, <code>apps/api/src/advisor/advisor-turn.ts</code>, <code>packages/core/src/interview/ki-port.ts</code></li>
+<li><strong>Builds on:</strong> ADR-0069 (topic boundary; changes &quot;checker before the main model&quot; there), ADR-0096 (model and thinking depth), #476 (provider cache)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>171 stored answers from test runs: around 100,000 input tokens per answer, 61 to 81 % of them from the cache, and 24 to 36 seconds until the first word. Only the total time was stored; where it went could not be read.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Timings per answer.</strong> Next to the tokens it now records how long the app&#39;s preparation, the topic guard, each model round and the tools took (<code>prepMs</code>, <code>guardMs</code>, <code>roundMs</code>, <code>toolMs</code>), in the usage record and in the log line <code>advisor_turn</code>.</li>
+<li><strong>The guard runs alongside the model, no longer before it.</strong> The model starts immediately. Until the guard&#39;s verdict, none of it reaches the user, and no tool runs. On &quot;off-topic&quot; the started run is discarded and the fixed refusal is shown; on &quot;gray zone&quot; the run restarts with the gray-zone hint. This changes ADR-0069, which placed the guard before it so that a refusal only costs the small call. Now a refusal additionally costs the first, aborted round of the main model; most of it comes from the cache.</li>
+<li><strong>What applies to only one answer goes before the question, not in the case block.</strong> The active form, the &quot;plan first&quot; prompt and the gray-zone hint are now in the question message, clearly marked as information from the app. The case block stays directly after the rules and now changes only with a value, a document, a note or the plan.</li>
+</ol>
+<h2 id="measurement"><a class="anchor" href="#measurement" aria-hidden="true" tabindex="-1">#</a>Measurement</h2>
+<p>The same conversation with six questions, before and after, once each with Claude Sonnet 5.5 and Gemini 3.8 Flash; the form changes twice. Invented sample data.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>before</th>
+<th>after</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Time outside the model per answer, Claude</td>
+<td>2.2 s</td>
+<td>0.3 s</td>
+</tr>
+<tr>
+<td>Time outside the model per answer, Gemini</td>
+<td>2.0 s</td>
+<td>0.2 s</td>
+</tr>
+<tr>
+<td>Claude, share from the cache with a changed form</td>
+<td>83 % and 75 %</td>
+<td>93 % and 93 %</td>
+</tr>
+<tr>
+<td>Claude, input without cache, all six answers</td>
+<td>76,500 tokens</td>
+<td>44,500 tokens</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li>The guard itself still needs 1.3 to 3 seconds; this time now runs alongside the first model round.</li>
+<li>Preparation (around 0.1 s) and tools (under 0.2 s) are negligible. The time of an answer is the time of the model rounds.</li>
+<li>Of the 32,000 tokens saved with Claude, around 30,000 come from the first answer, whose cache was cold in the &quot;before&quot; run. The clean effect is the share with a changed form.</li>
+<li>Gemini&#39;s cache figures fluctuate (0 % to over 100 % in individual answers) and allow no conclusion.</li>
+<li>The total duration per answer fluctuates with the number of rounds the model chooses (Claude 10.9 s before, 10.7 s after with more rounds). The content of the answers was not compared.</li>
+</ul>
+<h2 id="rejected"><a class="anchor" href="#rejected" aria-hidden="true" tabindex="-1">#</a>Rejected</h2>
+<ul>
+<li><strong>Placing the whole case block after the conversation history.</strong> Built and measured: the block (around 7,000 tokens) is then paid for again with every answer, even if nothing has changed (Claude, answer with an unchanged case: 800 tokens without cache before, 7,400 after). That only pays off in long conversations with many changes to the case.</li>
+<li><strong>Shortening the rules or a smaller model:</strong> the rules are in the cache; the gain would be small, the risk to quality real.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>An off-topic question costs more than before. The daily message limit per user continues to cap that.</li>
+<li>With the timings per round, the next steps can be measured instead of estimated: fewer rounds per answer and the thinking effort per round.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0099-history-hints-life-events-groups.html"><span class="eyebrow">Previous</span><span>ADR-0099</span></a><a class="step step-next" href="0101-self-employed.html"><span class="eyebrow">Next</span><span>ADR-0101</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0032 — Nothing on screen promises what the slice does not deliver — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0032</p>
+        <h1>Nothing on screen promises what the slice does not deliver <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-08</li>
+<li><strong>Deciders:</strong> NexusHero (stakeholder). Reached as one ruling over three separate questions —
+D1, D3 and the CH-only gate&#39;s &quot;Vormerken&quot; button — after they turned out to be one question.</li>
+<li><strong>Applies</strong> <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a> to the screen: a button that
+appears to make a commitment and does not is the same defect as a control that appears to
+constrain behaviour and does not.</li>
+<li><strong>Settles</strong> D1 and D3 from the <a href="https://github.com/NexusHero/Steuereule/issues/11">#11</a> ruling and
+the <code>auslandWunsch</code> hole found while cutting <a href="https://github.com/NexusHero/Steuereule/issues/321">#321</a>.</li>
+<li><strong>Context tags:</strong> product scope, honesty principle, delivery method</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Three questions were open against the interview slice, filed separately and days apart. Each was
+about a single element of a single screen, and each looked like a small scoping call.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Element</th>
+<th>What it tells the user</th>
+<th>What is behind it</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>D1</td>
+<td><code>≈ +210 € drin</code> after a question</td>
+<td>a calculation</td>
+<td>placeholder weights that contradict the 6-€-per-day rule quoted on the same line; and a <strong>deduction</strong> rendered as if it were a <strong>refund</strong></td>
+</tr>
+<tr>
+<td>D3</td>
+<td><em>Benachrichtigt mich, wenn Gewerbe kommt</em></td>
+<td>an email, later</td>
+<td><a href="https://github.com/NexusHero/Steuereule/issues/83">#83</a> is unbuilt — no email can be sent</td>
+</tr>
+<tr>
+<td>—</td>
+<td><em>Vormerken — sag mir, wenn mein Land kommt</em></td>
+<td>a recorded intent</td>
+<td>no storage location decided; the slice writes nothing</td>
+</tr>
+</tbody></table></div>
+<p>Taken one at a time, each has a plausible local answer (&quot;ship it, refine later&quot;, &quot;it&#39;s just a
+placeholder&quot;). Taken together they are one thing three times: <strong>a screen element that makes a
+commitment the slice cannot keep.</strong></p>
+<p>The product&#39;s own gates are built on the opposite promise. The Gewerbe (trade business) gate opens with <em>&quot;Ehrlich:
+dafür sind wir noch nicht gut genug&quot;</em>; the CH-only gate with <em>&quot;Ehrlich: andere Länder können wir
+noch nicht&quot;</em>. A product that says that out loud and then renders a button that quietly does nothing
+has spent the credibility those sentences were buying.</p>
+<p>This kept arriving as three tickets because nobody had written the rule down. Deciding it once is
+cheaper than deciding it again for every future gate — and ADR-0031 §3 guarantees there will be more
+gates, because the on-demand catalogue is where the remaining coverage arrives.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>A screen element may only assert what the shipped slice actually does.</strong></p>
+<p>Concretely, and in order of how often each will come up:</p>
+<h3 id="1-no-number-that-has-the-appearance-of-a-calculation-without-being-one"><a class="anchor" href="#1-no-number-that-has-the-appearance-of-a-calculation-without-being-one" aria-hidden="true" tabindex="-1">#</a>1. No number that has the appearance of a calculation without being one</h3>
+<p>If a figure is shown to a user as money, it is computed by <code>packages/core</code> from that user&#39;s own
+answers, by a rule that can be named and tested. A placeholder is not shown at all — not greyed,
+not &quot;approximate&quot;, not with a disclaimer. REQ-001&#39;s honest empty state is the pattern: showing
+nothing is a supported outcome.</p>
+<p>This settles <strong>D1</strong>: the estimate sticker and the first estimate are out of the interview slices.
+They return with their own slice, against REQ-001&#39;s already-proven range.</p>
+<h3 id="2-no-control-that-offers-an-action-the-system-cannot-perform"><a class="anchor" href="#2-no-control-that-offers-an-action-the-system-cannot-perform" aria-hidden="true" tabindex="-1">#</a>2. No control that offers an action the system cannot perform</h3>
+<p>A button that would need a capability we have not built is not rendered — it is not disabled, not
+&quot;coming soon&quot;, not silently inert. The absence is honest; the presence is not.</p>
+<p>This settles <strong>D3</strong> (the Gewerbe gate&#39;s notify-me button, since #83 is unbuilt) and the CH-only
+gate&#39;s Vormerken button (since no storage for the intent exists). Both gates remain complete
+without them: they say what we cannot do, and what we can do instead.</p>
+<h3 id="3-when-the-honest-version-is-a-smaller-screen-the-screen-gets-smaller"><a class="anchor" href="#3-when-the-honest-version-is-a-smaller-screen-the-screen-gets-smaller" aria-hidden="true" tabindex="-1">#</a>3. When the honest version is a smaller screen, the screen gets smaller</h3>
+<p>The design-system reference is authoritative for wording and form, <strong>not</strong> for which capabilities
+exist. Where it offers an action this slice cannot perform, the port drops the action. That is not
+a deviation from the reference to be justified — it is this ADR being applied.</p>
+<h3 id="4-what-this-does-not-license"><a class="anchor" href="#4-what-this-does-not-license" aria-hidden="true" tabindex="-1">#</a>4. What this does not license</h3>
+<p>This is not a licence to drop hard parts by calling them promises. It binds <strong>assertions to the
+user</strong> — numbers, commitments, and offered actions. It says nothing about internal completeness,
+and it never justifies shipping a control that is merely weaker than specified: ADR-0021 governs
+that, and it is unaffected.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>The three open questions are closed by one rule</strong>, and the next gate does not reopen them.</li>
+<li><strong>The gates ship smaller than the prototype.</strong> Gewerbe keeps its honest text and, for <em>Beides</em>,
+the &quot;prepare the employee part&quot; path — that one promises nothing external. CH-only keeps its
+text and carries on with the rest of the tax year.</li>
+<li><strong>A &quot;Vormerken&quot; storage model is still needed</strong> the day we can act on it, and the question of
+whether a notification intent belongs in <code>InterviewAnswer</code> at all — it is not a fact about the
+tax year — stays open in #321. This ADR removes the pressure to answer it badly and fast.</li>
+<li><strong>This costs real product value, knowingly.</strong> The estimate after each question is the interview&#39;s
+strongest moment, and the #11 cost brief argued that persuasively. It returns when it can be
+computed rather than staged.</li>
+<li><strong>It is checkable in review</strong>, which is the point: &quot;what does this element assert, and does the
+slice do it?&quot; is a question with an answer, unlike &quot;is this placeholder acceptable?&quot;</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Ship the elements, mark them provisional.</strong> Rejected: every instance here already carried a
+marker in the reference — a code comment saying the estimate <em>&quot;darf auch ehrlich klein sein&quot;</em> —
+and it still reached the screen looking like a number. A marker the user cannot see is not one.</li>
+<li><strong>Decide the three separately.</strong> What was happening already. It produced three tickets, two
+grills and no rule, and the fourth instance would have cost the same again.</li>
+<li><strong>Wire the buttons to a no-op store now</strong> so they are &quot;real&quot;. Rejected for the Vormerken case
+specifically: it would answer the storage question by accident rather than on purpose, and a
+recorded intent nobody ever reads is a promise broken more slowly, not kept.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0031-the-interview-is-three-questions-and-a-catalog.html"><span class="eyebrow">Previous</span><span>ADR-0031</span></a><a class="step step-next" href="0033-the-question-graph-lives-in-packages-core.html"><span class="eyebrow">Next</span><span>ADR-0033</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+@startuml owl-chat-states
+!include ../diagram-style.puml
+' docs/in-app-tax-advisor-agent.md §3.6: the states of the chat.
+' Laid out by Graphviz (`dot`): the built-in layout draws the arrow from AwaitingAnamnese to Thinking
+' with a head at both ends.
+hide empty description
+
+[*] --> Ready : Case digest & history loaded
+Ready --> Thinking : User sends question / clicks prompt or pill
+Thinking --> Streaming : SSE 'event: token' starts
+Streaming --> Streaming : Tokens flow word by word (auto-scroll)
+Streaming --> AwaitingAnamnese : SSE 'event: choices' (follow-up pills)
+AwaitingAnamnese --> Thinking : User clicks answer pill
+Streaming --> AwaitingAction : SSE 'event: action' (suggestion card with before/after)
+AwaitingAction --> ApplyingAction : Click on 'Jetzt übernehmen'
+ApplyingAction --> ActionApplied : 200 OK (value booked as confirmed)
+ActionApplied --> UndoingAction : Click on 'Rückgängig machen'
+UndoingAction --> AwaitingAction : Old value restored
+Streaming --> Ready : SSE 'event: done'
+@enduml

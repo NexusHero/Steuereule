@@ -12,15 +12,12 @@ Every name here has been checked against the code. Core functions are exports of
 
 ## The common pattern
 
-```mermaid
-flowchart LR
-  Ctrl["Controller\n*.controller.ts"] --> Svc["Service\n*.service.ts"]
-  Svc --> Core["@steuereule/core\npure functions"]
-  Svc --> Port["Port\n*.repository.ts"]
-  Adapter["Adapter\n*.repository.prisma.ts"] -. implements .-> Port
-  Adapter --> Db[("PostgreSQL")]
-  Module["*.module.ts"] -. binds .-> Adapter
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/common-pattern.dark.svg">
+  <img src="diagrams/common-pattern.svg" alt="The common pattern: controller, service, core, port, adapter, database, module">
+</picture>
+
+*(source: [`common-pattern.puml`](diagrams/common-pattern.puml))*
 
 What holds for every module:
 
@@ -118,25 +115,12 @@ The webhook is not behind `UserContextGuard`. It authenticates by the signature 
 
 ## 8. The owl
 
-```mermaid
-flowchart LR
-  Ctrl["AdvisorController\n/v1/steuerjahre/:jahr/advisor"] --> Turn["AdvisorTurn"]
-  Ctrl --> Parts["AdvisorConversations\nAdvisorProjectNotes\nAdvisorDrafts"]
-  Ctrl --> Svc["AdvisorService\nsession, feedback, connection"]
-  Ctrl --> Runs["AdvisorRunService"]
-  Runs --> Turn
-  Turn --> Parts
-  Turn --> Digest["AdvisorCaseDigest\nAdvisorCaseFacts"]
-  Turn --> Engine["ADVISOR_ENGINE\nLangGraphAdvisorEngine"]
-  Readers["document readers\nreceipt, lstb-scan, ch-certificate-scan,\nassessment-scan, business"] --> Staging["AdvisorDocumentStaging"]
-  Staging --> Digest
-  Parts --> Repo["ADVISOR_REPOSITORY"]
-  Parts --> Tx["TRANSACTION_RUNNER"]
-  Engine --> Guard["ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard"]
-  Engine --> Factory["createChatModelFromConfig\nAnthropic · OpenAI · Google · fake"]
-  Guard --> Single["SingleShotModel"]
-  Runs --> Log["ADVISOR_RUN_LOG\nprocess memory or Redis"]
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="diagrams/owl.dark.svg">
+  <img src="diagrams/owl.svg" alt="The parts of the owl: controller, turn, conversations, digest, engine, topic guard, run log">
+</picture>
+
+*(source: [`owl.puml`](diagrams/owl.puml))*
 
 | | |
 | :--- | :--- |

@@ -1,4 +1,5 @@
 @startuml data-model
+!include ../diagram-style.puml
 ' Rendered with PlantUML's built-in Smetana layout (pure Java) so the SVG export
 ' needs no external Graphviz/dot install — reproducible in CI and on any machine.
 !pragma layout smetana
@@ -10,8 +11,6 @@
 ' apps/api/prisma/schema.prisma — keep the two in step (stale arc42 = failing test).
 hide circle
 skinparam classAttributeIconSize 0
-skinparam shadowing false
-skinparam classBorderColor #6b7280
 
 title SteuerEule — Persistence Data Model · arc42 §5 (data view)\ngreen = added since the Slice-2/REQ-011 revision (REQ-014 device authorization)\ndashed = in review on #239, not yet on main
 
@@ -166,7 +165,7 @@ note bottom of Account
   (ADR-0013 §4).
 end note
 
-class DeviceCode #palegreen;line.dashed {
+class DeviceCode $neu;line.dashed {
   id : uuid <<PK>>
   deviceCode : string <<unique>>
   userCode : string <<unique>>

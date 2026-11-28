@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0096 — Selectable model and thinking depth (Gründlich / Max) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0096</p>
+        <h1>Selectable model and thinking depth (Gründlich / Max) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-18</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong><ul>
+<li><code>packages/core/src/interview/advisor-models.ts</code></li>
+<li><code>apps/api/src/ki/{ai-runtime-config.service,chat-model.factory,langgraph-advisor.engine,advisor-model-catalog}.ts</code></li>
+<li><code>apps/api/src/advisor/{advisor-models.service,advisor.controller,advisor.service,advisor-conversations,advisor.repository*}.ts</code></li>
+<li><code>apps/api/prisma/migrations/20261118120000_conversation_chat_model/</code></li>
+<li><code>apps/mobile-web/src/screens/advisor/{AdvisorChatPanel,OwlModeScreen*,CopilotBridgeProvider}.tsx</code>, <code>chat/ModelControls.tsx</code></li>
+</ul>
+</li>
+<li><strong>Builds on:</strong> ADR-0069 (topic boundary), #481 (thinking level medium), #493 (fallback model)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Until now, the owl&#39;s model and thinking depth could only be set via environment variables (<code>AI_ADVISOR_MODEL</code>, <code>AI_ADVISOR_THINKING_LEVEL=medium</code>). Users want to let it think more thoroughly for difficult questions and to choose the model themselves, while seeing what that costs. The models differ in how the depth is controlled: newer Claude models via <code>effort</code>, Claude up to 4.5 via a token budget, Gemini 3 via <code>thinkingLevel</code> up to <code>high</code>, others not at all. A wrong parameter leads to a 400 error.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Two levels per message:</strong> „Gründlich“ (&quot;Thorough&quot;) is the previous default (medium) and remains the default setting. „Max“ thinks considerably deeper: Claude <code>effort: high</code>, Gemini <code>high</code>, Claude up to 4.5 a budget of 16,000 tokens. Claude <code>effort: max</code> was measured and rejected: for a simple question it needed 330 s instead of 17 s and about 15 times the cost of Gründlich (the user&#39;s decision after the test run). If a model cannot go deeper than Gründlich, there is no Max. Max applies only to the one message and switches itself off afterwards. A Max answer gets room for 20,000 tokens and the time of a task (120 s instead of 60 s); with the usual 4,096 tokens and 60 s it came back empty in the test run or ran into the time limit. It does not count extra against the daily quota; there is no separate limit.</li>
+<li><strong>Model per conversation:</strong> the user chooses from all chat models of the providers for which a key is stored. The list comes from the provider itself (Anthropic <code>GET /v1/models</code>, Gemini <code>models</code>, OpenAI <code>models</code>), is cached for 6 hours and always contains the default model. The default is Gemini 3.8 Flash with Gründlich (medium), even without an operator setting; every new conversation starts with it preselected. The fallback model is Claude Sonnet 5.5. The choice is stored on the conversation (<code>BeraterGespraech.modell</code>, &quot;provider:model&quot;). If the key of a chosen provider is missing later, the default model answers.</li>
+<li><strong>One capability list in the core</strong> (<code>advisor-models.ts</code>) defines per model how the depth is controlled and which levels exist. API (model setup) and app (offering) read the same list; the server checks itself.</li>
+<li><strong>Costs relative and measured:</strong> every answer stores in its usage (<code>verbrauch</code>, without content) provider, model, level, tokens and the time to the first word. The app shows the median of the last 2,000 answers relative to the default model with Gründlich, e.g. „ca. 3× Kosten · erste Worte nach ca. 15 s“ (&quot;approx. 3× cost · first words after approx. 15 s&quot;). Under 5 answers it says „noch nicht gemessen“ (&quot;not measured yet&quot;). A cost factor needs token prices; stored are Anthropic&#39;s list prices and, for Gemini 3.8 Flash, Google&#39;s regular price ($1.50 / $7.50 per million tokens; not the introductory price until 31.12.2026, so that the factors do not jump in January). Without a price it shows „Kosten noch nicht bekannt“ (&quot;Cost not known yet&quot;) with the measured waiting time.</li>
+<li><strong>Stays with the operator:</strong> document scan, topic check (guard) and fallback model do not follow the choice. If the fallback model steps in on a Max question, it thinks at its own highest level; the status line says who is answering.</li>
+<li><strong>No keys in URLs:</strong> the model lists are requested with the key in the header (<code>x-api-key</code>, <code>x-goog-api-key</code>, <code>Authorization</code>).</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>According to the measurement, Max costs several times as much as Gründlich; without a limit the user bears the decision alone, and the relative figure is the only brake.</li>
+<li>New models of a provider are selectable immediately, before they have passed the real-data test run. A model that calculates worse on tax then appears in the offering without a warning. Both are deliberately decided this way and can be restricted later (operator list, limit for Max).</li>
+<li>Switching the model in the middle of a conversation loses that conversation&#39;s prompt cache; that is why the model choice applies per conversation, not per message.</li>
+<li>Prices of other providers are missing; their cost factor stays unknown until prices are stored.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0095-reading-documents-by-position.html"><span class="eyebrow">Previous</span><span>ADR-0095</span></a><a class="step step-next" href="0097-document-lifecycle.html"><span class="eyebrow">Next</span><span>ADR-0097</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

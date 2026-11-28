@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Backend modules from the inside — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item is-active" href="subsystems.html" aria-current="page"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="decisions.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Companion document</p>
+        <h1>Backend modules from the inside</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#the-common-pattern">The common pattern</a></li><li><a class="chip" href="#1-cockpit-and-tax-estimate">1. Cockpit and tax estimate</a></li><li><a class="chip" href="#2-interview">2. Interview</a></li><li><a class="chip" href="#3-wage-tax-certificate-and-commute">3. Wage tax certificate and commute</a></li><li><a class="chip" href="#4-cross-border-commuters-to-switzerland">4. Cross-border commuters to Switzerland</a></li><li><a class="chip" href="#5-pensions-capital-income-rental">5. Pensions, capital income, rental</a></li><li><a class="chip" href="#6-unlock-and-payment">6. Unlock and payment</a></li><li><a class="chip" href="#7-printout">7. Printout</a></li><li><a class="chip" href="#8-the-owl">8. The owl</a></li><li><a class="chip" href="#9-mcp-server">9. MCP server</a></li><li><a class="chip" href="#10-receipts">10. Receipts</a></li><li><a class="chip" href="#11-account-export-and-deletion">11. Account: export and deletion</a></li><li><a class="chip" href="#12-observability">12. Observability</a></li></ul>
+      </header>
+      <article class="prose">
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left"><strong>As of</strong></td>
+<td align="left">2026-11-22</td>
+</tr>
+<tr>
+<td align="left"><strong>Level</strong></td>
+<td align="left">components (C4 level 3), companion to <a href="index.html"><code>architecture.md</code></a></td>
+</tr>
+<tr>
+<td align="left"><strong>Scope</strong></td>
+<td align="left">selected modules under <code>apps/api/src</code></td>
+</tr>
+</tbody></table></div>
+<p>For the most important modules this document shows who calls in, which service does the work, which ports it needs and which core functions it calls. It is not a route list: the complete and authoritative list of routes is <code>apps/api/openapi.json</code>, served at <code>/docs</code> at runtime.</p>
+<p>Every name here has been checked against the code. Core functions are exports of <code>packages/core/src</code>; tables are models in <code>apps/api/prisma/schema.prisma</code>. Routes are German because the product is; the glossary in <a href="12-glossary.html#12-glossary"><code>architecture.md</code> §12</a> explains the terms.</p>
+<h2 id="the-common-pattern"><a class="anchor" href="#the-common-pattern" aria-hidden="true" tabindex="-1">#</a>The common pattern</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/common-pattern.dark.svg">
+  <img src="../diagrams/common-pattern.svg" alt="The common pattern: controller, service, core, port, adapter, database, module">
+</picture><p><em>(source: <a href="../diagrams/common-pattern.puml"><code>common-pattern.puml</code></a>)</em></p>
+<p>What holds for every module:</p>
+<ol>
+<li><strong>Identity.</strong> Only <code>UserContextGuard</code> sets the user id of a request. Routes marked <code>@RequiresAccount()</code> reject guests. Only <code>HealthController</code>, <code>CapabilitiesController</code>, <code>AuthCapabilitiesController</code>, <code>OAuthDiscoveryController</code>, <code>DeviceController</code> and the Stripe webhook route work without the guard.</li>
+<li><strong>Arithmetic in the core.</strong> No service computes a tax amount itself (<a href="adr/0038-calculation-core-and-ai-port.html">ADR-0038</a>).</li>
+<li><strong>Persistence through ports.</strong> A service knows its repository as an interface. The Prisma adapter encrypts the fields marked <code>/// @encrypted</code> in the schema. Not every field is encrypted, see <a href="08-cross-cutting-concepts.html#82-encryption"><code>architecture.md</code> §8.2</a>.</li>
+<li><strong>Checked boundaries.</strong> The database client and external SDKs may be imported only by the files named for them. <code>apps/api/test/architecture.test.ts</code> checks that (<a href="adr/0102-ports-and-adapters-enforced-by-architecture-tests.html">ADR-0102</a>).</li>
+</ol>
+<p>In the tables below <code>…</code> stands for the prefix <code>/v1/steuerjahre/:jahr</code> (tax years / year).</p>
+<hr>
+<h2 id="1-cockpit-and-tax-estimate"><a class="anchor" href="#1-cockpit-and-tax-estimate" aria-hidden="true" tabindex="-1">#</a>1. Cockpit and tax estimate</h2>
+<p>The cockpit shows the refund range and the open items of a tax year. The tax estimate provides the detailed calculation.</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left">Cockpit</th>
+<th align="left">Tax estimate</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>CockpitController</code>: <code>GET …/cockpit</code></td>
+<td align="left"><code>TaxEstimateController</code>: <code>GET …/steuerschaetzung</code>, account required</td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>CockpitService</code></td>
+<td align="left"><code>TaxEstimateService</code></td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left"><code>cockpitRangeFromInputs</code></td>
+<td align="left"><code>taxEstimateEmployee</code>, <code>taxEstimatePensioner</code>, <code>taxEstimateCrossBorder</code>, <code>taxEstimateSelfEmployed</code>, <code>estimateMarriedCouple</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>TAX_YEAR_REPOSITORY</code>, <code>WAGE_TAX_CERTIFICATE_REPOSITORY</code>, <code>INTERVIEW_ANSWER_REPOSITORY</code>, <code>PROVENANCE_REPOSITORY</code>, <code>PENSION_REPOSITORY</code>, <code>CAPITAL_REPOSITORY</code>, <code>RENTAL_REPOSITORY</code>, <code>CROSS_BORDER_SALARY_STATEMENT_REPOSITORY</code></td>
+<td align="left">the repositories of the feature modules whose data enters the estimate</td>
+</tr>
+</tbody></table></div>
+<p>The two services do not call each other. Both read the same feature data and each computes in the core. <code>CockpitService</code> additionally uses <code>SubmissionService</code> and <code>BusinessService</code>; the cockpit is one of the most depended-on modules (25 incoming module edges).</p>
+<h2 id="2-interview"><a class="anchor" href="#2-interview" aria-hidden="true" tabindex="-1">#</a>2. Interview</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>InterviewController</code>: <code>GET …/interview</code>, <code>POST …/interview/antworten</code>. Both open to guests.</td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>InterviewService</code></td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left"><code>ENTRIES</code> (the question catalogue), <code>isValidAnswer</code>, <code>isReachableFor</code>, <code>nextStepFor</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>INTERVIEW_ANSWER_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Other dependencies</td>
+<td align="left"><code>AuditService</code>, <code>LinkService</code></td>
+</tr>
+<tr>
+<td align="left">Table</td>
+<td align="left"><code>InterviewAnswer</code>; the field <code>value</code> is encrypted</td>
+</tr>
+</tbody></table></div>
+<p>Answering a question returns the next step and the number of open items. The refund range does not come from here; it comes from the cockpit.</p>
+<h2 id="3-wage-tax-certificate-and-commute"><a class="anchor" href="#3-wage-tax-certificate-and-commute" aria-hidden="true" tabindex="-1">#</a>3. Wage tax certificate and commute</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left">Wage tax certificate</th>
+<th align="left">Commute</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>LstbController</code>: <code>GET …/lstb</code>, <code>PUT …/lstb/:feld</code>, plus a <code>GET</code> and a <code>PUT</code> each for <code>lstb-kirchensteuer</code>, <code>lstb-zeilen</code>, <code>lstb-arbeitgeber</code>, <code>lstb-zuschuesse</code>. <code>LstbScanController</code>: <code>PUT …/lstb</code> for a certificate read as a whole.</td>
+<td align="left"><code>CommuteController</code>: <code>GET …/arbeitsweg</code>, <code>PUT …/arbeitsweg</code></td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>LstbService</code>, <code>LstbScanService</code></td>
+<td align="left"><code>CommuteService</code>, helpers in <code>commute/ways-to-work.ts</code></td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left"><code>wageTaxCertificateStatus</code>, <code>setWageTaxCertificateField</code></td>
+<td align="left"><code>calculateWorkdays</code>, <code>commuterAllowanceByWay</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>WAGE_TAX_CERTIFICATE_REPOSITORY</code>, <code>PROVENANCE_REPOSITORY</code></td>
+<td align="left"><code>COMMUTE_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Tables</td>
+<td align="left"><code>Lstb</code></td>
+<td align="left"><code>Commute</code></td>
+</tr>
+</tbody></table></div>
+<p>All routes require an account. The user enters the distance to work; there is no routing service.</p>
+<h2 id="4-cross-border-commuters-to-switzerland"><a class="anchor" href="#4-cross-border-commuters-to-switzerland" aria-hidden="true" tabindex="-1">#</a>4. Cross-border commuters to Switzerland</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>ChSalaryCertificateController</code>: <code>GET …/ch-lohnausweis</code>, <code>PUT …/ch-lohnausweis/:feld</code>, plus <code>PUT</code> for <code>bemerkungen</code>, <code>vorsorge</code>, <code>n-gre</code>, <code>wechselkurs</code>, <code>grenzgaenger</code></td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>ChSalaryCertificateService</code></td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left"><code>crossBorderStatus</code>, <code>chItemsAsCoreItems</code>, <code>chfToEur</code>, <code>officialMonthlyRate</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>CROSS_BORDER_SALARY_STATEMENT_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Table</td>
+<td align="left"><code>ChSalaryCertificate</code></td>
+</tr>
+</tbody></table></div>
+<p>Decision: <a href="adr/0042-grenzgaenger-ch-vertical.html">ADR-0042</a>, extended by <a href="adr/0072-n-gre-pension-fund-split-krankentaggeld-annual-rate.html">ADR-0072</a>.</p>
+<h2 id="5-pensions-capital-income-rental"><a class="anchor" href="#5-pensions-capital-income-rental" aria-hidden="true" tabindex="-1">#</a>5. Pensions, capital income, rental</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left">Pensions</th>
+<th align="left">Capital income</th>
+<th align="left">Rental</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>PensionController</code>: <code>GET …/rente</code>, <code>PUT …/rente/art</code>, <code>PUT …/rente/:feld</code></td>
+<td align="left"><code>CapitalController</code>: <code>GET …/kapital</code>, <code>PUT …/kapital/inhaber</code>, <code>PUT …/kapital/:feld</code>, <code>GET …/kapital/guenstigerpruefung</code></td>
+<td align="left"><code>RentalController</code>: <code>GET …/vermietung</code>, <code>POST …/vermietung/objekte</code>, <code>PUT …/vermietung/objekte/:objektId/:feld</code>, <code>PUT …/vermietung/objekte/:objektId/adresse</code></td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>PensionService</code></td>
+<td align="left"><code>CapitalService</code></td>
+<td align="left"><code>RentalService</code></td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left"><code>pensionStatus</code>, <code>pensionAsCoreLineItem</code></td>
+<td align="left"><code>classifyCapitalDepot</code>, <code>capitalAsCoreLineItem</code>, <code>mostFavourableCheckOnEstimate</code></td>
+<td align="left"><code>classifyRental</code>, <code>rentalStatus</code>, <code>rentalPropertyFacts</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>PENSION_REPOSITORY</code></td>
+<td align="left"><code>CAPITAL_REPOSITORY</code></td>
+<td align="left"><code>RENTAL_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Tables</td>
+<td align="left"><code>Pension</code></td>
+<td align="left"><code>Capital</code></td>
+<td align="left"><code>RentalProperty</code></td>
+</tr>
+</tbody></table></div>
+<h2 id="6-unlock-and-payment"><a class="anchor" href="#6-unlock-and-payment" aria-hidden="true" tabindex="-1">#</a>6. Unlock and payment</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>UnlockController</code>: <code>GET …/freischaltung</code> and the webhook <code>POST /v1/zahlung/stripe/webhook</code>. The checkout is started by <code>PrintoutController</code> (§7).</td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>UnlockService</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>PAYMENT_PROVIDER</code> (<code>PaymentProvider</code> with <code>createCheckout</code> and <code>verifyEvent</code>), <code>UNLOCK_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Adapter</td>
+<td align="left"><code>StripePaymentProvider</code> in <code>unlock/stripe-payment-provider.ts</code>, the only file with the Stripe SDK</td>
+</tr>
+<tr>
+<td align="left">Table</td>
+<td align="left"><code>Unlock</code></td>
+</tr>
+</tbody></table></div>
+<p>The webhook is not behind <code>UserContextGuard</code>. It authenticates by the signature that <code>verifyEvent</code> checks. The sequence is in <a href="06-runtime-view.html#62-unlocking-and-printing"><code>architecture.md</code> §6.2</a>.</p>
+<h2 id="7-printout"><a class="anchor" href="#7-printout" aria-hidden="true" tabindex="-1">#</a>7. Printout</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>PrintoutController</code>: <code>GET …/ausdruck/pruefung</code>, <code>GET …/ausdruck/werte</code>, <code>POST …/ausdruck/checkout</code>, <code>GET …/ausdruck</code>, <code>GET …/ausdruck/vorlage/:formular</code>, plus <code>POST …/ausdruck/async</code> and <code>GET …/ausdruck/jobs/:jobId</code></td>
+</tr>
+<tr>
+<td align="left">Services</td>
+<td align="left"><code>PrintoutService</code> assembles the values and starts the checkout through <code>UnlockService</code>. <code>PrintoutJobService</code> runs asynchronous jobs.</td>
+</tr>
+<tr>
+<td align="left">Rendering</td>
+<td align="left">the function <code>renderForms</code> in <code>printout/form-renderer.ts</code>, the only file with <code>pdf-lib</code></td>
+</tr>
+<tr>
+<td align="left">Data</td>
+<td align="left">field positions <code>FIELD_SETS</code> in the same file (2024 and 2025), the forms under <code>apps/api/assets/vordrucke/&lt;year&gt;/</code>, checksums in <code>printout/vordrucke-&lt;year&gt;.json</code></td>
+</tr>
+</tbody></table></div>
+<p><code>PrintoutJobService</code> keeps jobs in a <code>Map</code> in process memory and starts them with <code>setImmediate</code>. There is no worker and no durable store. This is listed as debt in <a href="11-risks-and-technical-debt.html#11-risks-and-technical-debt"><code>architecture.md</code> §11</a>.</p>
+<h2 id="8-the-owl"><a class="anchor" href="#8-the-owl" aria-hidden="true" tabindex="-1">#</a>8. The owl</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/owl.dark.svg">
+  <img src="../diagrams/owl.svg" alt="The parts of the owl: controller, turn, conversations, digest, engine, topic guard, run log">
+</picture><p><em>(source: <a href="../diagrams/owl.puml"><code>owl.puml</code></a>)</em></p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>AdvisorController</code> with 27 routes, among them <code>POST chat</code>, <code>POST stream</code>, <code>GET runs/:runId/events</code>, <code>GET models</code></td>
+</tr>
+<tr>
+<td align="left">Services</td>
+<td align="left">Eight parts, each a provider of <code>AdvisorModule</code> with its own required dependencies: <code>AdvisorTurn</code> (one question and its answer), <code>AdvisorConversations</code>, <code>AdvisorProjectNotes</code>, <code>AdvisorOpening</code>, <code>AdvisorDrafts</code> (applying and undoing), <code>AdvisorCaseDigest</code> and <code>AdvisorCaseFacts</code> (what the owl is told about the case), <code>AdvisorDocumentStaging</code> (drafts from read documents). <code>AdvisorService</code> keeps the session, clearing a conversation, feedback, the opening state and the connection. <code>AdvisorRunService</code> (answer runs, <a href="adr/0064-owl-chat-answer-runs-and-resumption.html">ADR-0064</a>), <code>AdvisorModelsService</code></td>
+</tr>
+<tr>
+<td align="left">Draft rows</td>
+<td align="left">The rows a draft may create are a registry by screen behind <code>DRAFT_RECORDS</code>: <code>ChildDraftRecords</code> from <code>children</code>, <code>RentalDraftRecords</code> from <code>rental</code> (interface <code>DraftRecordSource</code> in <code>common/</code>)</td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left">the owl&#39;s domain logic in <code>packages/core/src/interview/advisor*.ts</code>; <code>scrubUserMessagePii</code> before every model call</td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>ADVISOR_ENGINE</code> (interface <code>AdvisorEnginePort</code> in the core), <code>ADVISOR_TOPIC_GUARD</code>, <code>ADVISOR_REPOSITORY</code>, <code>ADVISOR_RUN_LOG</code>, <code>TRANSACTION_RUNNER</code></td>
+</tr>
+<tr>
+<td align="left">Adapters</td>
+<td align="left"><code>LangGraphAdvisorEngine</code> and the other LangChain files in <code>ki/</code> and <code>llm/</code>; <code>run-log/run-log.redis.ts</code> (bound for the owl in <code>advisor/run/advisor-run-log.redis.ts</code>)</td>
+</tr>
+<tr>
+<td align="left">Tables</td>
+<td align="left"><code>AdvisorConversation</code>, <code>AdvisorChatMessage</code> and others prefixed <code>Advisor</code></td>
+</tr>
+</tbody></table></div>
+<p><code>advisor</code> is the module with the most outgoing edges (24): the owl reads and drafts in almost every feature module. The owl&#39;s tools are in <code>ki/tools/</code> (23 files as of 2026-11-22).</p>
+<h2 id="9-mcp-server"><a class="anchor" href="#9-mcp-server" aria-hidden="true" tabindex="-1">#</a>9. MCP server</h2>
+<p>It is not the owl that works through MCP but an external assistant of the user (<a href="adr/0052-agent-access-mcp.html">ADR-0052</a>).</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>McpController</code>: <code>POST /mcp</code> (Streamable HTTP), plus <code>GET /mcp</code>, <code>DELETE /mcp</code>, <code>GET /mcp/sse</code>, <code>POST /mcp/messages</code></td>
+</tr>
+<tr>
+<td align="left">Identity</td>
+<td align="left">a bearer token, checked by <code>UserContextGuard</code> through <code>BEARER_TOKEN_REPOSITORY</code>. Only this controller accepts assistant tokens.</td>
+</tr>
+<tr>
+<td align="left">Services</td>
+<td align="left"><code>McpService</code> registers the tools from <code>mcp/tools/</code> (45 registrations as of 2026-11-22). <code>McpReportService</code> provides reports and simulations.</td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>TRANSACTION_RUNNER</code>: a simulation writes through the normal write path inside a transaction that is always rolled back. It runs only if the runner reports <code>rollsBack</code>.</td>
+</tr>
+</tbody></table></div>
+<h2 id="10-receipts"><a class="anchor" href="#10-receipts" aria-hidden="true" tabindex="-1">#</a>10. Receipts</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>ReceiptController</code> (the filing cabinet), <code>ReceiptParseController</code>: <code>POST /v1/belege/parse</code>, <code>POST /v1/belege/:id/inhaber</code></td>
+</tr>
+<tr>
+<td align="left">Services</td>
+<td align="left"><code>ReceiptService</code>, <code>ReceiptParseService</code>, <code>ReceiptReassignService</code></td>
+</tr>
+<tr>
+<td align="left">Strategies</td>
+<td align="left"><code>DocumentParseRegistry</code> picks by document kind: <code>AutoReceiptParseStrategy</code>, <code>LstbScanParseStrategy</code>, <code>ChCertificateScanParseStrategy</code> and further ones for Swiss letters</td>
+</tr>
+<tr>
+<td align="left">Core</td>
+<td align="left">fixed reading rules per document kind, <code>scrubDocumentTextPii</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>RECEIPT_REPOSITORY</code>, <code>STORAGE_PORT</code>, <code>SINGLE_SHOT_MODEL_FACTORY</code></td>
+</tr>
+<tr>
+<td align="left">Adapters</td>
+<td align="left"><code>PostgresByteaStorageAdapter</code> with <code>EnvelopeCryptoService</code>; a key per user through <code>USER_KEY_STORE</code> (<a href="adr/0059-document-keystore-crypto-shredding.html">ADR-0059</a>)</td>
+</tr>
+<tr>
+<td align="left">Tables</td>
+<td align="left"><code>Receipt</code>, <code>ReceiptFile</code></td>
+</tr>
+</tbody></table></div>
+<p>The sequence is in <a href="06-runtime-view.html#63-reading-a-receipt"><code>architecture.md</code> §6.3</a>. Life cycle of a receipt: <a href="adr/0097-document-lifecycle.html">ADR-0097</a>.</p>
+<h2 id="11-account-export-and-deletion"><a class="anchor" href="#11-account-export-and-deletion" aria-hidden="true" tabindex="-1">#</a>11. Account: export and deletion</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left">Export</th>
+<th align="left">Deletion</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Entry</td>
+<td align="left"><code>AccountExportController</code>: <code>GET /v1/account/export</code></td>
+<td align="left"><code>AccountDeletionController</code>: <code>DELETE /v1/account</code></td>
+</tr>
+<tr>
+<td align="left">Service</td>
+<td align="left"><code>AccountExportService</code></td>
+<td align="left"><code>AccountDeletionService</code></td>
+</tr>
+<tr>
+<td align="left">Ports</td>
+<td align="left"><code>TAX_DATA_EXPORT_REPOSITORY</code>, <code>PDF_RENDERER</code></td>
+<td align="left"><code>ACCOUNT_DELETION_REPOSITORY</code></td>
+</tr>
+<tr>
+<td align="left">Adapters</td>
+<td align="left"><code>PlaywrightPdfRenderer</code></td>
+<td align="left"><code>account-deletion.repository.prisma.ts</code>, the transaction in <code>delete-account-transaction.prisma.ts</code></td>
+</tr>
+</tbody></table></div>
+<p>Deletion runs in one database transaction. Entries in the access log are kept in anonymised form, as is data under a legal retention duty (<a href="adr/0013-dsgvo-export-and-account-deletion.html">ADR-0013</a>). Receipt files are destroyed before the transaction and are therefore not part of its atomicity. <code>apps/api/test/account-deletion-coverage.test.ts</code> uses the Prisma schema to check that no table referencing a user is forgotten.</p>
+<h2 id="12-observability"><a class="anchor" href="#12-observability" aria-hidden="true" tabindex="-1">#</a>12. Observability</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Element</th>
+<th align="left">File</th>
+<th align="left">What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Request id</td>
+<td align="left"><code>common/request-id.ts</code></td>
+<td align="left">adopts <code>traceparent</code> or <code>x-request-id</code>, otherwise a new UUID</td>
+</tr>
+<tr>
+<td align="left">Error filter</td>
+<td align="left"><code>common/domain-error.filter.ts</code> (<code>DomainErrorFilter</code>)</td>
+<td align="left">one error body format carrying the request id</td>
+</tr>
+<tr>
+<td align="left">Health</td>
+<td align="left"><code>health/health.controller.ts</code></td>
+<td align="left"><code>GET /v1/health/live</code>, <code>GET /v1/health/ready</code> with a database check</td>
+</tr>
+<tr>
+<td align="left">Tracing</td>
+<td align="left"><code>telemetry/tracer.ts</code> (<code>withSpan</code>)</td>
+<td align="left">two spans: tax estimate and print job. Without an exporter they are not collected.</td>
+</tr>
+</tbody></table></div>
+
+      </article>
+      
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="12-glossary.html"><span class="eyebrow">Previous</span><span>Glossary</span></a><span></span></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

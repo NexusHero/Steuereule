@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0064 — Owl chat: answer runs, detached from the connection, with resumption — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0064</p>
+        <h1>Owl chat: answer runs, detached from the connection, with resumption <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#rejected-alternatives">Rejected alternatives</a></li><li><a class="chip" href="#evidence">Evidence</a></li><li><a class="chip" href="#addendum-11-november-2026-run-against-the-real-model">Addendum (11 November 2026): run against the real model</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-11</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> Ticket #476; <code>apps/api/src/advisor/</code> (in particular <code>run/</code>), <code>apps/api/src/ki/langgraph-advisor.engine.ts</code>, <code>packages/core/src/interview/{advisor,advisor-history,ki-port}.ts</code>, <code>apps/mobile-web/src/screens/advisor/</code></li>
+<li><strong>Supplements:</strong> ADR-0038 (AI port, zero-write), ADR-0051 (owl mode), ADR-0008 (encrypted fields)</li>
+<li><strong>Touches:</strong> ADR-0053 (beta hosting on Cloud Run), ADR-0056 (job queue), product ADR-047 (Redis)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>Until #476, an answer from the owl was tied to the HTTP connection it was streamed over. If the
+connection dropped (dead zone, tab in the background, proxy timeout), the paid model call was
+aborted and a question without an answer remained in the history. The answer was only saved once it
+was finished; an aborted partial text existed only in the browser. Events had neither an identifier
+nor an order, the model received the last ten messages as text across the board and did not know
+what had become of its own suggestions.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<h3 id="1-an-answer-is-a-run-with-its-own-lifecycle"><a class="anchor" href="#1-an-answer-is-a-run-with-its-own-lifecycle" aria-hidden="true" tabindex="-1">#</a>1. An answer is a run with its own lifecycle</h3>
+<p>The assistant message is created <strong>before</strong> the model is called, with status <code>streaming</code>
+and a run ID. It ends in exactly one of three states: <code>complete</code>, <code>aborted</code> (stopped)
+or <code>failed</code>. With <code>aborted</code> and <code>failed</code>, the text written up to that point is kept; the
+message carries <strong>no</strong> suggestions, because half an answer must not produce anything that can be applied.</p>
+<p>No path leaves a message on <code>streaming</code>: stop, timeout, an error in the
+engine, a reader that leaves, and the shutdown of the instance all end in a final state. A
+message whose run no instance knows any more (crash, deployment) is marked as <code>failed</code> the next
+time the session is loaded.</p>
+<h3 id="2-the-run-is-detached-from-the-connection"><a class="anchor" href="#2-the-run-is-detached-from-the-connection" aria-hidden="true" tabindex="-1">#</a>2. The run is detached from the connection</h3>
+<p><code>AdvisorRunService.start</code> checks synchronously (the daily quota remains a normal HTTP error),
+stores the question and the answer placeholder and then lets the run continue without <code>await</code>. Every
+event goes into a <strong>run log</strong> (<code>AdvisorRunLog</code>) with a gapless sequence number starting at 1. The
+HTTP response only reads from this log; closing it ends the reader, never the run.</p>
+<p>Two implementations behind the same port:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left"></th>
+<th align="left"><code>InMemoryAdvisorRunLog</code></th>
+<th align="left"><code>RedisAdvisorRunLog</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">When</td>
+<td align="left">without <code>REDIS_URL</code> (local, tests, one instance)</td>
+<td align="left">with <code>REDIS_URL</code></td>
+</tr>
+<tr>
+<td align="left">Storage</td>
+<td align="left">in the API process</td>
+<td align="left">one Redis Stream per run, entry ID <code>&lt;seq&gt;-0</code>, final entry <code>end</code></td>
+</tr>
+<tr>
+<td align="left">Reattaching</td>
+<td align="left">only at the same instance</td>
+<td align="left">at any instance</td>
+</tr>
+<tr>
+<td align="left">Stop</td>
+<td align="left">local listener</td>
+<td align="left">Pub/Sub, reaches the executing instance</td>
+</tr>
+<tr>
+<td align="left">Retention</td>
+<td align="left">5 minutes after the end</td>
+<td align="left">5 minutes after the end (TTL), 15 minutes for runs that never ended</td>
+</tr>
+</tbody></table></div>
+<p>The events in the log are ephemeral and expire with the stream. Only the message itself is stored
+durably, field-encrypted as before.</p>
+<h3 id="3-protocol-over-sse"><a class="anchor" href="#3-protocol-over-sse" aria-hidden="true" tabindex="-1">#</a>3. Protocol over SSE</h3>
+<p><code>POST …/advisor/stream</code> starts a run and streams it. Every event carries its sequence number
+as SSE <code>id:</code>; the first event is <code>start</code> with the run ID, the stored question and the ID of the answer.
+<code>GET …/advisor/runs/{runId}/events</code> delivers the events after <code>Last-Event-ID</code> (or <code>?after=</code>).
+The events <code>start</code> and <code>reasoning</code> are new. A comment heartbeat every 15 seconds keeps sluggish
+proxies open. Someone else&#39;s run responds like an unknown one: 404.</p>
+<p>The client reads via <code>followRun</code>: if the connection ends without <code>done</code> or <code>error</code>, it reattaches with
+the last sequence number (up to six attempts with growing intervals) and discards
+events it already had. If the server no longer knows the run, the client reloads the session;
+the final state is there.</p>
+<h3 id="4-only-stop-ends-an-answer"><a class="anchor" href="#4-only-stop-ends-an-answer" aria-hidden="true" tabindex="-1">#</a>4. Only stop ends an answer</h3>
+<p><code>POST …/advisor/runs/{runId}/stop</code> is the only way to end a run early. The
+stop button closes the connection <strong>and</strong> calls this endpoint. An answer that runs to completion after a
+connection drop counts toward the daily quota: it was ordered and delivered. The
+time limit per answer (<code>turnTimeoutMs</code>) applies unchanged and limits orphaned runs.</p>
+<h3 id="5-reasoning-provider-summaries-no-raw-text"><a class="anchor" href="#5-reasoning-provider-summaries-no-raw-text" aria-hidden="true" tabindex="-1">#</a>5. Reasoning: provider summaries, no raw text</h3>
+<p>With <code>AI_ADVISOR_REASONING=summary</code>, the engine requests a reasoning summary from the provider
+(Anthropic Extended Thinking, Gemini <code>includeThoughts</code>, OpenAI Responses API). It comes as a
+separate event, never as part of the answer, is stored field-encrypted with the message
+(<code>gedankengang</code>) and shown in the chat as a collapsible block with the note „Überlegungen der KI, keine
+Auskunft“ (&quot;The AI&#39;s reasoning, not information&quot;). If the model delivers nothing, the block only shows the work steps.</p>
+<p>The option is <strong>off by default</strong>: it needs a model that supports it, and costs
+tokens. Anthropic rejects a forced tool call while thinking is active; the
+forced plan („Was hab ich vergessen?“ (&quot;What did I forget?&quot;)) is requested in the prompt there instead.</p>
+<h3 id="6-memory-by-token-budget"><a class="anchor" href="#6-memory-by-token-budget" aria-hidden="true" tabindex="-1">#</a>6. Memory by token budget</h3>
+<p><code>buildAdvisorHistory</code> (core, pure) replaces &quot;the last ten&quot;: the newest turns stay verbatim
+up to the budget (default 3,000 estimated tokens), every earlier answer of the owl carries one line
+per suggestion with its outcome (open, applied, rejected …), and everything older becomes <strong>one</strong>
+prepended note. The note is produced deterministically, without a model call. The stored
+previous value of a field does not go into the prompt.</p>
+<h3 id="7-system-prompt-with-a-stable-prefix"><a class="anchor" href="#7-system-prompt-with-a-stable-prefix" aria-hidden="true" tabindex="-1">#</a>7. System prompt with a stable prefix</h3>
+<p>The system prompt consists of a rules part that is the same for everyone and the case-specific part (active
+screen, CaseDigest). The rules part comes first; with Anthropic it carries an explicit
+cache breakpoint, the other providers cache a repeated prefix themselves. Nothing case-specific
+may move into the rules part; a test pins this down.</p>
+<h3 id="8-measurement-per-answer"><a class="anchor" href="#8-measurement-per-answer" aria-hidden="true" tabindex="-1">#</a>8. Measurement per answer</h3>
+<p>For every answer, input, output and cached tokens, the time to first word, the
+duration and a trace ID (the run ID) are stored (<code>verbrauch</code>, unencrypted, without content) and
+written as one structured log line <code>advisor_turn</code>. The client does not receive this data.</p>
+<h3 id="9-rating-and-clearing-the-history"><a class="anchor" href="#9-rating-and-clearing-the-history" aria-hidden="true" tabindex="-1">#</a>9. Rating and clearing the history</h3>
+<p>A finished answer can be rated with thumbs up or down, with &quot;down&quot; with a reason
+from a fixed list. There is no free text and no plain-text export from the history.
+„Verlauf leeren“ (&quot;Clear history&quot;) deletes the conversation of a tax year; applied values stay in the
+tax return. While an answer is running, clearing is rejected (409).</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Several API instances need Redis.</strong> Without <code>REDIS_URL</code>, a client can only reattach at the
+instance that executes the run; if it lands elsewhere, it sees 404 and then the
+final state from the session. That is correct, but not seamless. Redis in production depends on #292.</li>
+<li><strong>Cloud Run (ADR-0053):</strong> A run that nobody is listening to has no open request. With
+request-based CPU allocation it then stands still. For detached generation the service must
+run with &quot;CPU always allocated&quot;. This is not yet implemented in the infrastructure.</li>
+<li><strong>A run lives in the API process, not in a worker.</strong> If the instance dies, the answer ends
+as <code>failed</code>. A separate worker via the job queue (ADR-0056) would be more robust and is deliberately not
+part of this decision: the port <code>AdvisorRunLog</code> already separates execution and reading so that a
+worker later only replaces the executing side.</li>
+<li><strong>A dropped reader now costs money.</strong> Previously a closed tab saved the rest of the
+model call. This is limited by the time limit per answer and the daily quota.</li>
+<li><strong>There is still no filter for the answer text.</strong> <code>advisor-safety.ts</code> checks write targets,
+not text. This applies to the answer as well as to the reasoning and is a separate project.</li>
+</ul>
+<h2 id="rejected-alternatives"><a class="anchor" href="#rejected-alternatives" aria-hidden="true" tabindex="-1">#</a>Rejected alternatives</h2>
+<ul>
+<li><strong>Drop means abort (state before #476).</strong> Simple, but annoying on the phone and expensive in
+perception: the question is paid for, the answer gone.</li>
+<li><strong>Write partial text continuously to Postgres, client polls.</strong> Needs no Redis, but produces
+dozens of encrypted writes per answer and feels sluggish because of the polling.</li>
+<li><strong>BullMQ worker right away.</strong> Cleanly scalable, but a new process and a new deployment for
+a feature that is also correct in the API process. The port keeps the way open.</li>
+<li><strong>Show raw reasoning.</strong> Maximum transparency, but the model can make statements there that
+look like individual advice, and there is no text filter that would catch them.</li>
+<li><strong>Versions of an answer (&quot;1/2&quot;).</strong> Considered and rejected: „Neu generieren“ (&quot;Regenerate&quot;) continues to replace the
+last answer (#451), so that it is never unclear which suggestion applies.</li>
+</ul>
+<h2 id="evidence"><a class="anchor" href="#evidence" aria-hidden="true" tabindex="-1">#</a>Evidence</h2>
+<ul>
+<li>Lifecycle, rating, clearing: <code>apps/api/test/advisor-lifecycle.test.ts</code>, against real Postgres
+<code>advisor-lifecycle.integration.test.ts</code> (incl. encryption of the reasoning in raw access).</li>
+<li>Run log: <code>advisor-run-log.test.ts</code>, against real Redis <code>advisor-run-log.redis.integration.test.ts</code>.</li>
+<li>Detached runs, resumption, stop, ownership: <code>advisor-run.service.test.ts</code>, over HTTP
+<code>advisor-runs.http.test.ts</code>.</li>
+<li>Reasoning, usage, prompt prefix: <code>langgraph-advisor.reasoning.test.ts</code>.</li>
+<li>Memory: <code>packages/core/src/interview/advisor-history.test.ts</code>.</li>
+<li>Client: <code>lib/runStream/runStream.test.tsx</code>, <code>CopilotBridgeResume.test.tsx</code>, <code>AdvisorChatPanelLifecycle.test.tsx</code>.</li>
+</ul>
+<p><strong>Not verified:</strong> Anthropic and OpenAI. For Gemini see the addendum.</p>
+<h2 id="addendum-11-november-2026-run-against-the-real-model"><a class="anchor" href="#addendum-11-november-2026-run-against-the-real-model" aria-hidden="true" tabindex="-1">#</a>Addendum (11 November 2026): run against the real model</h2>
+<p>With a real Gemini key (<code>gemini-3.8-flash</code>), <code>scripts/ai-eval/reasoning-check.ts</code>
+and a customer scenario in the browser (<code>e2e/advisor/customer-chat-scenario.mjs</code>) were run: a new customer, eight
+messages, who applies every suggestion. In the first pass, <strong>nothing</strong> was in the
+tax return afterwards. Four causes, all already present before #476 and fixed here:</p>
+<ol>
+<li><strong>Tool schema.</strong> Every <code>z.record</code> produces <code>propertyNames</code>; Gemini responds to that with 400,
+and the engine fell back to the deterministic answer without a trace. The model now receives the
+schema without such keywords (<code>toProviderToolSchema</code>); failed model calls
+are logged.</li>
+<li><strong>Field names.</strong> The model did not know the field names of the screens and derived them from the
+CaseDigest (<code>grossWageEur</code> instead of <code>bruttoarbeitslohn</code>). Such drafts could not be
+applied. The stable part of the system prompt now names all fields the owl may suggest
+(from <code>WRITABLE_FIELDS_BY_SCREEN</code>, without the protected ones), together with the allowed values; an
+unknown field is rejected already at draft time with the list of valid ones.</li>
+<li><strong>Applying without feedback.</strong> If applying failed, nothing happened on the screen.
+The chat now shows the server&#39;s message.</li>
+<li><strong>Privacy guard.</strong> The fingerprint of an owl hint is a 16-character hex hash
+and can have the shape of an IBAN. It is attached to the hint, not to the user: everyone with the hint
+„Fortbildung ohne Fahrt“ (&quot;Training without travel&quot;) for 2026 lost the chat to &quot;IBAN detected&quot;. <code>checkPiiFree</code> now exempts exactly
+this shape in the field <code>fingerprint</code>.</li>
+</ol>
+<p>In addition, two adjustments to the flow: after the last tool round, the model must answer in words
+(otherwise the answer ended as „Ich habe deine Steuerakte geprüft.“ (&quot;I have checked your tax file.&quot;)), and the time limit per answer
+is 60 instead of 25 seconds, because with reasoning even the first word took 10 to 20 seconds.</p>
+<p>State after the fourth pass: Lohnsteuerbescheinigung (wage tax certificate) complete, commute 38 km by car,
+60 home office days, donation €300, basic details; the estimate shows a refund range.</p>
+<p><strong>Second round (same day): the open points</strong></p>
+<ul>
+<li><strong>Training costs as an amount.</strong> New follow-up question <code>fortbildung-kosten</code> behind „Fortbildung: Ja“ (&quot;Training: Yes&quot;).
+The estimate counts them as Werbungskosten (work-related expenses); the owl enters them together with <code>fortbildung: Ja</code>.
+The owl&#39;s preview no longer includes a flat €450: without an amount it names no
+effect. Before, it promised a refund that never appeared in the estimate.</li>
+<li><strong>Vacation and sick days.</strong> The owl asks about them before it calls commuting days finished.</li>
+<li><strong>Draft with several fields on a new record.</strong> The first field created the
+commute record with default values (Mon–Fri), the next field of the same draft was
+then rejected as &quot;changed in the meantime&quot;. Within one apply, the write path now compares,
+for a record it has already written itself, against the current state; the
+check of all initial values before the first write remains.</li>
+</ul>
+<p>State after the last pass (nine messages): Lohnsteuerbescheinigung complete; commute
+38 km by car, 30 vacation and 5 sick days, 60 home office days, resulting in 166 commuting days and
+€2,397 Entfernungspauschale (distance allowance); €850 training; €300 donation. Werbungskosten €3,607
+(2,397 + 360 + 850), refund range €2,355 to €2,439.</p>
+<p><strong>What remains open</strong></p>
+<ul>
+<li>The training amount can only be entered and seen via the owl. The question belongs to the
+second interview section, which has no UI in the app yet (#321).</li>
+<li>Time to first word around 12 seconds at the median; around 115,000 input tokens for nine
+messages, of which just under 40% from the cache.</li>
+<li>Master data is still entered by the user themselves (intended); the interview question „Ausland“ (&quot;Abroad&quot;) remained open.</li>
+<li>The run depends on the model: in one of six passes it chose an
+invalid value for <code>transport</code>, before the allowed values were in the prompt. The script reports, it does not check.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0063-church-tax-rules.html"><span class="eyebrow">Previous</span><span>ADR-0063</span></a><a class="step step-next" href="0065-address-search-via-own-server.html"><span class="eyebrow">Next</span><span>ADR-0065</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

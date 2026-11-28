@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0031 — Nine questions, two segments: the interview stays three, the other six arrive as the catalog's first entry — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0031</p>
+        <h1>Nine questions, two segments: the interview stays three, the other six arrive as the catalog&#39;s first entry <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-08-08</li>
+<li><strong>Deciders:</strong> NexusHero (stakeholder — he asked for the nine-question flow, and the shape below is
+what he accepted); framed by Musti (lead) in the #318 grill, where the conflict was reported rather
+than designed around.</li>
+<li><strong>Settles</strong> the open question in <a href="https://github.com/NexusHero/Steuereule/issues/318">#318</a>&#39;s
+Halt comment — <em>&quot;the question set itself&quot;</em>, the fifth neighbour of that ticket&#39;s D1–D4 checkbox.</li>
+<li><strong>Precises, does not overturn,</strong> product <strong>ADR-016</strong> (<code>finanzo-funke-design-system/project/research/adr/016-018-gates-paywall-zustaende.md</code>,
+accepted 2026-07-22) and its restatement in product ADR-031.</li>
+<li><strong>Builds on</strong> <a href="0021-controls-are-proven-by-breaking-them.html">ADR-0021</a> (a control that only runs in
+the client is not a control) and <a href="0008-profile-persistence-encryption.html">ADR-0008</a> (nothing
+sensitive in client storage).</li>
+<li><strong>Context tags:</strong> product scope, interview, requirements traceability</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The stakeholder wants the nine questions in <code>finanzo-funke-design-system/project/ui_kits/app/Interview.jsx</code>.
+Product ADR-016 decides the interview asks <strong>exactly three</strong>, and names the failure it is avoiding:</p>
+<blockquote>
+<p><strong>Kontext:</strong> Vollinterview vorab ermüdet (Taxfix-Hauptkritik: „Fragenkatalog&quot;).</p>
+</blockquote>
+<p>Read as a straight either/or, this is a conflict, and #318 stopped on it — correctly, because the
+entire cut of that ticket was derived from ADR-016, and a reversal would have taken the question set,
+the out-of-scope list, the P1 table and the one-PR shape down with it.</p>
+<p><strong>It is not an either/or.</strong> ADR-016&#39;s decision has two halves that are usually quoted as one:</p>
+<blockquote>
+<p>Onboarding stellt genau <strong>drei Fragen</strong> … Alles Weitere (Vermietung, Kapital, Spenden …) wird
+<strong>on-demand</strong> hinzugefügt.</p>
+</blockquote>
+<p>The second half is not a deferral of the other six questions. It is a <strong>seam</strong> — a named place where
+everything beyond the minimum arrives. ADR-016 constrains <em>where the other questions live and when a
+user meets them</em>; it does not say those questions may not exist. What it forbids is the wall of
+questions in front of a user who has not yet seen the product.</p>
+<p>The nine-question prototype does build the forbidden shape — nine screens, six branches, before
+anything is shown. But its <strong>content</strong> is not the thing ADR-016 objects to.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p><strong>The nine questions ship. They ship in two segments, across the seam ADR-016 already defines.</strong></p>
+<h3 id="1-segment-1--the-interview-the-three-questions-of-the-minimal-gate"><a class="anchor" href="#1-segment-1--the-interview-the-three-questions-of-the-minimal-gate" aria-hidden="true" tabindex="-1">#</a>1. Segment 1 — the interview: the three questions of the Minimal-Gate</h3>
+<p>Unchanged from #318&#39;s cut, and unchanged from ADR-016:</p>
+<ol>
+<li><code>job</code> — Woher kam dein Geld? (Angestellt / Selbstständig / Beides / Rente)</li>
+<li><code>ausland</code> — Gearbeitet im Ausland? (→ CH-only-Gate)</li>
+<li><code>kinder</code> — Hast du Kinder?</li>
+</ol>
+<p>Two gates, and only two: <strong>Gewerbe</strong> (from <code>job</code>) and <strong>CH-only</strong> (from <code>ausland</code>). Onboarding stays
+under ADR-016&#39;s 60 seconds.</p>
+<h3 id="2-segment-2--the-other-six-as-the-catalogs-first-entry"><a class="anchor" href="#2-segment-2--the-other-six-as-the-catalogs-first-entry" aria-hidden="true" tabindex="-1">#</a>2. Segment 2 — the other six, as the catalog&#39;s first entry</h3>
+<p><code>partner</code>, <code>homeoffice</code>, <code>weg</code>, <code>tage</code>, <code>fortbildung</code>, <code>einkuenfte</code> are <strong>not</strong> appended to the
+interview. They become the <strong>first entry of the on-demand catalog</strong> ADR-016 prescribes — reached from
+the Startansicht&#39;s &quot;Mehr hinzufügen&quot; tile, after the user has seen the product, entered by choice and
+leavable at any point.</p>
+<p>This is the load-bearing distinction, and it is the whole reason the two halves are not the same
+feature wearing different labels:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th></th>
+<th>Segment 1 — interview</th>
+<th>Segment 2 — catalog</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>When</td>
+<td>before the product is visible</td>
+<td>after, on request</td>
+</tr>
+<tr>
+<td>Entered by</td>
+<td>everyone, unavoidably</td>
+<td>the user&#39;s choice</td>
+</tr>
+<tr>
+<td>Abandonable</td>
+<td>no — it is the gate</td>
+<td>yes, at any question</td>
+</tr>
+<tr>
+<td>Grows with</td>
+<td>nothing (fixed at three)</td>
+<td>every future Lebenslage (ADR-032/033/034)</td>
+</tr>
+</tbody></table></div>
+<p>Nine questions asked as one unavoidable pre-flow is the Fragenkatalog ADR-016 names. Three asked at
+the gate, six offered afterwards, is the structure ADR-016 asks for — with more content in it than
+anyone had yet put there.</p>
+<h3 id="3-segment-2-is-the-catalogs-proof-not-a-special-case"><a class="anchor" href="#3-segment-2-is-the-catalogs-proof-not-a-special-case" aria-hidden="true" tabindex="-1">#</a>3. Segment 2 is the catalog&#39;s proof, not a special case</h3>
+<p>Segment 2 is built <strong>through</strong> the catalog seam, not beside it. If the six questions arrive by any
+mechanism a later Lebenslage could not also use, the segment is wrong and must be rebuilt — the point
+is to have the catalog&#39;s first real consumer, so that ADR-016&#39;s &quot;on-demand&quot; half stops being an
+untested intention.</p>
+<p>Concretely: the same <code>packages/core</code> graph, the same <code>InterviewAnswer</code> rows, the same server-side
+reachability validation. A catalog entry is a <strong>named set of question ids</strong>, not a second code path.</p>
+<h3 id="4-gate-ordering-no-gate-may-fire-later-than-the-answer-that-determines-it"><a class="anchor" href="#4-gate-ordering-no-gate-may-fire-later-than-the-answer-that-determines-it" aria-hidden="true" tabindex="-1">#</a>4. Gate ordering: no gate may fire later than the answer that determines it</h3>
+<p>The prototype&#39;s Ausland gate fires on <strong>question 9 of 9</strong> (<code>Interview.jsx:14, 52</code>), while the Gewerbe
+gate correctly fires on question 1 (<code>:46</code>). A cross-border commuter to Austria answers eight questions
+before being told we cannot do their country — precisely what ADR-016&#39;s <em>&quot;muss früh abzweigen&quot;</em> exists
+to prevent.</p>
+<p>Segment 1 heals this by construction: <code>ausland</code> is question 2 of 3. <strong>The rule is written down anyway</strong>,
+because the prototype&#39;s ordering is the natural thing to copy, and the catalog will grow more gates:</p>
+<blockquote>
+<p>A gate is placed immediately after the question whose answer determines it. A gate that can be
+reached only after unrelated questions is a defect, not a layout choice.</p>
+</blockquote>
+<h3 id="5-delivery-order"><a class="anchor" href="#5-delivery-order" aria-hidden="true" tabindex="-1">#</a>5. Delivery order</h3>
+<p>Segment 1 first, as its own PR. Segment 2 follows as its own PR.</p>
+<p>Not for review-size reasons alone: shipping them together would put the interview and the catalog in
+one diff, which is exactly where the distinction §2 rests on gets lost. Two PRs make the seam visible
+in the history — and if segment 2 turns out not to fit through the catalog, §3 makes that a finding
+rather than a merge.</p>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>#318 keeps its cut in full.</strong> The question set, the out-of-scope list, the P1 table and the one-PR
+shape all stand as written. The Halt is lifted, not resolved by revision.</li>
+<li><strong>The technical substance was never at risk</strong>, as #318&#39;s Halt comment already noted: the graph in
+<code>packages/core</code>, server-side path validation, <code>InterviewAnswer</code> with <code>/// @encrypted value</code>,
+<code>@RequiresAccount()</code>, no <code>localStorage</code>, P2/P3/P5. Segment 2 adds rows and question ids to that
+structure; it changes none of it.</li>
+<li><strong>The catalog gets a ticket with real content</strong>, instead of remaining a placeholder in ADR-016 that
+nothing has ever had to satisfy.</li>
+<li><strong><code>Begriff</code> is needed after all — in segment 2, not segment 1.</strong> #318 correctly excluded it: it hangs
+on <code>einkuenfte</code>&#39;s Sparerpauschbetrag explainer, which is segment 2&#39;s.</li>
+<li><strong>The prototype&#39;s client-side weights, <code>localStorage</code> persistence and estimate ticker stay out of
+both segments.</strong> ADR-0008 and #318&#39;s own exclusions are untouched by this decision.</li>
+<li><strong>Two REQs, not one.</strong> Segment 1 is REQ-015; segment 2 gets its own row. Neither goes <code>Done</code> before
+its named acceptance file exists (ADR-0025). The register&#39;s owner writes both.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>Overturn ADR-016 and ship all nine as the interview.</strong> Rejected: it builds the shape ADR-016 names
+as its primary competitor&#39;s main criticism, and it discards a decision that was accepted, reasoned
+and never shown to be wrong — on the strength of a prototype that was never a product decision.</li>
+<li><strong>Hold the line at three and drop the other six.</strong> Rejected: the stakeholder asked for them, they are
+real tax content, and ADR-016 never said they may not exist. This reading treats &quot;on-demand&quot; as a
+polite way of saying &quot;never&quot;, which is not what the ADR says.</li>
+<li><strong>Ship all nine, but reorder so the gates come early.</strong> This fixes §4&#39;s defect and nothing else — the
+user still meets nine unavoidable questions before seeing the product. It addresses the symptom
+#318&#39;s Halt comment happened to name and leaves ADR-016&#39;s actual objection standing.</li>
+<li><strong>Segment 2 as a second interview phase, skippable.</strong> Rejected as the worst of both: it is still a
+pre-product flow, and a skip button is not the same as a catalog the user opens on purpose — it
+would also leave ADR-016&#39;s on-demand half still untested.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0030-system-initiated-deletion-of-unverified-accounts.html"><span class="eyebrow">Previous</span><span>ADR-0030</span></a><a class="step step-next" href="0032-nothing-on-screen-promises-what-the-slice-does-not-deliver.html"><span class="eyebrow">Next</span><span>ADR-0032</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

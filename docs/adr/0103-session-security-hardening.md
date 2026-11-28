@@ -9,7 +9,7 @@
   (the `UserContextGuard` seam, the one shared `trustedOrigins` allowlist, and §5's note that `SameSite=None`
   removes the cookie's own CSRF defence), [ADR-0027](0027-session-freshness-gate-disabled.md)
   (`session.freshAge` stays 0 — the device list depends on it), and
-  [ADR-0052](0052-agenten-zugang-mcp.md) (the MCP/OAuth bearer path, which carries no ambient cookie).
+  [ADR-0052](0052-agent-access-mcp.md) (the MCP/OAuth bearer path, which carries no ambient cookie).
 - **Context tags:** security, auth
 - **Component:** `apps/api` · better-auth 1.7.15
 

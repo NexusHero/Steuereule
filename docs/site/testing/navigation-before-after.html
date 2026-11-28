@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Navigation before/after (#450 part 2A) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../decisions.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Testing</p>
+        <h1>Navigation before/after (#450 part 2A)</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#what-is-measured">What is measured</a></li><li><a class="chip" href="#result">Result</a></li><li><a class="chip" href="#reading-the-results">Reading the results</a></li><li><a class="chip" href="#budgets-d5">Budgets (D5)</a></li><li><a class="chip" href="#re-measuring-the-before-state">Re-measuring the before state</a></li></ul>
+      </header>
+      <article class="prose">
+<p>As of: 11.11.2026. <strong>Before</strong> = tag <code>baseline/pre-443</code> (commit <code>1990ed3</code>, the tunnel before #443), <strong>after</strong> = <code>main</code> with #443 (hub cockpit, sheets, URL per screen). Measured with <code>e2e/navigation-efficiency/measure.mjs</code> against both states, each with its own API and web build; raw data in <code>e2e/navigation-efficiency/results/</code>.</p>
+<h2 id="what-is-measured"><a class="anchor" href="#what-is-measured" aria-hidden="true" tabindex="-1">#</a>What is measured</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Task</th>
+<th align="left">Flow</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">First run</td>
+<td align="left">The persona&#39;s scenario script from the respective commit (01, 02, 04, 05, 07), from registration to the printout. Both commits have their own scripts for their own UI.</td>
+</tr>
+<tr>
+<td align="left">Correction</td>
+<td align="left">From the cockpit, change the main amount (gross wage; for the Grenzgänger (cross-border commuter) the gross wage in the Lohnausweis (Swiss salary certificate); for the pensioner the capital income) and back to the cockpit.</td>
+</tr>
+<tr>
+<td align="left">Interruption</td>
+<td align="left">In the second screen (working days; for the pensioner capital) type a value, switch to documents, go back, complete the screen.</td>
+</tr>
+<tr>
+<td align="left">Re-entry</td>
+<td align="left">In this screen, close the browser, reopen the last open address, count until the same screen is back.</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li><strong>Interactions:</strong> clicks plus key presses (an input counts one character per digit). Opening the address does not count.</li>
+<li><strong>Screens:</strong> newly mounted screens and sheets (<code>screen-container</code>). The old app had the same URL for all screens, so screens are not counted via URLs.</li>
+<li><strong>Time:</strong> wall clock of the automated run, not human pace. <strong>Slowest interaction:</strong> the browser&#39;s Event Timing (approximation of INP).</li>
+</ul>
+<h2 id="result"><a class="anchor" href="#result" aria-hidden="true" tabindex="-1">#</a>Result</h2>
+<div class="table"><table>
+<thead>
+<tr>
+<th align="left">Persona</th>
+<th align="left">Task</th>
+<th align="right">Interactions before</th>
+<th align="right">after</th>
+<th align="right">Δ</th>
+<th align="right">Screens before</th>
+<th align="right">after</th>
+<th align="right">Time before (s)</th>
+<th align="right">after (s)</th>
+<th align="right">slowest interaction before (ms)</th>
+<th align="right">after (ms)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">Lena (#01)</td>
+<td align="left">First run</td>
+<td align="right">257</td>
+<td align="right">261</td>
+<td align="right">+4</td>
+<td align="right">30</td>
+<td align="right">30</td>
+<td align="right">15.6</td>
+<td align="right">16.1</td>
+<td align="right">80</td>
+<td align="right">80</td>
+</tr>
+<tr>
+<td align="left">Lena (#01)</td>
+<td align="left">Correction</td>
+<td align="right">10</td>
+<td align="right">7</td>
+<td align="right">-3</td>
+<td align="right">10</td>
+<td align="right">2</td>
+<td align="right">2.7</td>
+<td align="right">0.1</td>
+<td align="right">32</td>
+<td align="right">48</td>
+</tr>
+<tr>
+<td align="left">Lena (#01)</td>
+<td align="left">Interruption</td>
+<td align="right">11</td>
+<td align="right">9</td>
+<td align="right">-2</td>
+<td align="right">11</td>
+<td align="right">3</td>
+<td align="right">4.1</td>
+<td align="right">1.6</td>
+<td align="right">24</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Lena (#01)</td>
+<td align="left">Re-entry</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">-3</td>
+<td align="right">11</td>
+<td align="right">5</td>
+<td align="right">1.7</td>
+<td align="right">0.8</td>
+<td align="right">56</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td align="left">Brenner CH (#02)</td>
+<td align="left">First run</td>
+<td align="right">511</td>
+<td align="right">514</td>
+<td align="right">+3</td>
+<td align="right">27</td>
+<td align="right">25</td>
+<td align="right">5.6</td>
+<td align="right">6.3</td>
+<td align="right">80</td>
+<td align="right">80</td>
+</tr>
+<tr>
+<td align="left">Brenner CH (#02)</td>
+<td align="left">Correction</td>
+<td align="right">9</td>
+<td align="right">8</td>
+<td align="right">-1</td>
+<td align="right">7</td>
+<td align="right">3</td>
+<td align="right">1.8</td>
+<td align="right">0.2</td>
+<td align="right">24</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Brenner CH (#02)</td>
+<td align="left">Interruption</td>
+<td align="right">9</td>
+<td align="right">9</td>
+<td align="right">0</td>
+<td align="right">8</td>
+<td align="right">3</td>
+<td align="right">3.2</td>
+<td align="right">1.6</td>
+<td align="right">24</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Brenner CH (#02)</td>
+<td align="left">Re-entry</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">-3</td>
+<td align="right">10</td>
+<td align="right">5</td>
+<td align="right">1.7</td>
+<td align="right">0.8</td>
+<td align="right">56</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td align="left">Weber married couple (#04)</td>
+<td align="left">First run</td>
+<td align="right">522</td>
+<td align="right">528</td>
+<td align="right">+6</td>
+<td align="right">42</td>
+<td align="right">36</td>
+<td align="right">6.8</td>
+<td align="right">11.5</td>
+<td align="right">80</td>
+<td align="right">2296</td>
+</tr>
+<tr>
+<td align="left">Weber married couple (#04)</td>
+<td align="left">Correction</td>
+<td align="right">10</td>
+<td align="right">7</td>
+<td align="right">-3</td>
+<td align="right">10</td>
+<td align="right">2</td>
+<td align="right">2.7</td>
+<td align="right">0.1</td>
+<td align="right">32</td>
+<td align="right">48</td>
+</tr>
+<tr>
+<td align="left">Weber married couple (#04)</td>
+<td align="left">Interruption</td>
+<td align="right">11</td>
+<td align="right">9</td>
+<td align="right">-2</td>
+<td align="right">11</td>
+<td align="right">3</td>
+<td align="right">4.1</td>
+<td align="right">1.6</td>
+<td align="right">24</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Weber married couple (#04)</td>
+<td align="left">Re-entry</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">-3</td>
+<td align="right">11</td>
+<td align="right">5</td>
+<td align="right">1.7</td>
+<td align="right">0.8</td>
+<td align="right">56</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td align="left">Meyer pensioner (#05)</td>
+<td align="left">First run</td>
+<td align="right">210</td>
+<td align="right">212</td>
+<td align="right">+2</td>
+<td align="right">26</td>
+<td align="right">25</td>
+<td align="right">5.9</td>
+<td align="right">5.6</td>
+<td align="right">80</td>
+<td align="right">56</td>
+</tr>
+<tr>
+<td align="left">Meyer pensioner (#05)</td>
+<td align="left">Correction</td>
+<td align="right">6</td>
+<td align="right">6</td>
+<td align="right">0</td>
+<td align="right">3</td>
+<td align="right">2</td>
+<td align="right">0.9</td>
+<td align="right">0.1</td>
+<td align="right">32</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Meyer pensioner (#05)</td>
+<td align="left">Interruption</td>
+<td align="right">8</td>
+<td align="right">7</td>
+<td align="right">-1</td>
+<td align="right">5</td>
+<td align="right">3</td>
+<td align="right">2.3</td>
+<td align="right">1.6</td>
+<td align="right">32</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Meyer pensioner (#05)</td>
+<td align="left">Re-entry</td>
+<td align="right">2</td>
+<td align="right">0</td>
+<td align="right">-2</td>
+<td align="right">6</td>
+<td align="right">5</td>
+<td align="right">0.8</td>
+<td align="right">0.8</td>
+<td align="right">56</td>
+<td align="right">0</td>
+</tr>
+<tr>
+<td align="left">Richter single parent (#07)</td>
+<td align="left">First run</td>
+<td align="right">216</td>
+<td align="right">219</td>
+<td align="right">+3</td>
+<td align="right">28</td>
+<td align="right">25</td>
+<td align="right">3.7</td>
+<td align="right">4.2</td>
+<td align="right">80</td>
+<td align="right">72</td>
+</tr>
+<tr>
+<td align="left">Richter single parent (#07)</td>
+<td align="left">Correction</td>
+<td align="right">10</td>
+<td align="right">7</td>
+<td align="right">-3</td>
+<td align="right">10</td>
+<td align="right">2</td>
+<td align="right">2.7</td>
+<td align="right">0.1</td>
+<td align="right">32</td>
+<td align="right">32</td>
+</tr>
+<tr>
+<td align="left">Richter single parent (#07)</td>
+<td align="left">Interruption</td>
+<td align="right">11</td>
+<td align="right">9</td>
+<td align="right">-2</td>
+<td align="right">11</td>
+<td align="right">3</td>
+<td align="right">4.1</td>
+<td align="right">1.5</td>
+<td align="right">24</td>
+<td align="right">48</td>
+</tr>
+<tr>
+<td align="left">Richter single parent (#07)</td>
+<td align="left">Re-entry</td>
+<td align="right">3</td>
+<td align="right">0</td>
+<td align="right">-3</td>
+<td align="right">11</td>
+<td align="right">5</td>
+<td align="right">1.7</td>
+<td align="right">0.7</td>
+<td align="right">48</td>
+<td align="right">0</td>
+</tr>
+</tbody></table></div>
+<h2 id="reading-the-results"><a class="anchor" href="#reading-the-results" aria-hidden="true" tabindex="-1">#</a>Reading the results</h2>
+<ul>
+<li><strong>First run:</strong> afterwards 2 to 6 more interactions. That is the expected price for „Nächster Schritt“ (&quot;Next step&quot;) instead of automatically jumping ahead (note in the ticket).</li>
+<li><strong>Correction, interruption, re-entry:</strong> afterwards fewer interactions and clearly fewer screens. On re-entry the deep link lands directly in the screen (0 interactions instead of 2 to 3).</li>
+<li><strong>Pensioner (#05):</strong> The capital screen was already reachable directly from the cockpit before, so there is hardly any difference for the correction.</li>
+<li><strong>Limits:</strong> Same device, local stack, one measurement per cell. Times fluctuate, so only the interactions are a gate.</li>
+</ul>
+<h2 id="budgets-d5"><a class="anchor" href="#budgets-d5" aria-hidden="true" tabindex="-1">#</a>Budgets (D5)</h2>
+<p><code>e2e/navigation-efficiency/budgets.json</code> = measured interactions after + 10 %, rounded up. The step &quot;Navigation efficiency budgets&quot; in the job &quot;Browser gates&quot; measures the new state on every PR and fails when a persona task exceeds its budget. After an intended change: <code>node e2e/navigation-efficiency/measure.mjs --update-budgets</code> and the reason in the PR.</p>
+<h2 id="re-measuring-the-before-state"><a class="anchor" href="#re-measuring-the-before-state" aria-hidden="true" tabindex="-1">#</a>Re-measuring the before state</h2>
+<pre><code class="language-bash">git worktree add ../steuereule-alt baseline/pre-443
+# dort: pnpm install, eigene DB migrieren, API bauen und starten, Web exportieren und ausliefern (andere Ports)
+NAV_VARIANT=baseline NAV_ROOT=../steuereule-alt API_ORIGIN=… WEB_ORIGIN=… DATABASE_URL=… node e2e/navigation-efficiency/measure.mjs
+node e2e/navigation-efficiency/compare.mjs /tmp/navigation-efficiency/baseline.json /tmp/navigation-efficiency/neu.json
+</code></pre>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

@@ -158,6 +158,8 @@ The tariff functions have a Vitest benchmark (`pnpm --filter @steuereule/core be
 
 **Ports & Adapters (hexagonal architecture), checked by tools rather than by review.**
 
+The full architecture documentation is [`docs/architecture.md`](docs/architecture.md). The whole of `docs/` (the architecture with one page per chapter, every ADR, every other document) is laid out in the app's design under [`docs/site/`](docs/site/index.html); open `docs/site/index.html` in a browser from a checkout.
+
 - **Domain core.** [`@steuereule/core`](packages/core/) holds every tax rule as pure TypeScript with no I/O. It has no runtime dependencies, so a framework import does not even resolve. [`architecture.test.ts`](packages/core/src/architecture.test.ts) pins the allowed import directions between its folders and forbids import cycles between files.
 - **Application ring.** The services in `apps/api` depend on the core and on *ports*: an interface plus a DI token, such as `ReceiptRepository` / `RECEIPT_REPOSITORY`, `SingleShotModel`, `PaymentProvider` or `EmailSender`.
 - **Adapters.** The database client and each external SDK may be imported only by the files named for it: Prisma in `*.prisma.ts` and `src/prisma/`, LangChain in eight files of `src/ki/`, Stripe in `stripe-payment-provider.ts`. [`apps/api/test/architecture.test.ts`](apps/api/test/architecture.test.ts) fails on any other import, and on any new import between feature modules ([ADR-0102](docs/adr/0102-ports-and-adapters-enforced-by-architecture-tests.md)).

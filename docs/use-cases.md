@@ -131,7 +131,7 @@ This document provides the **functional use-case view** of Steuereule. It names 
   5. An undo function allows every assistant change to be reverted immediately.
 
 ### UC-11: DSGVO data export & account deletion
-* **Goal:** Complete fulfilment of the data subject rights under Art. 15/20 and Art. 17 DSGVO ([ADR-0013](adr/0013-account-deletion.md), [ADR-0016](adr/0016-dsgvo-loeschung-und-export-im-kern.md)).
+* **Goal:** Complete fulfilment of the data subject rights under Art. 15/20 and Art. 17 DSGVO ([ADR-0013](adr/0013-dsgvo-export-and-account-deletion.md), [ADR-0016](adr/0016-dsgvo-loeschung-und-export-im-kern.md)).
 * **Flow:**
   1. **Art. 15/20 export:** `GET /v1/account/export` decrypts and delivers all stored data (profile, master data, LStB, pensions, documents, audit logs) as structured JSON and PDF.
   2. **Art. 17 deletion:** `DELETE /v1/account` deletes all of the user's records in all tables in a cascade within a single atomic `$transaction`. DMMF-based coverage tests prevent orphaned tax data.

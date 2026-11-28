@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0089 — The stream: one selection instead of yes/no pages, one page per topic — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0089</p>
+        <h1>The stream: one selection instead of yes/no pages, one page per topic <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#addendum-18112026-person-b-and-german-employment-in-the-stream">Addendum 18.11.2026: Person B and German employment in the stream</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-14</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>packages/core/src/interview/{interview,strom}.ts</code>, <code>apps/api/src/interview/interview.service.ts</code>, <code>apps/mobile-web/src/screens/strom/</code>, <code>apps/mobile-web/src/screens/cockpit/CockpitScreen.tsx</code>, <code>apps/mobile-web/src/navigation/{routes,linking,CockpitStack}.ts(x)</code>, <code>e2e/scenarios/</code></li>
+<li><strong>Builds on:</strong> ADR-0031 (catalog engine), ADR-0045 (value-first), ADR-0066 (the owl&#39;s field catalog), ADR-0088 (Person B)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>The engine asked each question on a page of its own. Measured with the efficiency meter:</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Case</th>
+<th>Pages</th>
+<th>of which &quot;No&quot;</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Lena (single, employed)</td>
+<td>17</td>
+<td>13</td>
+</tr>
+<tr>
+<td>Richter (single parent)</td>
+<td>21</td>
+<td>13</td>
+</tr>
+<tr>
+<td>Sommer (Grenzgänger family, without B)</td>
+<td>27</td>
+<td>10</td>
+</tr>
+</tbody></table></div>
+<p>On top of that came the ways back: after each topic it went to the cockpit and from there to the next topic.</p>
+<p>The goal is not an &quot;Elster 2.0&quot;, but a path that gets the user to the goal considerably faster. The chat with the owl stays available with all its capabilities.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<p>The stream is the default path through the tax return. „Weiter“ (&quot;Continue&quot;) in the cockpit always leads to its next open point. The steps:</p>
+<ol>
+<li><strong>Base:</strong> one page with what branches: work, Switzerland, children, marital status and, for married users, what the partner does. Hints such as trade business or other foreign countries are on the page itself.</li>
+<li><strong>Documents first:</strong> the forms of the path, i.e. LStB, Swiss Lohnausweis (salary certificate) or pension, then commute and children. They run as steps of their own; nothing is rebuilt. Their „Weiter“ leads to the next step instead of the cockpit.
+A Grenzgänger (cross-border commuter) with a job change during the year additionally gets the
+German LStB after the commute. The change is recognizable by the end of the first commute or by
+the second commute (ADR-0079) or by an already entered LStB. Found in the 2024 real case: there
+the LStB was missing in the stream.</li>
+<li><strong>Selection</strong> „Was trifft {Jahr} auf dich zu?“ (&quot;What applies to you in {year}?&quot;): all topics on one page, grouped by work, housing, provision, health and other. Rare topics (severance pay, capital/rental income, advance tax payments) are behind „Mehr anzeigen“ (&quot;Show more&quot;). Topics with a type (side job, income) ask for the type directly on tap. Anything not selected is answered with &quot;No&quot; and never asked again.</li>
+<li><strong>One page per selected topic</strong> with all amounts of the topic, for example health insurance, long-term care insurance and optional benefits together. Below it says which form the amount goes into. „Später“ (&quot;Later&quot;) marks amounts that may wait; the topic then stays open. After that comes single parent, where it applies.</li>
+<li><strong>Summary:</strong> the refund, the applied items with their measured effect in euros, the open items to tap, then „Abgabe vorbereiten“ (&quot;Prepare filing&quot;).</li>
+</ol>
+<p>Each step has its own address: <code>/app/steuerjahr/:jahr/strom/:schritt</code>. If the base is still open,
+every later step leads to the base page.</p>
+<p>The following rules belong to this:</p>
+<ul>
+<li><strong>No new field.</strong> The selection is only a view on the existing yes/no answers of the catalogs. Owl, printout, estimate and field catalog (ADR-0066) read and write the same fields as before. What the owl enters in the chat is already selected and filled in the stream.</li>
+<li><strong>Order-free catalogs.</strong> Lebenslagen, Sonderausgaben, segment 2 and Alleinerziehend have <code>orderFree</code>: their questions are reachable individually, a follow-up amount still only after its &quot;Yes&quot;. The base stays ordered.</li>
+<li><strong>Further training</strong> is allowed as a single question from segment 2 (<code>fortbildung</code>, <code>fortbildung-kosten</code>). The rest of segment 2 stays locked.</li>
+<li><strong>Deselecting</strong> a topic with an amount asks first. The amount stays stored in case the topic is selected again.</li>
+<li><strong>Changing later:</strong> an open item in the summary opens only its one page.</li>
+<li><strong>Catalogs remain</strong> reachable as „Alles ansehen“ (&quot;View all&quot;) via the cockpit tiles, unchanged.</li>
+<li><strong>Effect:</strong> only what a page changed in the estimate is measured, after saving. There is no live estimate per keystroke; before saving, the page therefore names only the form line.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li><strong>Shorter path:</strong> Lena manages with base, LStB, commute, selection, donations and summary, i.e. 5 steps plus summary instead of 17 question pages. The efficiency meter reports the numbers and aborts nothing.</li>
+<li><strong>E2E:</strong> the scenarios walk the stream. Where a scenario checks a catalog itself, it uses the tile.</li>
+<li><strong>Open, separate PRs:</strong><ul>
+<li>Person B in the stream: „Was trifft auf ‹Name› zu?“ (&quot;What applies to ‹name›?&quot;); until then „Für wen?“ (&quot;For whom?&quot;) stays in the catalogs.</li>
+<li>Documents prefill the selection.</li>
+<li>The previous year prefills the selection („Hat sich etwas geändert?“ (&quot;Has anything changed?&quot;)).</li>
+</ul>
+</li>
+</ul>
+<h2 id="addendum-18112026-person-b-and-german-employment-in-the-stream"><a class="anchor" href="#addendum-18112026-person-b-and-german-employment-in-the-stream" aria-hidden="true" tabindex="-1">#</a>Addendum 18.11.2026: Person B and German employment in the stream</h2>
+<p>The manual real-data test (Grenzgänger married couple, 2024 with a change from Germany to Switzerland) showed two gaps: after „Arbeitet dein Partner auch in der Schweiz?“ (&quot;Does your partner also work in Switzerland?&quot;) the stream never asked for the partner&#39;s documents, and the German Lohnsteuerbescheinigung (wage tax certificate) only entered the stream via a job change in the commute. After the stream there was therefore a refund of €27,688 instead of an additional payment of €3,797.90.</p>
+<ul>
+<li><strong>German employment in the base:</strong> after „Ja, in die Schweiz“ (&quot;Yes, to Switzerland&quot;) the base asks „Warst du im Jahr auch in Deutschland angestellt?“ (&quot;Were you also employed in Germany during the year?&quot;) (<code>de-job</code>), likewise for a Grenzgänger partner (<code>partner-de-job</code>). It does not ask pensioners (new condition <code>askedWhen</code> on the question). &quot;Also in Germany&quot; sets the same signal as the job change (ADR-0079): LStB step in the stream, LStB tile open and mandatory.</li>
+<li><strong>Partner step:</strong> in a Zusammenveranlagung (joint assessment) without B&#39;s own account, the base is followed by „Wer ist dein Partner?“ (&quot;Who is your partner?&quot;) with first name and date of birth. The rest of B stays in „Angaben für die Erklärung“ (&quot;Details for the tax return&quot;).</li>
+<li><strong>B&#39;s forms</strong> come after one&#39;s own and before the children, depending on the base: Grenzgänger Lohnausweis and commute (plus LStB for German employment), employee in Germany LStB and commute, pensioner the pension. Addresses: <code>partner-schweiz</code>, <code>partner-arbeitsweg</code>, <code>partner-lohnsteuerbescheinigung</code>, <code>partner-rente</code>. The forms call B by name.</li>
+<li><strong>Progress</strong> counts these steps too. Existing accounts honestly see them as open; anything already entered counts as done immediately. This settles the open point &quot;Person B in the stream&quot; above for forms; „Was trifft auf ‹Name› zu?“ for the topics stays open.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0088-person-b-complete-and-kinderzulage.html"><span class="eyebrow">Previous</span><span>ADR-0088</span></a><a class="step step-next" href="0090-real-case-findings-stream.html"><span class="eyebrow">Next</span><span>ADR-0090</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

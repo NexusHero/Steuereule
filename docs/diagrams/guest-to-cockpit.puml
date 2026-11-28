@@ -1,0 +1,22 @@
+@startuml guest-to-cockpit
+!include ../diagram-style.puml
+' docs/architecture.md §6.1: from guest to cockpit.
+hide footbox
+autonumber
+actor "User" as U
+participant "Web app" as W
+participant "UserContextGuard" as G
+participant "InterviewController" as I
+participant "CockpitController" as C
+participant "@steuereule/core" as K
+
+U -> W : opens the app
+W -> I : POST /v1/steuerjahre/:jahr/interview/antworten
+I -> G : canActivate
+note over G : no session cookie, no guest cookie:\nnew guest id, signed cookie se_guest_session
+I -> K : isValidAnswer, nextStepFor
+I --> W : next step, open items
+W -> C : GET /v1/steuerjahre/:jahr/cockpit
+C -> K : cockpitRangeFromInputs
+C --> W : refund range, open items
+@enduml

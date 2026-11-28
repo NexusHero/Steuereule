@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Runtime view — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item is-active" href="06-runtime-view.html" aria-current="page"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="decisions.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 6 of 12</p>
+        <h1 id="6-runtime-view">Runtime view</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#61-from-guest-to-cockpit">6.1 From guest to cockpit</a></li><li><a class="chip" href="#62-unlocking-and-printing">6.2 Unlocking and printing</a></li><li><a class="chip" href="#63-reading-a-receipt">6.3 Reading a receipt</a></li></ul>
+      </header>
+      <article class="prose">
+<h2 id="61-from-guest-to-cockpit"><a class="anchor" href="#61-from-guest-to-cockpit" aria-hidden="true" tabindex="-1">#</a>6.1 From guest to cockpit</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/guest-to-cockpit.dark.svg">
+  <img src="../diagrams/guest-to-cockpit.svg" alt="Sequence: from the first request of a guest to the cockpit">
+</picture><p><em>(source: <a href="../diagrams/guest-to-cockpit.puml"><code>guest-to-cockpit.puml</code></a>)</em></p>
+<p>The guard is the only place that sets the user id of a request (<code>auth/user-context.guard.ts</code>). No route issues a guest session: the first guarded request without a cookie creates one. Routes marked <code>@RequiresAccount()</code> reject guests, among them the wage tax certificate and the detailed tax estimate. When the guest creates an account, <code>auth/guest-account-upgrade.prisma.ts</code> moves their data in one transaction (<a href="adr/0012-session-guard-coexistence-and-guest-upgrade.html">ADR-0012</a>, <a href="adr/0045-value-first-funnel.html">ADR-0045</a>).</p>
+<h2 id="62-unlocking-and-printing"><a class="anchor" href="#62-unlocking-and-printing" aria-hidden="true" tabindex="-1">#</a>6.2 Unlocking and printing</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/unlock-and-print.dark.svg">
+  <img src="../diagrams/unlock-and-print.svg" alt="Sequence: pre-check, Stripe checkout, webhook, unlock and the printed PDF">
+</picture><p><em>(source: <a href="../diagrams/unlock-and-print.puml"><code>unlock-and-print.puml</code></a>)</em></p>
+<p>The price is not in the code; it is a price id in the configuration. <code>renderForms</code> writes into the official PDF templates with <code>pdf-lib</code> and throws when a value does not fit its box.</p>
+<h2 id="63-reading-a-receipt"><a class="anchor" href="#63-reading-a-receipt" aria-hidden="true" tabindex="-1">#</a>6.3 Reading a receipt</h2>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="../diagrams/reading-a-receipt.dark.svg">
+  <img src="../diagrams/reading-a-receipt.svg" alt="Sequence: a receipt is read in the browser, by fixed rules and, where needed, by one model call">
+</picture><p><em>(source: <a href="../diagrams/reading-a-receipt.puml"><code>reading-a-receipt.puml</code></a>)</em></p>
+<p>Three lines of defence come before the model. For the Swiss salary certificate and the wage tax certificate only an allowlist of rows leaves the server (<a href="adr/0058-lstb-text-fallback-allowlist.html">ADR-0058</a>), and the model is asked only when the fixed rules left a field empty. Then <code>scrubDocumentTextPii</code> removes names, addresses and identifiers. Finally <code>checkPiiFree</code> aborts if the text still contains an IBAN or a tax id. Values from OCR never count as read with certainty and have to be confirmed.</p>
+<p>Each strategy&#39;s <code>parse()</code> is a short sequence of named steps: read with the fixed rules, fill gaps with the model, decide whose document it is, stage the drafts, build the response. The steps several strategies share live in <code>receipt/parse/document-parse-steps.ts</code>: <code>resolveVisionModel</code> (kill switch and <code>vision_ocr</code> slot), <code>isolateGrounding</code> (<code>scrubDocumentTextPii</code>, then <code>checkPiiFree</code>), <code>extractWithModel</code> (one call through the <code>SingleShotModel</code> port with a timeout, then JSON extraction and the zod schema), and the response pieces (<code>stagingEngine</code>, <code>yearConflictOf</code>, <code>noTaxYearReason</code>, <code>stagedDraftsOf</code>). The pure steps of the receipt strategy (<code>kind: &#39;auto&#39;</code>) are in <code>receipt/parse/auto-receipt-steps.ts</code>.</p>
+<hr>
+
+      </article>
+      
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="05-building-block-view.html"><span class="eyebrow">Previous</span><span>Building block view</span></a><a class="step step-next" href="07-deployment-view.html"><span class="eyebrow">Next</span><span>Deployment view</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

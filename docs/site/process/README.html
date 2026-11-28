@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>How this team works — SteuerEule engineering charter — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="../decisions.html"><span>Decisions</span></a></li><li><a class="nav-item is-active" href="../documents.html" aria-current="page"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Process</p>
+        <h1>How this team works — SteuerEule engineering charter</h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#the-team">The team</a></li><li><a class="chip" href="#the-delivery-pipeline--quality-before-the-pr">The delivery pipeline — quality before the PR</a></li><li><a class="chip" href="#the-gates">The gates</a></li><li><a class="chip" href="#ceremonies">Ceremonies</a></li><li><a class="chip" href="#standing-conventions">Standing conventions</a></li><li><a class="chip" href="#sources-of-record">Sources of record</a></li></ul>
+      </header>
+      <article class="prose">
+<p>SteuerEule is built by a small, role-based crew that runs a disciplined, shift-left delivery process.
+This page is the single front door to <em>how we work</em>: the team, the pipeline, the gates, the
+ceremonies, and the standing conventions. Each section points to the detailed source of record — this
+charter summarises and indexes; it does not replace the ADRs, the role definitions, or the pipeline
+doc.</p>
+<h2 id="the-team"><a class="anchor" href="#the-team" aria-hidden="true" tabindex="-1">#</a>The team</h2>
+<p>Six roles, each a defined persona with a model, tools, and boundaries (source of record:
+<a href="../../../.claude/agents"><code>.claude/agents/</code></a>).</p>
+<div class="table"><table>
+<thead>
+<tr>
+<th>Role</th>
+<th>Persona</th>
+<th>Owns</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Scrum Master</td>
+<td><strong>Suhay</strong></td>
+<td>The backlog and the board, prioritisation, <strong>readiness &amp; refinement (with Musti)</strong>, risk tiers, the WIP limit, findings→tickets, the Requirements Register&#39;s state, ceremonies (ADR-0018)</td>
+</tr>
+<tr>
+<td>Lead / Architect</td>
+<td><strong>Musti</strong></td>
+<td>Technical grilling, <strong>review on the draft PR</strong>, architecture &amp; ADRs, the living arc42, the Clean-Code bar, the right to bump a tier <strong>up</strong></td>
+</tr>
+<tr>
+<td>Frontend dev</td>
+<td><strong>Kaan</strong></td>
+<td>UI slices (Expo/RN-Web, the Funke design system, i18n, honest states)</td>
+</tr>
+<tr>
+<td>Backend dev</td>
+<td><strong>Robin</strong></td>
+<td>API / data / the deterministic core (NestJS, Fastify, Prisma, EU/DSGVO)</td>
+</tr>
+<tr>
+<td>DevOps / Quality-Platform</td>
+<td><strong>Salih</strong></td>
+<td>The frictionless preview, CI gates + their <strong>realism</strong> (every escaped bug / stakeholder complaint → permanent check), the stakeholder↔pipeline ping-pong, test-to-requirement traceability</td>
+</tr>
+</tbody></table></div>
+<p>Musti reviews and architects but leaves the feature implementation to the two developers (Kaan,
+Robin). <strong>ADR-0016 retired the Product Owner and Scrum Master seats; ADR-0018 brought the Scrum
+Master back</strong> — the board decayed exactly as ADR-0016 predicted (55 open issues, a dozen of them
+delivered; a register that drifted twice), so backlog, readiness, tiers, the WIP limit and
+findings→tickets left the lead again. The <strong>Product Owner seat stays retired</strong>: requirements and
+acceptance sit with the <strong>stakeholder</strong>, working from the Requirements Register
+(<code>docs/requirements/register.md</code>) and the product/design ADRs. Escalation for requirement questions:
+<strong>devs read the register → ask the stakeholder</strong>; for architecture/future-shaping calls Musti <strong>asks
+the stakeholder</strong> via the <code>ask-matt</code> flow and records the outcome as an ADR.</p>
+<h2 id="the-delivery-pipeline--quality-before-the-pr"><a class="anchor" href="#the-delivery-pipeline--quality-before-the-pr" aria-hidden="true" tabindex="-1">#</a>The delivery pipeline — quality before the PR</h2>
+<p>Full flow with diagram: <a href="delivery-pipeline.html"><code>delivery-pipeline.md</code></a>. In short, the work happens
+<strong>in the open, on the draft pull request</strong> (ADR-0017):</p>
+<ol>
+<li><strong>Refinement</strong> — <strong>Suhay and Musti grill it together</strong> (ADR-0018): the block carries the REQ, one
+Given–When–Then, the ADR check, out-of-scope, which existing product claim this might make untrue,
+and the risk tier. The <strong>stakeholder rules on it</strong>. No dev starts without one, and <strong>half a block is
+not one</strong> — a refinement either of them ran alone gets sent back.</li>
+<li>Devs implement <strong>tests-first</strong> until their own gate is green.</li>
+<li><strong>The dev opens a draft PR</strong> — the workbench, deliberately public. CI starts here.</li>
+<li><strong>Musti reviews on the draft and comments as Musti</strong>, posting his record <em>even when he finds
+nothing</em>. Advances on <strong>no unresolved findings</strong>, not on &quot;no comments&quot;. He runs <strong>before</strong> Salih —
+his review costs about a third of a real-stack run. <strong>The draft opening is the trigger</strong>: he starts
+on his own, and nobody — including the orchestrator — gates that (<code>delivery-pipeline.md</code> § gate 4).</li>
+<li><strong>Salih tests, risk-tiered</strong> — not at all on T3, on T2 when a user can see a difference, in full on
+T1. On a pass he posts his record and <strong>flips the PR to ready</strong> — that flip is the signal that both
+gates are through.</li>
+<li>The stakeholder reviews the <strong>non-draft</strong> queue and merges.</li>
+</ol>
+<p>A PR reaching the stakeholder is already reviewed and tested — their pass is an <em>audit</em>, not a
+discovery.</p>
+<h2 id="the-gates"><a class="anchor" href="#the-gates" aria-hidden="true" tabindex="-1">#</a>The gates</h2>
+<ul>
+<li><strong>Two green lights, in public, on the draft PR (ADR-0017).</strong> The dev opens a <strong>draft</strong> as soon as
+their own gate is green; Musti reviews there and posts his record even when he finds nothing; Salih
+then runs and <strong>he alone flips it to ready</strong>. Where the tier stood Salih down, or the author is the
+only crew member whose gate applies, nobody in the crew flips it and it goes to the stakeholder
+(§7a). <code>ready</code> means <em>every gate this PR was owed has passed</em>.</li>
+<li><strong>Depth follows a risk tier — T1 critical / T2 standard / T3 trivial.</strong> Suhay tags each slice at
+readiness (ADR-0018), and Musti may bump it <strong>up</strong>, never silently down; the tier sets how deep the
+gates go, so an auth flow gets the full pass
+and a static splash screen doesn&#39;t (<code>delivery-pipeline.md</code> § Risk tiers). Honesty, tests-first, and
+vertical-never-mock hold at every tier.</li>
+<li><strong>WIP limit — at most two slices in the review+test queue.</strong> Build is two-wide; review and test are
+single-lane. When the queue is full, a freed dev helps <em>land</em> what&#39;s queued rather than start a third
+branch. Landing finished work is throughput; a growing pile isn&#39;t.</li>
+<li><strong>CI must be the <em>real</em> gate.</strong> Two green lights are only as strong as CI, so: the
+compliance-critical tests (encryption-at-rest, the audit log) <strong>run in CI against a real service</strong>,
+a <strong>real boot/smoke</strong> step proves the server actually starts, and <strong>GitHub branch protection</strong>
+enforces required checks + review (no merge on pending/red, no bypass). Until branch protection is
+on, an <code>APPROVE</code> is a personal promise, not an enforced invariant.</li>
+<li><strong>Every milestone yields a valid, testable artifact</strong> the stakeholder can exercise (a one-command
+seeded stack / preview) — not green tests alone.</li>
+<li><strong>Every bug is fixed now, ticketed for the record — nothing parked for later:</strong> a real defect is
+fixed the moment it&#39;s found (before the PR if a local gate caught it, on the PR if CI/review did); a
+trivial-but-real nit (a wrong comment, dead reference) is resolved <em>in the review loop</em>. Musti files
+a ticket for every finding as the <strong>record</strong> of the fix — opened <em>and closed</em> inside the slice, never
+a deferral. Only future <strong>feature scope</strong> is planned forward; a known bug never is.</li>
+</ul>
+<h2 id="ceremonies"><a class="anchor" href="#ceremonies" aria-hidden="true" tabindex="-1">#</a>Ceremonies</h2>
+<ul>
+<li><strong>Planning</strong> — the stakeholder and Musti pick and refine the committed items; cross-track contracts
+are frozen so both devs can start in parallel.</li>
+<li><strong>Milestone acceptance</strong> — when a milestone lands, the <strong>stakeholder</strong> inspects the <em>running product</em>
+on Salih&#39;s preview against the Requirements Register, and what they find becomes concrete tickets.
+With the PO seat retired (ADR-0016) this pass is the only thing standing between &quot;tests are green&quot;
+and &quot;it does what we promised&quot; — if it is skipped, nothing else catches requirement drift.</li>
+<li><strong>Retrospective</strong> — at the end of each iteration/milestone, blameless feedback from everyone. Musti
+synthesises it, turns each improvement into an owned action item, <strong>plays it back to the whole team</strong>
+(each participant hears their commitment), and <strong>drives it to done</strong> — verifying on the next slices
+that the critique was actually applied, not just filed.</li>
+</ul>
+<h2 id="standing-conventions"><a class="anchor" href="#standing-conventions" aria-hidden="true" tabindex="-1">#</a>Standing conventions</h2>
+<ul>
+<li><strong>Vertical, never mock</strong> (ADR-0003/0005) — a slice runs end-to-end on real seeded data; no mock data
+in shipped code; no real PII (synthetic fixtures only).</li>
+<li><strong>Commit hygiene</strong> (<code>ultimate-dev-process</code> §5.2) — work ends committed and pushed to its own branch;
+never commit over another worker&#39;s in-flight tree.</li>
+<li><strong>Attribution</strong> — commit messages and PR titles/bodies carry <strong>no AI-assistant attribution</strong>;
+everything is authored as <strong>NexusHero <a href="mailto:suhay.sevinc@gmail.com">suhay.sevinc@gmail.com</a></strong>. (This applies only to commits/PRs;
+the rest of the repo, incl. this <code>.claude/</code>-adjacent tooling, is unrestricted.)</li>
+<li><strong>Language</strong> — the development process is <strong>English</strong>; the product/app language is <strong>German</strong>
+(de base + en switchable, ADR-0006); tax terms stay German in both locales.</li>
+<li><strong>Reuse over reinvention</strong> — reach for the existing component/util/pattern first; a new
+framework/major dependency is a forward-looking decision Musti escalates to the stakeholder, not a
+casual add.</li>
+<li><strong>Speaking code</strong> — comments explain <em>why</em>, not <em>what</em>; a comment-dense diff is a smell.</li>
+<li><strong>Definition of Done, four levels (ADR-0036)</strong> — <em>Ticket/Slice</em> (the PR-template checklist: TDD,
+<code>typecheck</code> + <code>oxlint</code> green, draft-PR review, acceptance test on the REQ&#39;s tier, no bespoke
+machinery without an ADR, why-only comments, a security/performance posture line, ADR/register
+upkeep) → <em>REQ</em> (register <code>Done</code>) → <em>Phase</em> (all tickets done, edges resolved, demoable, status +
+progress.db updated) → <em>1.0</em> (&quot;zeigbar&quot;). Source: <a href="../roadmap-1.0.html"><code>docs/roadmap-1.0.md</code></a> and
+<a href="../adr/0036-definition-of-done.html">ADR-0036</a>.</li>
+<li><strong>Living architecture docs</strong> — the arc42 is as important as the software; diagrams are <strong>PlantUML</strong>
+(text source committed) exported to <strong>SVG</strong> and referenced from the docs; Musti checks &quot;is the arc42
+updated?&quot; on every completed task.</li>
+</ul>
+<h2 id="sources-of-record"><a class="anchor" href="#sources-of-record" aria-hidden="true" tabindex="-1">#</a>Sources of record</h2>
+<ul>
+<li>Roles &amp; personas — <a href="../../../.claude/agents"><code>.claude/agents/</code></a></li>
+<li>Delivery flow — <a href="delivery-pipeline.html"><code>delivery-pipeline.md</code></a></li>
+<li>Engineering decisions — <a href="../../adr"><code>docs/adr/</code></a> (and the product/design ADRs referenced there)</li>
+<li>Requirements — <a href="../requirements/register.html"><code>docs/requirements/register.md</code></a></li>
+<li>The governing development process — the <code>ultimate-dev-process</code> skill</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../documents.html">All documents</a></p>
+      
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

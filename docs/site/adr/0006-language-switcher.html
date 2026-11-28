@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0006 — German base + English as a switchable UI locale (language switcher) — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0006</p>
+        <h1>German base + English as a switchable UI locale (language switcher) <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li><li><a class="chip" href="#alternatives-considered">Alternatives considered</a></li></ul>
+      </header>
+      <article class="prose">
+<p><strong>Status:</strong> Accepted · 2026-07-22 · refines ADR-0002</p>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>ADR-0002 chose i18next/react-i18next with <strong>German as the base locale</strong> and noted &quot;adding a locale
+later needs no rewrite.&quot; The open product question was whether English is merely <em>possible later</em> or a
+<strong>first-class, shipped locale</strong> the user can switch to at runtime. Decision: ship both, switchable —
+the i18n layer is already the cost, so the switch capability is essentially free, and a bilingual
+build is a deliberate portfolio signal. The hard part is never the wiring; it is the tax/legal
+vocabulary, which does not cleanly translate.</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ul>
+<li><strong>Two shipped UI locales: <code>de</code> (base) and <code>en</code>, switchable at runtime</strong> via
+<code>i18n.changeLanguage(...)</code>, exposed as a language toggle in Profil. Detected default = <code>de</code>
+(the app targets the German-speaking market); the user&#39;s choice persists.</li>
+<li><strong>Both catalogs stay complete as we build.</strong> Every new user-facing key is added with <strong>both a <code>de</code>
+and an <code>en</code> value at creation time</strong> (review perspective 6 / ultimate-dev-process §2.5 gate). No
+English backlog accrues: English is complete for every screen that exists.</li>
+<li><strong>Tax and legal terms stay German in both locales.</strong> &quot;Anlage N&quot;, &quot;Grenzgänger&quot;, &quot;Fünftelregelung&quot;,
+&quot;zumutbare Belastung&quot;, &quot;Herkunft&quot;, &quot;Fassung&quot; are German legal concepts filed in German; in the <code>en</code>
+catalog they remain the German term (optionally with an English gloss in body copy), never a
+mistranslation. The glossary namespace is shared, not re-translated per locale.</li>
+<li><strong>Numbers, currency and dates remain <code>de-DE</code> in both locales</strong> — unchanged from ADR-0001/0002. A
+German return is German-formatted regardless of UI language; the de-DE format helpers stay the
+single formatting source. Only text goes through i18next.</li>
+</ul>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>The language switch is a text-layer concern only; <code>packages/core</code> formatting is untouched.</li>
+<li>Slightly revises the design-system SKILL rule from &quot;app language is German&quot; to &quot;German base,
+English switchable&quot; — the informal du-form and German tax vocabulary still govern the German
+catalog, and the tax terms carry into the English one.</li>
+<li>CI (later) can assert <code>de</code> and <code>en</code> key sets are identical, turning &quot;English fell behind&quot; into a
+failing check rather than a silent gap.</li>
+</ul>
+<h2 id="alternatives-considered"><a class="anchor" href="#alternatives-considered" aria-hidden="true" tabindex="-1">#</a>Alternatives considered</h2>
+<ul>
+<li><strong>German only</strong> (the earlier reading of ADR-0002) — simplest, but forecloses a near-free,
+portfolio-relevant capability and would be an expensive retrofit if wanted later.</li>
+<li><strong>English UI with de-DE money only, no German UI</strong> — wrong market fit; German must be the base.</li>
+<li><strong>Auto-translate the English catalog</strong> — rejected for tax/legal copy: a wrong translation of a
+legal term is worse than the German term shown as-is.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0005-walking-skeleton-delivery.html"><span class="eyebrow">Previous</span><span>ADR-0005</span></a><a class="step step-next" href="0007-authentication.html"><span class="eyebrow">Next</span><span>ADR-0007</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>

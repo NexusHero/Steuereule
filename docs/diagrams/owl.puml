@@ -1,0 +1,39 @@
+@startuml owl
+!include ../diagram-style.puml
+!pragma layout smetana
+' docs/architecture-subsystems.md §8: the parts of the owl.
+left to right direction
+
+rectangle "AdvisorController\n/v1/steuerjahre/:jahr/advisor" as Ctrl
+rectangle "AdvisorTurn" as Turn
+rectangle "AdvisorConversations\nAdvisorProjectNotes\nAdvisorDrafts" as Parts
+rectangle "AdvisorService\nsession, feedback, connection" as Svc
+rectangle "AdvisorRunService" as Runs
+rectangle "AdvisorCaseDigest\nAdvisorCaseFacts" as Digest
+rectangle "ADVISOR_ENGINE\nLangGraphAdvisorEngine" as Engine
+rectangle "document readers\nreceipt, lstb-scan, ch-certificate-scan,\nassessment-scan, business" as Readers
+rectangle "AdvisorDocumentStaging" as Staging
+rectangle "ADVISOR_REPOSITORY" as Repo
+rectangle "TRANSACTION_RUNNER" as Tx
+rectangle "ADVISOR_TOPIC_GUARD\nAdvisorTopicGuard" as Guard
+rectangle "createChatModelFromConfig\nAnthropic · OpenAI · Google · fake" as Factory
+rectangle "SingleShotModel" as Single
+rectangle "ADVISOR_RUN_LOG\nprocess memory or Redis" as Log
+
+Ctrl --> Turn
+Ctrl --> Parts
+Ctrl --> Svc
+Ctrl --> Runs
+Runs --> Turn
+Turn --> Parts
+Turn --> Digest
+Turn --> Engine
+Readers --> Staging
+Staging --> Digest
+Parts --> Repo
+Parts --> Tx
+Engine --> Guard
+Engine --> Factory
+Guard --> Single
+Runs --> Log
+@enduml

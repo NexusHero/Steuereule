@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Risks and technical debt — SteuerEule</title>
+  <link rel="icon" href="../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="index.html">
+        <img src="../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="index.html"><span>Overview</span></a></li><li><a class="nav-item" href="01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item is-active" href="11-risks-and-technical-debt.html" aria-current="page"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item" href="decisions.html"><span>Decisions</span></a></li><li><a class="nav-item" href="documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Chapter 11 of 12</p>
+        <h1 id="11-risks-and-technical-debt">Risks and technical debt</h1>
+        
+      </header>
+      <article class="prose">
+<div class="table"><table>
+<thead>
+<tr>
+<th align="center">#</th>
+<th align="left">Finding</th>
+<th align="left">Consequence</th>
+<th align="left">Next step</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">1</td>
+<td align="left"><strong>Asynchronous print jobs live in process memory.</strong> <code>printout/printout-job.service.ts</code> keeps them in a <code>Map</code> and starts them with <code>setImmediate</code>. There is no worker and no limit on concurrent jobs. <a href="adr/0056-asynchronous-pdf-generation-job-queue.html">ADR-0056</a> describes a queue that was not built that way.</td>
+<td align="left">On ten instances a status request finds the job only by chance. A restart loses it. The web app does not use this path at present.</td>
+<td align="left">Move the jobs to the database or to Redis, or remove the path and mark ADR-0056 as not implemented.</td>
+</tr>
+<tr>
+<td align="center">2</td>
+<td align="left"><strong>Tracing without an exporter.</strong></td>
+<td align="left">There are no distributed traces even though the code creates spans.</td>
+<td align="left">Install the OpenTelemetry SDK with an exporter.</td>
+</tr>
+<tr>
+<td align="center">3</td>
+<td align="left"><strong>SLOs without alerts.</strong> The targets in <code>sre/reliability-spec.md</code> do not exist as monitoring resources.</td>
+<td align="left">Nobody is told automatically when one is violated.</td>
+<td align="left">Define alert rules in <code>infra/gcp</code>.</td>
+</tr>
+<tr>
+<td align="center">4</td>
+<td align="left"><strong>Coupling of the API modules</strong> (§4.1.4). On 2026-11-22: 352 edges, 16 mutual pairs. On 2026-11-23, after #562–#565 were merged: 335 edges, 3 mutual pairs. Removed by moving <code>ParseTaxYearPipe</code> to <code>common/</code>, the tax-year rows to <code>tax-year/</code>, the household storage to <code>household-core/</code> and the receipt-inbox prompt text to <code>ki/</code>, and by replacing the two <code>ModuleRef</code> lookups of the estimate with ports. Left: <strong>advisor ↔ business</strong> (the receipt parse strategy of <code>business/</code> stages drafts through <code>advisor/</code>, the owl reads the book), <strong>advisor ↔ receipt</strong> (receipt services write drafts through <code>advisor/</code>, the owl lists the receipts) and <strong>business ↔ confirmation</strong> (<code>booking-field-access.ts</code> takes <code>BOOKING_ACCESS_FIELDS</code> from <code>confirmation/field-access.ts</code>). Each needs a new port in code that #562–#564 have just reshaped.</td>
+<td align="left">A module of such a pair cannot be changed or tested without the other.</td>
+<td align="left">Give the draft staging a port owned by <code>receipt/</code> and <code>business/</code>, move <code>BOOKING_ACCESS_FIELDS</code> into <code>business/</code>, and rewrite the baseline.</td>
+</tr>
+<tr>
+<td align="center">5</td>
+<td align="left"><strong>LangChain runs through the advisory turn</strong> (§4.1.4).</td>
+<td align="left">Lock-in to a framework.</td>
+<td align="left">Accepted as long as changing the provider stays configuration.</td>
+</tr>
+<tr>
+<td align="center">6</td>
+<td align="left"><strong>Rate limiting partly in process memory</strong> (§8.7).</td>
+<td align="left">With several instances the limit applies per instance.</td>
+<td align="left">Back <code>ThrottlerModule</code> with Redis.</td>
+</tr>
+<tr>
+<td align="center">7</td>
+<td align="left"><strong>ELSTER transmission not operational.</strong> The code calls an ERiC process; the operator certificate is missing.</td>
+<td align="left">Self-employed users who must file electronically cannot do so through the app.</td>
+<td align="left">Obtain the certificate, decide how the ERiC process is run (<a href="adr/0101-self-employed.html">ADR-0101</a>).</td>
+</tr>
+<tr>
+<td align="center">8</td>
+<td align="left"><strong>The official forms change every year.</strong></td>
+<td align="left">A shifted field makes the printout unusable.</td>
+<td align="left">Exists as a gate: checksums and measurements break the build. The forms for 2026 are still missing. Which fact goes into which field is decided per form: <code>printout/printout-values.ts</code> only composes one builder per form section or Anlage under <code>printout/values/</code>, so a changed form touches its own builder. <code>test/printout-values.golden.test.ts</code> pins the whole output for representative cases, including the order of the field ids and of the gaps.</td>
+</tr>
+<tr>
+<td align="center">9</td>
+<td align="left"><strong>Per-year tables outside the parameter registry.</strong> Since 2026-11-23 no year comparison remains outside <code>math/tax-parameters.ts</code>; four tables remain in their modules: <code>EARLIER_EMPLOYEE_LUMP_SUMS</code> (<code>domains/assessment.ts</code>), <code>EARLIER_SAVER_ALLOWANCE</code> (<code>domains/history-groups.ts</code>), <code>ROOM_CAP_2022_EUR</code> (<code>domains/business/profit.ts</code>) and the Kirchgeld tables (<code>domains/church-tax.data.ts</code>).</td>
+<td align="left">A new tax year can still need a change outside the registry.</td>
+<td align="left">Move them into <code>tax-parameters.ts</code> at the next change of year.</td>
+</tr>
+<tr>
+<td align="center">10</td>
+<td align="left"><strong>A second target environment in <code>infra/</code>.</strong> Next to <code>infra/gcp</code> there are definitions for Hetzner with k3s.</td>
+<td align="left">A reader of the repository sees two targets and cannot tell which one applies.</td>
+<td align="left">Remove them or mark them as an archive.</td>
+</tr>
+<tr>
+<td align="center">11</td>
+<td align="left"><strong>ADRs in status <em>Draft</em> for shipped code</strong> (0046, 0048, 0049).</td>
+<td align="left">The decision has not been formally accepted.</td>
+<td align="left">Settle the status.</td>
+</tr>
+<tr>
+<td align="center">12</td>
+<td align="left"><strong>Two arc42 documents.</strong> This document and <code>arc42/README.md</code> overlap; the latter describes an early state in its §5 and §5.1.</td>
+<td align="left">Readers cannot tell which one applies.</td>
+<td align="left">This document is authoritative. Cut <code>arc42/README.md</code> down to the toolchain and the boot order.</td>
+</tr>
+<tr>
+<td align="center">13</td>
+<td align="left"><strong>The receipt strategy chains four fixed rules.</strong> <code>AutoReceiptParseStrategy</code> applies the craftsman, donation, medical and childcare rules in a fixed order; each rule checks flags the earlier ones set (<code>invoice</code>, <code>donationRecognised</code>).</td>
+<td align="left">A fifth rule has to know the order and the flags of the four before it.</td>
+<td align="left">When a fifth rule comes, give each rule a common signature and keep them in an ordered list.</td>
+</tr>
+<tr>
+<td align="center">14</td>
+<td align="left"><strong>Large screen files in the web app.</strong> The seven largest files in <code>apps/mobile-web/src/screens</code> (915–1,245 lines: <code>GlassFormPreview</code>, <code>OwlModeScreen</code>, <code>CopilotBridgeProvider</code>, <code>CrossBorderScreen</code>, <code>AdvisorChatPanel</code>, <code>ChildrenScreen</code>, <code>CockpitScreen</code>) are now split into a <code>useXyz</code> hook for queries, mutations and derived state, components for the visual sections, and pure helpers with unit tests next to the screen. Thirteen files in <code>screens/</code> are still over 400 lines, the largest <code>receipts/ReceiptsScreen.tsx</code> (742), <code>printout/AcroFormLiveViewer.tsx</code> (692) and <code>workdays/WorkdaysScreen.tsx</code> (642). No check limits the size of a file.</td>
+<td align="left">A large screen mixes fetching, state and layout, so a change to one part means reading all of it, and its logic can only be tested through the rendered screen.</td>
+<td align="left">Split the remaining files the same way when they are next changed; consider a size limit in the lint step.</td>
+</tr>
+</tbody></table></div>
+<hr>
+
+      </article>
+      
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="10-quality-and-tests.html"><span class="eyebrow">Previous</span><span>Quality and tests</span></a><a class="step step-next" href="12-glossary.html"><span class="eyebrow">Next</span><span>Glossary</span></a></nav>
+    </main>
+  </div>
+  <script src="assets/site.js"></script>
+</body>
+</html>

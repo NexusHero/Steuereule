@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ADR-0086 — Child's health insurance without a chosen rate, care period from the Bescheid — SteuerEule</title>
+  <link rel="icon" href="../../../images/steuereule-logo.svg">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip" href="#content">Skip to the content</a>
+  <div class="shell">
+    <aside class="rail">
+      <a class="brand" href="../index.html">
+        <img src="../../../images/steuereule-logo.svg" width="36" height="36" alt="">
+        <span><strong>SteuerEule</strong><span class="eyebrow">Architecture</span></span>
+      </a>
+      <details class="menu" open>
+        <summary>Contents</summary>
+        <nav class="nav" aria-label="Site">
+        <p class="eyebrow">arc42</p>
+        <ul><li><a class="nav-item" href="../index.html"><span>Overview</span></a></li><li><a class="nav-item" href="../01-introduction-and-goals.html"><span class="nav-number">01</span><span>Introduction and goals</span></a></li><li><a class="nav-item" href="../02-constraints.html"><span class="nav-number">02</span><span>Constraints</span></a></li><li><a class="nav-item" href="../03-context-and-scope.html"><span class="nav-number">03</span><span>Context and scope</span></a></li><li><a class="nav-item" href="../04-solution-strategy.html"><span class="nav-number">04</span><span>Solution strategy</span></a></li><li><a class="nav-item" href="../05-building-block-view.html"><span class="nav-number">05</span><span>Building block view</span></a></li><li><a class="nav-item" href="../06-runtime-view.html"><span class="nav-number">06</span><span>Runtime view</span></a></li><li><a class="nav-item" href="../07-deployment-view.html"><span class="nav-number">07</span><span>Deployment view</span></a></li><li><a class="nav-item" href="../08-cross-cutting-concepts.html"><span class="nav-number">08</span><span>Cross-cutting concepts</span></a></li><li><a class="nav-item" href="../09-architecture-decisions.html"><span class="nav-number">09</span><span>Architecture decisions</span></a></li><li><a class="nav-item" href="../10-quality-and-tests.html"><span class="nav-number">10</span><span>Quality and tests</span></a></li><li><a class="nav-item" href="../11-risks-and-technical-debt.html"><span class="nav-number">11</span><span>Risks and technical debt</span></a></li><li><a class="nav-item" href="../12-glossary.html"><span class="nav-number">12</span><span>Glossary</span></a></li></ul>
+        <p class="eyebrow">Companion</p>
+        <ul><li><a class="nav-item" href="../subsystems.html"><span>Backend modules from the inside</span></a></li></ul>
+        <p class="eyebrow">Library</p>
+        <ul><li><a class="nav-item is-active" href="../decisions.html" aria-current="page"><span>Decisions</span></a></li><li><a class="nav-item" href="../documents.html"><span>Documents</span></a></li></ul>
+      </nav>
+      </details>
+      <p class="rail-foot">Architecture as of 2026-11-22<br>Built from the Markdown under <code>docs/</code></p>
+    </aside>
+    <main id="content" class="content">
+      <header class="page-head">
+        <p class="eyebrow">Decision · ADR-0086</p>
+        <h1>Child&#39;s health insurance without a chosen rate, care period from the Bescheid <span class="status status-ok">Accepted</span></h1>
+        <ul class="chips" aria-label="On this page"><li><a class="chip" href="#context">Context</a></li><li><a class="chip" href="#decision">Decision</a></li><li><a class="chip" href="#consequences">Consequences</a></li></ul>
+      </header>
+      <article class="prose">
+<ul>
+<li><strong>Status:</strong> Accepted</li>
+<li><strong>Date:</strong> 2026-11-13</li>
+<li><strong>Deciders:</strong> NexusHero (Product Owner), Steuereule Engineering</li>
+<li><strong>Applies to:</strong> <code>apps/api/src/ch-certificate-scan/ch-health-statement.parse-strategy.ts</code>, <code>packages/core/src/domains/childcare-notice.ts</code>, <code>apps/api/src/receipt/parse/auto-receipt-parse.strategy.ts</code>, <code>apps/api/src/advisor/advisor.service.ts</code></li>
+<li><strong>Builds on:</strong> ADR-0080 (health insurance statements), ADR-0076 (childcare)</li>
+</ul>
+<h2 id="context"><a class="anchor" href="#context" aria-hidden="true" tabindex="-1">#</a>Context</h2>
+<p>In the complete 2024 run two things were missing. The user uploaded the health insurance statement
+for the child before choosing an exchange rate in the Lohnausweis (Swiss salary certificate). The app
+promised to convert the amount later, but never came back to it. It recognized the Bescheid (notice)
+of the child day care, but created no draft. The care period was therefore guessed (whole year
+instead of from the start according to the Bescheid).</p>
+<h2 id="decision"><a class="anchor" href="#decision" aria-hidden="true" tabindex="-1">#</a>Decision</h2>
+<ol>
+<li><strong>Rate for the child:</strong> if no rate has been chosen yet, the app converts the child&#39;s premium at
+the official annual average (as printed by the Anlage N-Gre). The draft is „prüfen“ (&quot;check&quot;),
+and the owl says that it must be adjusted for a different rate.</li>
+<li><strong>Care period from the Bescheid:</strong> a Bescheid or an invoice for childcare („ab …“, „vom …
+bis …“ (&quot;from …&quot;, &quot;from … to …&quot;)) yields the period in the tax year for Anlage Kind line 67. A
+start without an end runs until the end of the year. If the start is followed by a time limit
+(„befristet bis …“, „bis zum …“ (&quot;limited until …&quot;, &quot;until …&quot;)), the period ends there, also in
+the following year. The draft goes to the only child of the year; if there are several, to the
+child whose first name is in the Bescheid. If none or more than one matches, no draft is created,
+and the owl asks to enter the period for the child. The app does not read the amount, because a
+Bescheid only states a monthly fee; the owl asks for the amount actually paid.</li>
+<li>Document drafts may carry text (date), not only amounts.</li>
+</ol>
+<h2 id="consequences"><a class="anchor" href="#consequences" aria-hidden="true" tabindex="-1">#</a>Consequences</h2>
+<ul>
+<li>2024 real case: the child&#39;s health insurance is in the draft, the care period is the one from the
+Bescheid, as with the tax advisor.</li>
+<li>A Bescheid from the previous year with a time limit into the new year also yields the correct
+period in the new year.</li>
+</ul>
+
+      </article>
+      <p class="back"><a href="../decisions.html">All decisions</a></p>
+      <nav class="steps" aria-label="Previous and next"><a class="step step-previous" href="0085-printout-for-2024.html"><span class="eyebrow">Previous</span><span>ADR-0085</span></a><a class="step step-next" href="0087-escalation-case-two-grenzgaenger-family.html"><span class="eyebrow">Next</span><span>ADR-0087</span></a></nav>
+    </main>
+  </div>
+  <script src="../assets/site.js"></script>
+</body>
+</html>
