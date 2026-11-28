@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { http } from 'msw'
@@ -12,6 +13,18 @@ const sse = (event: string, data: unknown) => encoder.encode(`event: ${event}\nd
 
 function renderPanel(props: Partial<AdvisorChatPanelProps>) {
   return renderInApp(<AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />)
+}
+
+/** The panel with props the test changes while it stays mounted, as the chat does when an answer is stored. */
+function renderLivePanel(first: Partial<AdvisorChatPanelProps>) {
+  let change: (next: Partial<AdvisorChatPanelProps>) => void = () => undefined
+  function Host() {
+    const [props, setProps] = useState(first)
+    change = setProps
+    return <AdvisorChatPanel messages={[]} onSendMessage={vi.fn()} {...props} />
+  }
+  renderInApp(<Host />)
+  return { change: (next: Partial<AdvisorChatPanelProps>) => act(() => change(next)) }
 }
 
 describe('plan checklist (#451 slice 6, AC 11–14)', () => {
@@ -49,6 +62,32 @@ describe('plan checklist (#451 slice 6, AC 11–14)', () => {
     expect(screen.queryByTestId('advisor-plan-step-1')).toBeNull()
     fireEvent.click(screen.getByTestId('advisor-plan-toggle'))
     expect(screen.getByTestId('advisor-plan-step-1')).toBeTruthy()
+  })
+
+  it('a plan opened while the answer is still being stored stays open once the answer is there', () => {
+    // The plan is finished before the stream ends: the summary can be pressed while the answer still counts as
+    // being written. Until 28.11.2026 the plan then moved above the stored answer as a new, collapsed one.
+    const plan = { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' as const }, { text: 'Spenden prüfen', status: 'erledigt' as const }] }
+    const answer = { id: 'a1', role: 'assistant' as const, content: 'Fertig.', meta: null, createdAt: '2026-11-28T08:00:00.000Z' }
+    const view = renderLivePanel({ stream: { isSending: true, plan } })
+    fireEvent.click(screen.getByTestId('advisor-plan-toggle'))
+    expect(screen.getByTestId('advisor-plan-step-2').textContent).toContain('✓')
+    view.change({ messages: [answer as never], stream: { isSending: false, plan } })
+    expect(screen.getByTestId('advisor-plan-step-2').textContent).toContain('✓')
+    expect(screen.getByTestId('advisor-plan-toggle').textContent).toContain('▾')
+  })
+
+  it('the plan of the next answer starts collapsed again', () => {
+    const done = { finished: true, steps: [{ text: 'Arbeitsweg prüfen', status: 'erledigt' as const }] }
+    const answer = { id: 'a1', role: 'assistant' as const, content: 'Fertig.', meta: null, createdAt: '2026-11-28T08:00:00.000Z' }
+    const view = renderLivePanel({ messages: [answer as never], stream: { isSending: false, plan: done } })
+    fireEvent.click(screen.getByTestId('advisor-plan-toggle'))
+    expect(screen.getByTestId('advisor-plan-toggle').textContent).toContain('▾')
+    // A new turn begins: its plan is not finished, then it is.
+    view.change({ messages: [answer as never], stream: { isSending: true, plan: { finished: false, steps: [{ text: 'Spenden prüfen', status: 'laeuft' }] } } })
+    view.change({ messages: [answer as never], stream: { isSending: true, plan: { finished: true, steps: [{ text: 'Spenden prüfen', status: 'erledigt' }] } } })
+    expect(screen.getByTestId('advisor-plan-toggle').textContent).toContain('▸')
+    expect(screen.queryByTestId('advisor-plan-step-1')).toBeNull()
   })
 
   it('keeps a stopped plan open so the done and the cut-off steps stay visible', () => {

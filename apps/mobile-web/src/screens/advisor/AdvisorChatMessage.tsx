@@ -28,7 +28,7 @@ interface AdvisorChatMessageProps {
 /** One stored message: the user's turn, a stopped or failed answer, or a finished answer. */
 export function AdvisorChatMessage({ msg, index, chat, drafts, model, stream, styles }: AdvisorChatMessageProps) {
   const { t: tr } = useTranslation(APP_NS)
-  const { messages, lastUserIndex, lastAssistantIndex, canReplace, editingId, startEdit, regenerate, setSelectedSource, copiedId, copyMessage, planAboveLastAnswer } = chat
+  const { messages, lastUserIndex, lastAssistantIndex, canReplace, editingId, startEdit, regenerate, setSelectedSource, copiedId, copyMessage, planAboveLastAnswer, planExpanded, togglePlan } = chat
   const isLast = index === messages.length - 1
   const { onRateMessage } = drafts
   const { plan } = stream
@@ -76,7 +76,7 @@ export function AdvisorChatMessage({ msg, index, chat, drafts, model, stream, st
 
   return (
     <View>
-      {planAboveLastAnswer && index === lastAssistantIndex ? <PlanChecklist plan={plan!} /> : null}
+      {planAboveLastAnswer && index === lastAssistantIndex ? <PlanChecklist plan={plan!} expanded={planExpanded} onToggle={togglePlan} /> : null}
       <Card style={styles.assistantBubble} testID="advisor-assistant-message">
         <View style={styles.assistantBubbleHeader}>
           <AiChip>{tr('advisor.chat.sender', 'Die Eule')}</AiChip>

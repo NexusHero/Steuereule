@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { Pressable, Text, View, type TextStyle, type ViewStyle } from 'react-native'
 import { useTranslation } from 'react-i18next'
 import { useTheme, type UiTheme } from '@steuereule/ui'
@@ -16,11 +15,20 @@ const GLYPH: Readonly<Record<PlanStepView['status'], string>> = {
  * The owl's plan above its answer (#451 decision 18): ○ offen, ◐ läuft, ✓ erledigt, live while it
  * works; afterwards collapsed to „5 Schritte erledigt ▸“. A view only: it never writes (decision 19).
  */
-export function PlanChecklist({ plan }: { readonly plan: AdvisorPlanView }) {
+export interface PlanChecklistProps {
+  readonly plan: AdvisorPlanView
+  /**
+   * Whether a finished plan is open. Held by the chat, not here: the plan is drawn in the running turn and
+   * then above the stored answer, and an opened plan must not close when it moves from one to the other.
+   */
+  readonly expanded: boolean
+  readonly onToggle: () => void
+}
+
+export function PlanChecklist({ plan, expanded, onToggle }: PlanChecklistProps) {
   const t = useTheme()
   const styles = makeStyles(t)
   const { t: tr } = useTranslation(APP_NS)
-  const [expanded, setExpanded] = useState(false)
   const done = plan.steps.filter((s) => s.status === 'erledigt').length
   // A stopped plan stays open: what was done and what was cut off must stay visible (AC 14).
   const collapsible = plan.finished && !plan.steps.some((s) => s.status === 'abgebrochen')
@@ -32,7 +40,7 @@ export function PlanChecklist({ plan }: { readonly plan: AdvisorPlanView }) {
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: open }}
-          onPress={() => setExpanded((prev) => !prev)}
+          onPress={onToggle}
           testID="advisor-plan-toggle"
         >
           <Text style={styles.toggle}>
